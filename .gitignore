@@ -1,0 +1,23 @@
+node_modules/
+.node_modules.lock
+.tanstack/
+.vercel/
+dist/
+.output/
+data/
+*.local
+.env
+.env.*
+screenshots/
+artifacts/
+attachments/
+tmp/
+ios/Yui.xcodeproj/xcuserdata/
+ios/Yui.xcodeproj/project.xcworkspace/xcuserdata/
+*.log
+.DS_Store
+
+# Lattice の工程 store。journal は digest 連鎖で後から直せず、
+# 作業中の記録に家の認証値が混ざりうるので追跡しない。
+# 読ませたい経緯と証跡は docs/ へ清書して置く。
+.lattice/

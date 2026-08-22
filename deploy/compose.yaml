@@ -1,0 +1,50 @@
+# 自分のサーバーで結を動かすための雛形。値は自分の家に合わせて書き換える。
+#
+# 秘密（BETTER_AUTH_SECRET / HOME_SECRETS_KEY など）は同じ場所に置いた `.env` から読む。
+# compose.yaml には書かない。
+name: yuihome
+
+services:
+  app:
+    # 手元で `docker build -t yuihome:local .` して焼くか、自分のレジストリの tag を指す。
+    image: yuihome:local
+    container_name: yuihome
+    restart: unless-stopped
+    env_file:
+      - .env
+    # LAN 直結のコネクタ（ダイキン）と、ホスト側で動かす自作ブリッジへ届かせるため。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # ダイキン無線LAN内蔵機への直結。"部屋=IP" をカンマ区切りで並べる。
+      # 設定しなければ設定画面にダイキンのカードは出ない。
+      # YUI_DAIKIN_ADDRS: リビング=192.168.0.10,寝室=192.168.0.11
+      #
+      # オーデリックは自作ブリッジ経由でだけ動く（この repo にプロトコルは無い）。
+      # YUI_ODELIC_BRIDGE_URL: http://host.docker.internal:8099
+      YUI_DATA_FILE: /data/yui.json
+      YUI_IMPORT_JSON: /data/yui.json
+      YUI_SQLITE_PATH: /data/yui.sqlite
+      # 公開する URL。リバースプロキシの外側から見た値を書く。
+      BETTER_AUTH_URL: https://yui.example.com
+      TZ: Asia/Tokyo
+      PORT: "8080"
+      HOST: 0.0.0.0
+    volumes:
+      - yui-data:/data
+    ports:
+      # 直接インターネットへ晒さない。リバースプロキシ（Caddy 等）の後ろに置く。
+      - "127.0.0.1:18861:8080"
+    networks:
+      - yui
+
+volumes:
+  yui-data:
+
+networks:
+  # 帯を固定する。docker の自動割当だと再作成のたびに変わり、
+  # ホスト側のファイアウォールで LAN 機器やブリッジへの許可を書いている場合に外れる。
+  yui:
+    ipam:
+      config:
+        - subnet: 172.16.240.0/24

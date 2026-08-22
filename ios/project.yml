@@ -1,0 +1,29 @@
+name: Yui
+options:
+  bundleIdPrefix: dev.kitepon
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: dev.kitepon.yuihome
+    DEVELOPMENT_TEAM: TPWX489GV4
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: 結
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+    INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+    TARGETED_DEVICE_FAMILY: "1"
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+targets:
+  Yui:
+    type: application
+    platform: iOS
+    sources:
+      - path: Yui
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.kitepon.yuihome
+        DEVELOPMENT_TEAM: TPWX489GV4
+        CODE_SIGN_STYLE: Automatic

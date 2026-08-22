@@ -1,0 +1,346 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		249B95B8B8677E8828DF889B /* YuiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */; };
+		2B6782FF35335C456230B0B7 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670AF44B343B14DEBCB6D731 /* LoginView.swift */; };
+		3A0CAD2FFA118570598DD1CE /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2981A0E63D79A4D16EBE0BAA /* RootView.swift */; };
+		455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31E8B800857AAE16AA60AD2 /* HomeView.swift */; };
+		8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50400412CEFFD51B5BC7D8EE /* YuiApp.swift */; };
+		99BD7746C2277352FD6AEF31 /* ScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077672F56CC8346B91EC670D /* ScenesView.swift */; };
+		9F484E04C3B030787C85DDF0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F553E8EC520849F169D89C6A /* Theme.swift */; };
+		A0B5BDC51E6F6C8A1BD2603E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */; };
+		AE02CF887794FCC6DDBF29D2 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920858F0D3DE8419DB11F936 /* Models.swift */; };
+		CCC6F06C92B7FC409C66A840 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */; };
+		CD118DF31ECDEBC88AD096A8 /* MainTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729E834245DED0CF1B4E9032 /* MainTabs.swift */; };
+		E3E5BA36150D37B3370FA2AA /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60D12689F93763BBBF3345E /* SessionStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		077672F56CC8346B91EC670D /* ScenesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesView.swift; sourceTree = "<group>"; };
+		2981A0E63D79A4D16EBE0BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiClient.swift; sourceTree = "<group>"; };
+		3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		50400412CEFFD51B5BC7D8EE /* YuiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiApp.swift; sourceTree = "<group>"; };
+		59A0440A5DB25F5D714E46B8 /* Yui.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Yui.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		670AF44B343B14DEBCB6D731 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		729E834245DED0CF1B4E9032 /* MainTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabs.swift; sourceTree = "<group>"; };
+		920858F0D3DE8419DB11F936 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		D60D12689F93763BBBF3345E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		E31E8B800857AAE16AA60AD2 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F553E8EC520849F169D89C6A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0A83C40E4DDF0507822E3118 = {
+			isa = PBXGroup;
+			children = (
+				87C27E0D4ADDD6089559429D /* Yui */,
+				96E378055F38DE8BF191AB0C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		87C27E0D4ADDD6089559429D /* Yui */ = {
+			isa = PBXGroup;
+			children = (
+				E31E8B800857AAE16AA60AD2 /* HomeView.swift */,
+				3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */,
+				670AF44B343B14DEBCB6D731 /* LoginView.swift */,
+				729E834245DED0CF1B4E9032 /* MainTabs.swift */,
+				920858F0D3DE8419DB11F936 /* Models.swift */,
+				2981A0E63D79A4D16EBE0BAA /* RootView.swift */,
+				077672F56CC8346B91EC670D /* ScenesView.swift */,
+				D60D12689F93763BBBF3345E /* SessionStore.swift */,
+				E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */,
+				F553E8EC520849F169D89C6A /* Theme.swift */,
+				50400412CEFFD51B5BC7D8EE /* YuiApp.swift */,
+				34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */,
+			);
+			path = Yui;
+			sourceTree = "<group>";
+		};
+		96E378055F38DE8BF191AB0C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				59A0440A5DB25F5D714E46B8 /* Yui.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AD12B570053425B9BBC24588 /* Yui */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4013CE293C978DBAD7E62C2F /* Build configuration list for PBXNativeTarget "Yui" */;
+			buildPhases = (
+				533246D3DC516EF63D974B24 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Yui;
+			packageProductDependencies = (
+			);
+			productName = Yui;
+			productReference = 59A0440A5DB25F5D714E46B8 /* Yui.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A9B603DD12FD10DD419E02B2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					AD12B570053425B9BBC24588 = {
+						DevelopmentTeam = TPWX489GV4;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 130F39C2B65DCD736311B0B9 /* Build configuration list for PBXProject "Yui" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 0A83C40E4DDF0507822E3118;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 96E378055F38DE8BF191AB0C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AD12B570053425B9BBC24588 /* Yui */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		533246D3DC516EF63D974B24 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */,
+				CCC6F06C92B7FC409C66A840 /* Keychain.swift in Sources */,
+				2B6782FF35335C456230B0B7 /* LoginView.swift in Sources */,
+				CD118DF31ECDEBC88AD096A8 /* MainTabs.swift in Sources */,
+				AE02CF887794FCC6DDBF29D2 /* Models.swift in Sources */,
+				3A0CAD2FFA118570598DD1CE /* RootView.swift in Sources */,
+				99BD7746C2277352FD6AEF31 /* ScenesView.swift in Sources */,
+				E3E5BA36150D37B3370FA2AA /* SessionStore.swift in Sources */,
+				A0B5BDC51E6F6C8A1BD2603E /* SettingsView.swift in Sources */,
+				9F484E04C3B030787C85DDF0 /* Theme.swift in Sources */,
+				8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */,
+				249B95B8B8677E8828DF889B /* YuiClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		183C03C90CB861A50FF41886 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TPWX489GV4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		2053B346995F129E9EB0ADAB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = TPWX489GV4;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "結";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		323AA725ED754E515C71BF88 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = TPWX489GV4;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "結";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E6FDDCA7649CB2FB56CD08E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TPWX489GV4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		130F39C2B65DCD736311B0B9 /* Build configuration list for PBXProject "Yui" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				323AA725ED754E515C71BF88 /* Debug */,
+				2053B346995F129E9EB0ADAB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4013CE293C978DBAD7E62C2F /* Build configuration list for PBXNativeTarget "Yui" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				183C03C90CB861A50FF41886 /* Debug */,
+				E6FDDCA7649CB2FB56CD08E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A9B603DD12FD10DD419E02B2 /* Project object */;
+}
