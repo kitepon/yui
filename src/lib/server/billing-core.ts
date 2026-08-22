@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { BILLING } from "../billing-plan.ts";
 
 export type BillingPlan = "monthly" | "annual";
 
@@ -17,10 +18,15 @@ export function parseBillingPlan(value: string): BillingPlan {
   return value;
 }
 
+export { BILLING } from "../billing-plan.ts";
+
+const MONTHLY_LABEL = `${BILLING.monthlyYen.toLocaleString("ja-JP")}円（税込）`;
+const ANNUAL_LABEL = `${BILLING.annualYen.toLocaleString("ja-JP")}円（税込）`;
+
 export function billingPlanDetails(plan: BillingPlan) {
   return plan === "monthly"
-    ? { label: "月額プラン", price: "300円（税込）", renewal: "毎月" }
-    : { label: "年額プラン", price: "3,000円（税込）", renewal: "毎年" };
+    ? { label: "月額プラン", price: MONTHLY_LABEL, renewal: "毎月" }
+    : { label: "年額プラン", price: ANNUAL_LABEL, renewal: "毎年" };
 }
 
 export function priceIdForPlan(plan: BillingPlan) {

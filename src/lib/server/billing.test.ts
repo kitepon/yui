@@ -12,8 +12,8 @@ test("plan names", () => {
   assert.equal(parseBillingPlan("monthly"), "monthly");
   assert.equal(parseBillingPlan("annual"), "annual");
   assert.throws(() => parseBillingPlan("weekly"));
-  assert.equal(billingPlanDetails("monthly").price, "300円（税込）");
-  assert.equal(billingPlanDetails("annual").price, "3,000円（税込）");
+  assert.equal(billingPlanDetails("monthly").price, "100円（税込）");
+  assert.equal(billingPlanDetails("annual").price, "1,000円（税込）");
 });
 
 test("unknown price is not entitled", () => {

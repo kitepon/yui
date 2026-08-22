@@ -7,6 +7,7 @@ import {
   emptyEntitlement,
   entitlementFromSubscription,
   priceIdForPlan,
+  BILLING,
   type BillingPlan,
   type Entitlement,
 } from "./billing-core.ts";
@@ -87,7 +88,7 @@ async function fetchEntitlement(userId: string): Promise<Entitlement> {
   }
   const customer = loadCustomerId(userId);
   if (!customer) {
-    return emptyEntitlement("月額300円または年額3,000円。初回14日間は無料です。");
+    return emptyEntitlement(`月額${BILLING.monthlyYen}円または年額${BILLING.annualYen.toLocaleString("ja-JP")}円。初回${BILLING.trialDays}日間は無料です。`);
   }
   const list = await getStripe().subscriptions.list({
     customer,
@@ -129,7 +130,7 @@ export async function startCheckout(input: {
       metadata: { userId: input.userId, plan: input.plan, service: "yuihome" },
       subscription_data: {
         metadata: { userId: input.userId, plan: input.plan, service: "yuihome" },
-        ...(eligible ? { trial_period_days: 14 } : {}),
+        ...(eligible ? { trial_period_days: BILLING.trialDays } : {}),
       },
     },
     { idempotencyKey: `yuihome-checkout-${input.userId}-${input.plan}-${eligible ? "trial" : "paid"}` },

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { saveCredentials, serverSync } from "@/lib/home/control-client";
+import { BILLING } from "@/lib/billing-plan";
 import { useHome } from "@/lib/home/store";
 import { useHomeHydrated } from "@/lib/home/use-hydrated";
 
@@ -135,9 +136,12 @@ export function SettingsPage() {
         {billing?.configured ? (
           <section className="rounded-lg border border-border bg-surface p-4">
             <p className="text-[11px] tracking-wide text-faint">契約</p>
-            <h2 className="mt-0.5 text-lg font-medium text-fg">月額300円 / 年額3,000円</h2>
+            <h2 className="mt-0.5 text-lg font-medium text-fg">
+              月額{BILLING.monthlyYen}円 / 年額{BILLING.annualYen.toLocaleString("ja-JP")}円
+            </h2>
             <p className="mt-2 text-sm text-muted">
-              {billing.entitlement.message ?? "初回14日間は無料です。カード・Apple Pay・Google Pay。"}
+              {billing.entitlement.message ??
+                `初回${BILLING.trialDays}日間は無料です。カード・Apple Pay・Google Pay。`}
             </p>
             {billing.entitlement.writable ? (
               <Button className="mt-3 w-full" disabled={busy === "portal"} onClick={() => void openPortal()}>
@@ -160,6 +164,10 @@ export function SettingsPage() {
               {" · "}
               <a className="underline" href="/privacy">
                 プライバシー
+              </a>
+              {" · "}
+              <a className="underline" href="/legal">
+                特商法
               </a>
             </p>
           </section>
