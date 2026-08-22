@@ -21,6 +21,10 @@
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | 任意 | Google でログインする場合 |
 | `ALEXA_CLIENT_ID` / `ALEXA_CLIENT_SECRET` | 任意 | Echo から使う場合（[docs/alexa.md](../docs/alexa.md)） |
 | `YUI_BACKUP_URL` / `YUI_BACKUP_SECRET` | 任意 | 家データを外部へ定期退避する場合 |
+| `BETTER_AUTH_URL` | 必須 | 外から見た公開 URL（例 `https://yui.example.com`） |
+| `YUI_DAIKIN_ADDRS` | 任意 | ダイキン直結の宛先。`部屋=IP` をカンマ区切り |
+| `YUI_ODELIC_BRIDGE_URL` | 任意 | 自作オーデリックブリッジの URL（この repo には含まれない） |
+| `YUI_BIND` / `YUI_PORT` | 任意 | 受けるアドレスとポート（既定 `127.0.0.1:18861`） |
 
 **`HOME_SECRETS_KEY` を失うと、保存済みの家電トークンは復号できない。** 必ず控えを取る。
 
@@ -34,9 +38,14 @@ docker build -t yuihome:local .
 cd deploy && docker compose up -d
 ```
 
-`deploy/compose.yaml` は雛形なので、`BETTER_AUTH_URL` と LAN 直結の宛先（`YUI_DAIKIN_ADDRS`）を
-自分の家に合わせて書き換える。状態は named volume `yuihome_yui-data`（`/data/yui.sqlite`）に残り、
-image を入れ替えても消えない。
+家に固有の値はすべて `.env` が持つので、`compose.yaml` は書き換えなくていい。
+状態は named volume `yuihome_yui-data`（`/data/yui.sqlite`）に残り、image を入れ替えても消えない。
+
+手元の Mac などから焼いて送り込むなら、同梱のスクリプトが使える。
+
+```bash
+DEPLOY_HOST=user@192.168.0.2 ./scripts/deploy-prod.sh
+```
 
 ## 更新
 
