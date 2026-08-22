@@ -40,10 +40,12 @@ TAG=$(date +%Y%m%d)-$SHA
 IMAGE="$NAME:$TAG"
 
 echo "[deploy] vite build (node-server)"
-NITRO_PRESET=node-server \
-VITE_AUTH_ENABLED=true \
-${PUBLIC_HOSTNAME:+VITE_PUBLIC_HOSTNAME=$PUBLIC_HOSTNAME} \
-  npm run build
+export NITRO_PRESET=node-server
+export VITE_AUTH_ENABLED=true
+if [ -n "$PUBLIC_HOSTNAME" ]; then
+  export VITE_PUBLIC_HOSTNAME="$PUBLIC_HOSTNAME"
+fi
+npm run build
 
 # nitro が pglite の wasm/data を .output に出さないので、参照先へ置く。
 PGLITE_DIST="$ROOT/node_modules/@electric-sql/pglite/dist"
