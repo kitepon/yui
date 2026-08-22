@@ -98,17 +98,19 @@ function persistRow(id: string, ownerUserId: string, snap: HomeSnapshot) {
     );
 }
 
-export function clientHome(snap: HomeSnapshot, host?: string | null) {
+/**
+ * LAN 直結（ダイキン・オーデリック）は宛先をサーバーが持つので、
+ * この結の持ち主にだけ見せる。他の利用者にはカードごと出さない。
+ */
+export function clientHome(snap: HomeSnapshot, host?: string | null, isOwner = false) {
   return {
     ...snap,
     credentials: publicCredentials(),
     credentialFlags: credentialFlags(snap.credentials),
     host: host ?? snap.host,
     runner: true,
-    // オーデリックは自宅専用のブリッジ越しでしか動かない。未設定の image では
-    // 設定画面にカードを出さず、製品にオーデリックの痕跡を残さない。
-    odelicBridge: Boolean(process.env.YUI_ODELIC_BRIDGE_URL),
-    daikinDirect: daikinConfigured(),
+    odelicBridge: isOwner && Boolean(process.env.YUI_ODELIC_BRIDGE_URL),
+    daikinDirect: isOwner && daikinConfigured(),
   };
 }
 

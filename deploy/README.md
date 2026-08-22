@@ -22,11 +22,17 @@
 | `ALEXA_CLIENT_ID` / `ALEXA_CLIENT_SECRET` | 任意 | Echo から使う場合（[docs/alexa.md](../docs/alexa.md)） |
 | `YUI_BACKUP_URL` / `YUI_BACKUP_SECRET` | 任意 | 家データを外部へ定期退避する場合 |
 | `BETTER_AUTH_URL` | 必須 | 外から見た公開 URL（例 `https://yui.example.com`） |
+| `YUI_LAN_OWNER` | LAN 直結を使うなら必須 | この結の持ち主のメール。**この人だけ**が LAN 直結を使える |
 | `YUI_DAIKIN_ADDRS` | 任意 | ダイキン直結の宛先。`部屋=IP` をカンマ区切り |
 | `YUI_ODELIC_BRIDGE_URL` | 任意 | 自作オーデリックブリッジの URL（この repo には含まれない） |
 | `YUI_BIND` / `YUI_PORT` | 任意 | 受けるアドレスとポート（既定 `127.0.0.1:18861`） |
 
 **`HOME_SECRETS_KEY` を失うと、保存済みの家電トークンは復号できない。** 必ず控えを取る。
+
+**LAN 直結（ダイキン・オーデリック）は `YUI_LAN_OWNER` に書いた人だけが使える。**
+これらは宛先をサーバーが持ち、利用者ごとの認証情報が無い。誰でも登録できる結で
+開いたままにすると、登録した他人が家主の機器を操作できてしまう。書かなければ
+LAN 直結は誰にも開かない。
 
 ## 起動
 

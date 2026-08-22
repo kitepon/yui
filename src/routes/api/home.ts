@@ -4,6 +4,7 @@ import { switchbotSync } from "@/lib/home/switchbot";
 import { tuyaSync } from "@/lib/home/tuya";
 import { odelicSync } from "@/lib/home/odelic";
 import { daikinSync } from "@/lib/home/daikin";
+import { isLanOwner } from "@/lib/server/lan-owner";
 import type { Brand, Device } from "@/lib/home/types";
 import { auth } from "@/lib/auth/server";
 import { clientHome, loadHome, replaceHome, saveHome } from "@/lib/server/home-db";
@@ -24,8 +25,11 @@ async function readJson(request: Request) {
 async function requireOwner(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id) return null;
-  return session.user.id;
+  return { id: session.user.id, lanOwner: isLanOwner(session.user.email) };
 }
+
+/** LAN 直結は宛先をサーバーが持つので、持ち主以外には触らせない。 */
+const LAN_BRANDS = new Set<Brand>(["daikin", "odelec"]);
 
 function deny() {
   return Response.json({ error: "ログインが必要です" }, { status: 401 });
@@ -35,15 +39,17 @@ export const Route = createFileRoute("/api/home")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const userId = await requireOwner(request);
-        if (!userId) return deny();
+        const who = await requireOwner(request);
+        if (!who) return deny();
+        const userId = who.id;
         const { snap } = await loadHome(userId);
         const billing = billingConfigured() ? await loadEntitlement(userId) : null;
-        return Response.json({ ...clientHome(snap, request.headers.get("host")), billing });
+        return Response.json({ ...clientHome(snap, request.headers.get("host"), who.lanOwner), billing });
       },
       POST: async ({ request }) => {
-        const userId = await requireOwner(request);
-        if (!userId) return deny();
+        const who = await requireOwner(request);
+        if (!who) return deny();
+        const userId = who.id;
         if (billingConfigured()) {
           const entitlement = await loadEntitlement(userId);
           if (!entitlement.writable) return paywall();
@@ -57,18 +63,23 @@ export const Route = createFileRoute("/api/home")({
           const saved = await saveHome(userId, {
             credentials: { ...snap.credentials, ...incoming },
           });
-          return Response.json(clientHome(saved, request.headers.get("host")));
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
         }
 
         if (op === "push") {
           const next = body.state as typeof snap | undefined;
           if (!next) return Response.json({ error: "state がありません" }, { status: 400 });
           const saved = await replaceHome(userId, next);
-          return Response.json(clientHome(saved, request.headers.get("host")));
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
         }
 
         if (op === "sync") {
           const brand = String(body.brand ?? "") as Brand;
+          // LAN 直結は宛先をサーバーが持ち、利用者ごとの認証情報が無い。
+          // 持ち主以外へ同期させると、他人の家の機器がその人の家に入る。
+          if (LAN_BRANDS.has(brand) && !who.lanOwner) {
+            return Response.json({ error: "未対応の接続です" }, { status: 400 });
+          }
           try {
             if (brand === "nature") {
               const res = await remoSync(snap.credentials.natureToken);
@@ -89,7 +100,7 @@ export const Route = createFileRoute("/api/home")({
                   },
                 },
               });
-              return Response.json(clientHome(saved, request.headers.get("host")));
+              return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
             }
             if (brand === "switchbot") {
               const incoming = await switchbotSync(
@@ -112,7 +123,7 @@ export const Route = createFileRoute("/api/home")({
                   },
                 },
               });
-              return Response.json(clientHome(saved, request.headers.get("host")));
+              return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
             }
             if (brand === "smartlife") {
               const res = await tuyaSync(
@@ -138,7 +149,7 @@ export const Route = createFileRoute("/api/home")({
                   },
                 },
               });
-              return Response.json(clientHome(saved, request.headers.get("host")));
+              return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
             }
             if (brand === "daikin") {
               const res = await daikinSync();
@@ -158,7 +169,7 @@ export const Route = createFileRoute("/api/home")({
                   },
                 },
               });
-              return Response.json(clientHome(saved, request.headers.get("host")));
+              return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
             }
             if (brand === "odelec") {
               const res = await odelicSync();
@@ -178,7 +189,7 @@ export const Route = createFileRoute("/api/home")({
                   },
                 },
               });
-              return Response.json(clientHome(saved, request.headers.get("host")));
+              return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
             }
             return Response.json({ error: "未対応の接続です" }, { status: 400 });
           } catch (err) {
@@ -202,7 +213,7 @@ export const Route = createFileRoute("/api/home")({
             await executeDevice(homeId, snap, device, patch);
             if (patch.on !== undefined) await fireDeviceOnServer(homeId, device.id, patch.on);
             const latest = await loadHome(userId);
-            return Response.json(clientHome(latest.snap, request.headers.get("host")));
+            return Response.json(clientHome(latest.snap, request.headers.get("host"), who.lanOwner));
           } catch (err) {
             return Response.json(
               { error: err instanceof Error ? err.message : "操作に失敗しました" },
@@ -223,7 +234,7 @@ export const Route = createFileRoute("/api/home")({
           }
           await fireSceneOnServer(homeId, sceneId);
           const latest = await loadHome(userId);
-          return Response.json(clientHome(latest.snap, request.headers.get("host")));
+          return Response.json(clientHome(latest.snap, request.headers.get("host"), who.lanOwner));
         }
 
         return Response.json({ error: "不明な操作です" }, { status: 400 });

@@ -2,6 +2,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation, SensorMetric } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { daikinConfigured, daikinSync } from "@/lib/home/daikin";
+import { homeBelongsToLanOwner } from "./lan-owner";
 import { listAutomationHomeIds, loadHomeRecord, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
 import { startBackupRunner } from "./home-backup";
@@ -81,7 +82,8 @@ async function tickSensors(homeId: string, snap: HomeSnapshot) {
       /* keep last */
     }
   }
-  if (daikinConfigured()) {
+  // LAN 直結は持ち主の家にだけ入れる。他人の家へ機器を配らない。
+  if (daikinConfigured() && homeBelongsToLanOwner((await loadHomeRecord(homeId))?.ownerUserId ?? "")) {
     try {
       const res = await daikinSync();
       // 認証不要の env 直結なので、手動同期を待たず新規機器もここで取り込む。

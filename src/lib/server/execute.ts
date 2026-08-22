@@ -7,6 +7,14 @@ import { matchesStep } from "@/lib/home/demo";
 import type { AutoAction, Device } from "@/lib/home/types";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import { loadHomeRecord, saveHomeRecord } from "./home-db";
+import { homeBelongsToLanOwner } from "./lan-owner";
+
+/** 宛先をサーバーの環境変数が持つコネクタ。利用者ごとの認証情報が無い。 */
+const LAN_CONNECTORS = new Set<Device["connector"]>(["daikin", "odelec"]);
+
+async function ownerOf(homeId: string): Promise<string> {
+  return (await loadHomeRecord(homeId))?.ownerUserId ?? "";
+}
 
 export async function executeDevice(
   homeId: string,
@@ -16,6 +24,11 @@ export async function executeDevice(
 ) {
   const next = { ...device, ...patch };
   if (device.source === "live") {
+    // LAN 直結は宛先をサーバーが持つ。持ち主以外の家に機器が残っていても、
+    // 場面やオートメーション経由で他人の家へ指示が出ないようにする。
+    if (LAN_CONNECTORS.has(device.connector) && !homeBelongsToLanOwner(await ownerOf(homeId))) {
+      throw new Error(`${device.name} はこの家からは操作できません`);
+    }
     if (device.connector === "nature") {
       await remoControl(snap.credentials.natureToken, next, patch);
     } else if (device.connector === "switchbot") {
