@@ -8,6 +8,7 @@ import { executeAction } from "./execute";
 import { startBackupRunner } from "./home-backup";
 import { billingConfigured, loadEntitlement } from "./billing";
 import { clockInTokyo } from "@/lib/home/clock";
+import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
 
 let started = false;
 let ticking = false;
@@ -152,7 +153,7 @@ export function startControlRunner() {
   if (started) return;
   started = true;
   void tickAllHomes();
-  setInterval(() => void tickAllHomes(), 60_000);
+  setInterval(() => void tickAllHomes(), SENSOR_TICK_SECONDS * 1000);
   startBackupRunner();
 }
 

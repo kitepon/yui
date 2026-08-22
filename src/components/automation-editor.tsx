@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useHome } from "@/lib/home/store";
+import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
 import {
   type AcMode,
   type AutoAction,
@@ -241,6 +242,10 @@ export function AutomationEditor({
                 onChange={(value) => setTrigger({ ...trigger, value })}
               />
             </div>
+            <p className="text-xs leading-relaxed text-faint">
+              センサーの値はサーバーが{SENSOR_TICK_SECONDS}秒ごとに確認します。条件を満たしてから動くまで最大
+              {SENSOR_TICK_SECONDS}秒かかります。アプリを開いていなくても動きます。
+            </p>
           </div>
         ) : null}
 
