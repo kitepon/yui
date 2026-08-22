@@ -131,47 +131,65 @@ export function SettingsPage() {
           <p className="mt-2 text-sm text-muted">このサイトが家のサーバーです。接続コード {pairPin || "—"}</p>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <p className="text-[11px] tracking-wide text-faint">契約</p>
-          <h2 className="mt-0.5 text-lg font-medium text-fg">月額300円 / 年額3,000円</h2>
-          <p className="mt-2 text-sm text-muted">
-            {billing?.entitlement.message ??
-              (billing?.configured === false
-                ? "結専用の Stripe アカウントを接続すると、ここから申し込めます。"
-                : "初回14日間は無料です。カード・Apple Pay・Google Pay。")}
-          </p>
-          {billing?.entitlement.writable ? (
-            <Button className="mt-3 w-full" disabled={busy === "portal"} onClick={() => void openPortal()}>
-              支払い方法の変更・解約
-            </Button>
-          ) : (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Button disabled={!billing?.configured || Boolean(busy)} onClick={() => void startPlan("monthly")}>
-                月額ではじめる
+        {/* 課金していない結（既定）では寄付のお願いを出す。Stripe を繋いだ人にだけ契約の口が出る。 */}
+        {billing?.configured ? (
+          <section className="rounded-lg border border-border bg-surface p-4">
+            <p className="text-[11px] tracking-wide text-faint">契約</p>
+            <h2 className="mt-0.5 text-lg font-medium text-fg">月額300円 / 年額3,000円</h2>
+            <p className="mt-2 text-sm text-muted">
+              {billing.entitlement.message ?? "初回14日間は無料です。カード・Apple Pay・Google Pay。"}
+            </p>
+            {billing.entitlement.writable ? (
+              <Button className="mt-3 w-full" disabled={busy === "portal"} onClick={() => void openPortal()}>
+                支払い方法の変更・解約
               </Button>
-              <Button
-                variant="outline"
-                disabled={!billing?.configured || Boolean(busy)}
-                onClick={() => void startPlan("annual")}
-              >
-                年額ではじめる
-              </Button>
-            </div>
-          )}
-          <p className="mt-3 text-xs text-faint">
-            <a className="underline" href="/terms">
-              利用規約
+            ) : (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button disabled={Boolean(busy)} onClick={() => void startPlan("monthly")}>
+                  月額ではじめる
+                </Button>
+                <Button variant="outline" disabled={Boolean(busy)} onClick={() => void startPlan("annual")}>
+                  年額ではじめる
+                </Button>
+              </div>
+            )}
+            <p className="mt-3 text-xs text-faint">
+              <a className="underline" href="/terms">
+                利用規約
+              </a>
+              {" · "}
+              <a className="underline" href="/privacy">
+                プライバシー
+              </a>
+            </p>
+          </section>
+        ) : (
+          <section className="rounded-lg border border-border bg-surface p-4">
+            <p className="text-[11px] tracking-wide text-faint">この結について</p>
+            <h2 className="mt-0.5 text-lg font-medium text-fg">無料で使えます</h2>
+            <p className="mt-2 text-sm text-muted">
+              結はオープンソースで、課金も広告もありません。機能はすべて使えます。
+              気に入ったら開発を支えてもらえると嬉しいです。
+            </p>
+            <a
+              className="mt-3 block w-full rounded-md border border-border py-2.5 text-center text-sm text-fg"
+              href="https://github.com/quolu/yui"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub で見る・支える
             </a>
-            {" · "}
-            <a className="underline" href="/privacy">
-              プライバシー
-            </a>
-            {" · "}
-            <a className="underline" href="/legal">
-              特商法
-            </a>
-          </p>
-        </section>
+            <p className="mt-3 text-xs text-faint">
+              <a className="underline" href="/terms">
+                利用規約
+              </a>
+              {" · "}
+              <a className="underline" href="/privacy">
+                プライバシー
+              </a>
+            </p>
+          </section>
+        )}
 
         <ConnectorCard
           title="Nature Remo"
