@@ -148,6 +148,9 @@ export default defineConfig(({ command }) => ({
           nitro({
             // Docker / 自宅サーバーは node-server。Vercel に出す時だけ NITRO_PRESET=vercel。
             preset: process.env.NITRO_PRESET ?? "node-server",
+            // 起動時に自動制御タイマーを着火する。Nitro v3 beta は
+            // server/plugins/ を自動走査しないので明示登録が要る。
+            plugins: ["./server/plugins/control-runner.ts"],
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
