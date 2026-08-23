@@ -62,7 +62,7 @@ class NodeSqliteConnection implements DatabaseConnection {
     };
   }
 
-  async *streamQuery() {
+  streamQuery<R>(): AsyncIterableIterator<QueryResult<R>> {
     throw new Error("sqlite stream は使わない");
   }
 }

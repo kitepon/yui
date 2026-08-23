@@ -1,0 +1,36 @@
+name: 不具合報告
+description: 再現できる不具合や機器との非互換を報告する
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "家電token、メールアドレス、住所などの秘密情報は書かないでください。脆弱性はSECURITY.mdの非公開窓口へお願いします。"
+  - type: textarea
+    id: problem
+    attributes:
+      label: 起きたこと
+      description: 期待した結果と実際の結果を書いてください。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 再現手順
+      placeholder: "1. …\n2. …"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: v0.1.0 または commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境・機器
+      description: hosted/self-hosted、OS、browser、メーカー、型番など。型番を公開したくない場合は省略できます。
+    validations:
+      required: true

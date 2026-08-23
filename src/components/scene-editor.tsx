@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Num, Select } from "@/components/automation-editor";
 import { Button } from "@/components/ui/button";
 import { useHome } from "@/lib/home/store";
-import { type AcMode, type Scene, type SceneStep, newActionId } from "@/lib/home/types";
+import { type Scene, type SceneStep, newActionId } from "@/lib/home/types";
 
 export function SceneEditor({
   initial,

@@ -49,6 +49,8 @@ export function PeriodProvider({ children }: { children: ReactNode }) {
   return <PeriodContext.Provider value={view}>{children}</PeriodContext.Provider>;
 }
 
+// Providerと同じcontextを読むhookを意図的に同居させる。
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTokyoClock() {
   return useContext(PeriodContext);
 }

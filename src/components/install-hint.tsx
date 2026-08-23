@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export function isStandaloneApp() {
+function isStandaloneApp() {
   if (typeof window === "undefined") return false;
   return (
     window.matchMedia("(display-mode: standalone)").matches ||

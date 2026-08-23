@@ -1,8 +1,21 @@
 {
   "name": "yui",
+  "version": "0.1.0",
+  "description": "家の機器を一枚にまとめる、self-hostableなホームアプリ",
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "homepage": "https://yuihome.kitepon.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quolu/yui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/quolu/yui/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "overrides": {
     "nf3": "0.3.17"
   },

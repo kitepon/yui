@@ -8,8 +8,11 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "結 Yui";
+const APP_DESCRIPTION =
+  "家の機器を一枚にまとめる。Nature Remo、SwitchBot、Smart Life、ダイキンをつなぐホームアプリ。";
 const host = import.meta.env.VITE_PUBLIC_HOSTNAME;
-const ogImage = host ? `https://${host}/og.jpg` : undefined;
+const publicUrl = host ? `https://${host}` : undefined;
+const ogImage = publicUrl ? `${publicUrl}/images/living.jpg` : undefined;
 
 function YuiToaster() {
   const { period } = useTokyoClock();
@@ -26,8 +29,12 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1",
+      },
       { title: APP_NAME },
+      { name: "description", content: APP_DESCRIPTION },
       { name: "application-name", content: APP_NAME },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -35,12 +42,21 @@ export const Route = createRootRoute({
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "theme-color", content: "#ead8c8" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: APP_NAME },
+      { name: "twitter:description", content: APP_DESCRIPTION },
       { property: "og:type", content: "website" },
+      { property: "og:title", content: APP_NAME },
+      { property: "og:description", content: APP_DESCRIPTION },
+      { property: "og:site_name", content: APP_NAME },
+      { property: "og:locale", content: "ja_JP" },
+      ...(publicUrl ? [{ property: "og:url", content: publicUrl }] : []),
       ...(ogImage
         ? [
             { property: "og:image", content: ogImage },
-            { property: "og:image:width", content: "1200" },
-            { property: "og:image:height", content: "630" },
+            { property: "og:image:width", content: "1792" },
+            { property: "og:image:height", content: "1008" },
+            { property: "og:image:alt", content: "結 Yuiのホーム画面" },
+            { name: "twitter:image", content: ogImage },
           ]
         : []),
     ],
@@ -49,6 +65,7 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      ...(publicUrl ? [{ rel: "canonical", href: publicUrl }] : []),
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",

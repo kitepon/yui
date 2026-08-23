@@ -1,6 +1,6 @@
 # 結 — 方針
 
-判断の正本。実装は本書に従う。Grok テンプレ（`AGENTS.md` / `.grok/skills/auth`）と矛盾する箇所は本書を優先する。
+判断の正本。実装は本書に従う。一般テンプレートや`.grok/skills/auth`と矛盾する箇所は本書を優先する。
 
 ## 製品
 
@@ -20,8 +20,11 @@
 - オートメーションの入口は `tickAllHomes()` だけ。ローカルは 60 秒間隔で同じ関数を呼ぶ。Cloudflare では Cron が同じ関数を呼ぶ。プロセス常駐の 20 秒ループと、起きっぱなしの家単位ワーカーを正にしない。
 - 時刻オートメーションの粒度は 1 分。比較する時計は `Asia/Tokyo`。センサーは有効なオートメーションがある家だけを起こす。全戸 20 秒ポーリングを正にしない。
 - 秘密は環境変数だけに置く。リポジトリと image に入れない。必須は `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`、`HOME_SECRETS_KEY`。バックアップを使うなら `YUI_BACKUP_URL` と `YUI_BACKUP_SECRET` も。Google で入るなら `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET`。Echo なら `ALEXA_CLIENT_ID` と `ALEXA_CLIENT_SECRET`。
-- 結は無料で、課金しない。Stripe 連携のコードは残してあるが、`STRIPE_SECRET_KEY` を設定しない限り一切起動しない。自分の家族や会社へ配って課金したい人のための任意の足場であり、本家の運用では使わない。
-- Stripe 未設定なら課金ゲートは掛からず、登録した人はそのまま家を操作できる。
+- 公式hosted版は、1つの家あたり月額100円または年額1,000円（税込）、初回30日間無料で提供する。
+  Checkout、entitlement、解約はStripeを正とし、料金や契約条件は`src/lib/billing-plan.ts`、
+  `/terms`、`/legal`を一致させる。
+- self-hosted版はMITで無料、機能制限を設けない。`STRIPE_SECRET_KEY`を設定しなければ課金機能と
+  課金ゲートは起動せず、登録した人はそのまま家を操作できる。
 
 ## オーデリック（この repo は対応を配布しない / オーナー裁定 2026-08-21）
 

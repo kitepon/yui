@@ -1,65 +1,87 @@
-# 結（Yui）
+# 結 Yui
 
-家の機器を一枚の画面にまとめるホームアプリ。Nature Remo / SwitchBot / Smart Life を束ね、
-**ダイキンのエアコンには家の LAN から直接つなぐ**。Echo からも声で動く。
+<p align="center">
+  <img src="public/images/living.jpg" alt="結 Yuiのホーム画面" width="896">
+</p>
 
-ソフトウェアは MIT で、自分のサーバーに置けば無料で使える。
-作者が動かしている [yuihome.kitepon.dev](https://yuihome.kitepon.dev) は月100円（30日間無料）。
+<p align="center">
+  家の機器を、一枚に。<br>
+  Nature Remo、SwitchBot、Smart Life、ダイキンを、メーカーの境界を越えてまとめるホームアプリ。
+</p>
 
-## できること
+<p align="center">
+  <a href="https://yuihome.kitepon.dev">公式hosted版</a> ·
+  <a href="deploy/README.md">self-hostする</a> ·
+  <a href="README.en.md">English</a>
+</p>
 
-- **機器をまとめる** — Nature Remo、SwitchBot、Smart Life（Tuya）を 1 つの画面へ。名前と置き場所は自由に付け替えられる
-- **ダイキン直結** — 無線 LAN 内蔵のダイキンエアコンを、クラウドを通さず家の中から直接操作する。電源・冷房/暖房/除湿/加湿/送風/自動・目標温度（実機が申告する範囲で 0.5℃ 刻み）・除湿と加湿の目標湿度まで。応答が速く、外のサービスが落ちても効く
-- **場面** — 「おやすみ」で複数の機器をまとめて動かす
-- **オートメーション** — 時刻、他の機器、センサーの気温・湿度・照度をきっかけに動かす。判定はサーバー側なので、スマホを閉じていても動く
-- **Echo** — 「アレクサ、エアコンを 26 度にして」。スキル名を言う必要はない（[設定手順](docs/alexa.md)）
-- **iPhone** — Safari からホーム画面に追加すればアプリのように使える。SwiftUI のネイティブアプリも `ios/` にある
+<p align="center">
+  <a href="https://github.com/quolu/yui/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/quolu/yui/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-37584b"></a>
+  <a href="https://yuihome.kitepon.dev"><img alt="Hosted" src="https://img.shields.io/badge/hosted-yuihome.kitepon.dev-bb4d36"></a>
+</p>
 
-エアコンは機器が申告する対応モードと温度範囲をそのまま画面に出すので、
-**押せるのに効かないボタンが出ない**。機種が対応していないモードは、そもそも表示されない。
+## 30秒でわかること
 
-## 動かす
+- **機器をまとめる** — Nature Remo、SwitchBot、Smart Life（Tuya）を一つの画面へ。名前と置き場所は自由に付け替えられます。
+- **ダイキンへLANから直結** — 対応エアコンをcloudを通さず操作。実機が申告するmodeと温度範囲だけを表示します。
+- **場面とautomation** — 「おやすみ」で複数機器を動かし、時刻やsensor値をきっかけにserver側で実行します。
+- **EchoとiPhone** — Alexa Smart Homeに対応。Safariからホーム画面へ追加すれば、appのように使えます。
 
-自分のサーバーに置いて使う。手順は [deploy/README.md](deploy/README.md)。
+機種が対応していない操作は、押せるふりをして表示しません。動かせる範囲を機器ごとに確かめ、
+メーカーをまたぐ家の操作を一枚へ戻すことが、結の中心です。
+
+## 使い方を選ぶ
+
+|            | 公式hosted版                                       | self-hosted版                        |
+| ---------- | -------------------------------------------------- | ------------------------------------ |
+| URL / 手順 | [yuihome.kitepon.dev](https://yuihome.kitepon.dev) | [deploy/README.md](deploy/README.md) |
+| 料金       | 月額100円または年額1,000円（税込）                 | 無料                                 |
+| 試用       | 初回30日間無料                                     | 制限なし                             |
+| 運用       | kitepon.devが運用                                  | 自分のserverで運用                   |
+| 機能       | 同じ                                               | 同じ                                 |
+
+公式hosted版は、serverを持たない人向けに運用の手間ごと提供しています。software自体はMITで、
+self-hosted版に機能制限はありません。
+
+## Self-hostを始める
 
 ```bash
 npm install
 npm run dev
 ```
 
-開発時は `http://localhost:8080`。本番は Docker で動かし、リバースプロキシの後ろに置く。
+開発時は`http://localhost:8080`。productionはDockerで動かし、reverse proxyの後ろに置きます。
+詳細は[配備手順](deploy/README.md)を参照してください。
 
-**必ず自分の値を設定するもの**: `BETTER_AUTH_SECRET`、`HOME_SECRETS_KEY`、`BETTER_AUTH_URL`。
-`HOME_SECRETS_KEY` は家電トークンの暗号化鍵で、**失うと保存済みのトークンは復号できない**。
+必須の値は`BETTER_AUTH_SECRET`、`HOME_SECRETS_KEY`、`BETTER_AUTH_URL`です。
+`HOME_SECRETS_KEY`は家電tokenの暗号化鍵で、失うと保存済みtokenを復号できません。
 
-ダイキン直結を使うなら `YUI_DAIKIN_ADDRS`（例: `リビング=192.168.0.10`）を設定する。
-結が家と同じ LAN にいる必要がある。
+ダイキン直結を使う場合は`YUI_DAIKIN_ADDRS`（例: `リビング=192.168.0.10`）を設定し、
+結を家と同じLANで動かします。
 
-## つくり
+## 技術とsecurity
 
-- TanStack Start（React）+ SQLite。認証は Better Auth
-- 家電トークンは AES-256-GCM で暗号化して保存し、API の応答に平文を載せない
-- オートメーションの実行はサーバー側の 1 分ごとの tick 1 本だけ
-- 判断の記録は [docs/00_direction.md](docs/00_direction.md)
+- TanStack Start（React）+ SQLite、認証はBetter Auth
+- 家電tokenはAES-256-GCMで暗号化し、API responseへ平文を載せない
+- automationはserver側の1分ごとの`tickAllHomes()`で実行
+- 製品判断の正本は[docs/00_direction.md](docs/00_direction.md)
 
-## 対応していないもの
+脆弱性は公開Issueへ書かず、[SECURITY.md](SECURITY.md)の非公開窓口から報告してください。
+一般の不具合、対応機種の実測、改善提案は[GitHub Issues](https://github.com/quolu/yui/issues)で受け付けます。
+修正提案は[CONTRIBUTING.md](CONTRIBUTING.md)を参照してください。
 
-- **オーデリック照明** — 作者の家では自作ブリッジ経由で動いているが、**この repo は対応を配布しない**。
-  法的な理由（不正競争防止法・著作権・利用規約・製造物責任）から、プロトコルは公開せず、
-  ここにあるのはブリッジへ HTTP を投げるだけの薄い client だけ。理由は [docs/00_direction.md](docs/00_direction.md)
-- **古い世代のダイキン** — 2018 年以前の後付けアダプター（旧 API）は未対応。新しい世代のローカル API だけを見ている
-- ダイキン直結は作者の家の 1 機種（2020 年 うるさら X）で実測して作った。同じ世代なら動くはずだが、**他機種では未検証**。
-  動いた・動かなかったの報告は歓迎
+## 現在の限界
 
-## 自分で動かす / 作者のサーバーを使う
+- **オーデリック照明** — 作者の家では自作bridge経由で動いていますが、このrepositoryはprotocolやbridge本体を配布しません。法的境界は[docs/00_direction.md](docs/00_direction.md)に記録しています。
+- **古い世代のダイキン** — 2018年以前の後付けadapter（旧API）は未対応です。
+- **ダイキンの検証範囲** — 2020年うるさらX 1機種で実測しています。同世代でも他機種は未検証です。
+- **upgrade保証** — `v0.x`ではdatabaseや設定の長期互換範囲をまだ保証していません。Release noteで変更点を確認してください。
+- iPhone native appとCloudflareへの実移転は後続工程です。
 
-このソフトは MIT なので、自分のサーバーに置けば無料で、制限もない。手順は
-[deploy/README.md](deploy/README.md)。
+## ブランドとlicense
 
-自分でサーバーを持たない人向けに、作者が [yuihome.kitepon.dev](https://yuihome.kitepon.dev)
-を動かしている。こちらは月100円または年1,000円（税込・初回30日間無料）。
-稼働と運用の手間の対価で、機能は自分で動かす場合と同じ。
+結は[kitepon.dev](https://kitepon.dev)が運営・支援するIndependent Productです。
+「面白いを見つけ、面白いを動かす。」というkitepon.devの姿勢を、毎日の家の操作へ届けます。
 
-## ライセンス
-
-MIT（[LICENSE](LICENSE)）。無保証。家の機器を扱うソフトなので、自分の環境で確かめてから使ってほしい。
+MIT（[LICENSE](LICENSE)）。無保証。家の機器を扱うsoftwareなので、自分の環境で確かめてから使ってください。
