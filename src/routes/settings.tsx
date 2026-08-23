@@ -181,7 +181,7 @@ export function SettingsPage() {
             </p>
             <a
               className="mt-3 block w-full rounded-md border border-border py-2.5 text-center text-sm text-fg"
-              href="https://github.com/quolu/yui"
+              href="https://github.com/kitepon/yui"
               target="_blank"
               rel="noreferrer"
             >

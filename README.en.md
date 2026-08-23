@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/quolu/yui/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/quolu/yui/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/kitepon/yui/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kitepon/yui/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-37584b"></a>
 </p>
 
@@ -60,6 +60,6 @@ Required values are `BETTER_AUTH_SECRET`, `HOME_SECRETS_KEY`, and `BETTER_AUTH_U
 - While releases are `v0.x`, long-term database and configuration upgrade compatibility is not guaranteed.
 - The native iPhone app and the production Cloudflare migration remain future work.
 
-For vulnerabilities, use the private route in [SECURITY.md](SECURITY.md). For bugs and compatibility reports, use [GitHub Issues](https://github.com/quolu/yui/issues). Contributions are described in [CONTRIBUTING.md](CONTRIBUTING.md).
+For vulnerabilities, use the private route in [SECURITY.md](SECURITY.md). For bugs and compatibility reports, use [GitHub Issues](https://github.com/kitepon/yui/issues). Contributions are described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Yui is an Independent Product operated and supported by [kitepon.dev](https://kitepon.dev). Licensed under the [MIT License](LICENSE), without warranty.

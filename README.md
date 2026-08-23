@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/quolu/yui/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/quolu/yui/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/kitepon/yui/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kitepon/yui/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-37584b"></a>
   <a href="https://yuihome.kitepon.dev"><img alt="Hosted" src="https://img.shields.io/badge/hosted-yuihome.kitepon.dev-bb4d36"></a>
 </p>
@@ -68,7 +68,7 @@ npm run dev
 - 製品判断の正本は[docs/00_direction.md](docs/00_direction.md)
 
 脆弱性は公開Issueへ書かず、[SECURITY.md](SECURITY.md)の非公開窓口から報告してください。
-一般の不具合、対応機種の実測、改善提案は[GitHub Issues](https://github.com/quolu/yui/issues)で受け付けます。
+一般の不具合、対応機種の実測、改善提案は[GitHub Issues](https://github.com/kitepon/yui/issues)で受け付けます。
 修正提案は[CONTRIBUTING.md](CONTRIBUTING.md)を参照してください。
 
 ## 現在の限界

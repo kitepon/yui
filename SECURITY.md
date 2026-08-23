@@ -8,10 +8,10 @@
 ## 非公開で報告する
 
 脆弱性を公開Issueへ書かず、GitHubの
-[Private vulnerability reporting](https://github.com/quolu/yui/security/advisories/new)から報告してください。
+[Private vulnerability reporting](https://github.com/kitepon/yui/security/advisories/new)から報告してください。
 再現条件、影響、確認したversionまたはcommitを含めてください。受領後7日以内に一次回答します。
 
-一般的な不具合や対応機種の報告は[GitHub Issues](https://github.com/quolu/yui/issues)へお願いします。
+一般的な不具合や対応機種の報告は[GitHub Issues](https://github.com/kitepon/yui/issues)へお願いします。
 
 ## 利用上の境界
 

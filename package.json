@@ -8,10 +8,10 @@
   "homepage": "https://yuihome.kitepon.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/quolu/yui.git"
+    "url": "git+https://github.com/kitepon/yui.git"
   },
   "bugs": {
-    "url": "https://github.com/quolu/yui/issues"
+    "url": "https://github.com/kitepon/yui/issues"
   },
   "engines": {
     "node": ">=22"
