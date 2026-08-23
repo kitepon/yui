@@ -1,0 +1,17 @@
+project: yuihome
+
+defaults:
+  readonly: true
+  result_format: json
+
+safety_profile: generic
+
+allowed_paths:
+  - AGENTS.md
+  - README.md
+  - docs/
+  - public/
+  - src/
+
+deny_paths:
+  - .env
