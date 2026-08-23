@@ -34,7 +34,9 @@ export async function handleAlexaEvent(event: AlexaEvent) {
   if (billingConfigured()) {
     const entitlement = await loadEntitlement(userId);
     if (!entitlement.writable) {
-      return alexaError(event.directive, "DISABLED_BY_USER", "結の契約が必要です");
+      // SUBSCRIPTION_REQUIRED は「サブスクリプションが必要なため無効」の公式type。
+      // DISABLED_BY_USER はカメラのスナップショット機能専用で、ここでは誤用になる。
+      return alexaError(event.directive, "SUBSCRIPTION_REQUIRED", "結の契約が必要です");
     }
   }
   const intent = parseAlexaIntent(event.directive);
