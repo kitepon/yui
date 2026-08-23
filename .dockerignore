@@ -2,3 +2,5 @@
 !.output
 !.output/**
 !package.json
+!scripts
+!scripts/hosted-metrics.mjs
