@@ -48,10 +48,12 @@
 
     1. Enable the skill and link the account with the credentials above
        (email/password login on the Yui login page).
-    2. Say "Alexa, discover devices" — one smart plug named "プラグ"
-       (a real SwitchBot plug, powered 24/7) will be discovered.
-    3. Say "アレクサ、プラグをつけて" / "アレクサ、プラグを消して" to
-       control it. State report is supported (the Alexa app shows ON/OFF).
+    2. Say "アレクサ、デバイスを探して" (or run device discovery in the Alexa
+       app) — one smart plug named "電気" (a real SwitchBot plug, powered 24/7)
+       will be discovered.
+    3. Say "アレクサ、電気を消して" / "アレクサ、電気をつけて" to control it.
+       This is the sample phrase shown in the store listing.
+       State report is supported (the Alexa app shows ON/OFF).
 
     The plug is a physical device in the developer's home and stays reachable
     for the whole certification period.
@@ -59,6 +61,10 @@
 ## 審査用アカウントの実体（運用メモ）
 
 - email: `alexa-review@kitepon.dev`（`YUI_BILLING_EXEMPT` で課金免除）
-- 家の中身: SwitchBot プラグ1台だけ（名前「プラグ」、部屋「テスト」）。場面なし
+- 家の中身: SwitchBot プラグ1台だけ（名前「電気」、部屋「テスト」）。場面なし
+  - 名前を「電気」にしたのは、ストアのサンプルフレーズ「アレクサ、電気を消して」を
+    審査員がそのまま試すため。実体は水槽のライトの電源なので表示に嘘はない
+  - kind は plug のまま（light にすると Alexa へ調光能力を申告してしまい、
+    プラグは調光できないので別の失敗を招く）
 - サーバー側の SwitchBot 認証情報は本物。審査員が押すと実物のプラグが動く
 - 審査が終わったら: `YUI_BILLING_EXEMPT` から外すか、アカウントごと残すかを決める
