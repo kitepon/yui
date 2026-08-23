@@ -62,14 +62,15 @@ export async function handleAlexaEvent(event: AlexaEvent) {
         payload: { cause: { type: "VOICE_INTERACTION" }, timestamp: new Date().toISOString() },
       });
     }
-    return alexaOk(event.directive);
+    return alexaOk(event.directive, { name: "StateReport" });
   }
 
   const device = snap.devices.find((d) => d.id === endpointId);
   if (!device) return alexaError(event.directive, "NO_SUCH_ENDPOINT", "機器が無い");
 
   if (intent.type === "report") {
-    return alexaOk(event.directive, { context: { properties: propertyContext(device) } });
+    // ReportState への応答名は Response ではなく StateReport（Alexa 仕様）。
+    return alexaOk(event.directive, { name: "StateReport", context: { properties: propertyContext(device) } });
   }
 
   if (intent.type === "scene") return alexaError(event.directive, "INVALID_DIRECTIVE", "場面ではない");
