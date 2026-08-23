@@ -6,6 +6,8 @@ import {
   billingConfigured,
   emptyEntitlement,
   entitlementFromSubscription,
+  exemptEmails,
+  exemptEntitlement,
   priceIdForPlan,
   BILLING,
   type BillingPlan,
@@ -83,6 +85,13 @@ export function forgetEntitlement(userId: string) {
 }
 
 async function fetchEntitlement(userId: string): Promise<Entitlement> {
+  const exempt = exemptEmails();
+  if (exempt.length) {
+    const row = getSqlite().prepare(`SELECT email FROM user WHERE id = ?`).get(userId) as
+      | { email: string }
+      | undefined;
+    if (row && exempt.includes(row.email.toLowerCase())) return exemptEntitlement();
+  }
   if (!billingConfigured()) {
     return emptyEntitlement("課金の設定がありません。");
   }

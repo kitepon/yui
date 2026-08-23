@@ -51,6 +51,29 @@ export function billingConfigured() {
   );
 }
 
+/**
+ * 課金免除アカウント（YUI_BILLING_EXEMPT にカンマ区切りの email）。
+ * Alexa 審査用アカウントなど、契約なしで書き込みを許す相手をここで決める。
+ */
+export function exemptEmails() {
+  return (process.env.YUI_BILLING_EXEMPT ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function exemptEntitlement(): Entitlement {
+  return {
+    writable: true,
+    status: "active",
+    plan: null,
+    message: "契約なしで利用できるアカウントです。",
+    trialEndsAt: null,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+  };
+}
+
 export function emptyEntitlement(message: string): Entitlement {
   return {
     writable: false,

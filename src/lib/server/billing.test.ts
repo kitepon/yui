@@ -4,6 +4,8 @@ import type Stripe from "stripe";
 import {
   billingPlanDetails,
   entitlementFromSubscription,
+  exemptEmails,
+  exemptEntitlement,
   parseBillingPlan,
   planForPriceId,
 } from "./billing-core.ts";
@@ -44,4 +46,18 @@ test("trialing monthly is writable", () => {
   assert.equal(ent.writable, true);
   assert.equal(ent.status, "trialing");
   assert.equal(ent.plan, "monthly");
+});
+
+test("課金免除の email 一覧は空白と大文字を吸収する", () => {
+  process.env.YUI_BILLING_EXEMPT = " Reviewer@Example.com , second@example.com ,";
+  assert.deepEqual(exemptEmails(), ["reviewer@example.com", "second@example.com"]);
+  delete process.env.YUI_BILLING_EXEMPT;
+  assert.deepEqual(exemptEmails(), []);
+});
+
+test("免除アカウントは契約なしで書き込み可", () => {
+  const ent = exemptEntitlement();
+  assert.equal(ent.writable, true);
+  assert.equal(ent.status, "active");
+  assert.equal(ent.plan, null);
 });
