@@ -42,10 +42,17 @@ Custom `/api/alexa/custom` は残してあるが本線ではない。
 | スコープ | `home`（結は検証しない） |
 | リダイレクト URL | pitangui.amazon.com / layla.amazon.com / alexa.amazon.co.jp の `/api/skill/link/<自分のベンダー ID>` と `/spa/skill/account-linking-status.html?vendorId=<自分のベンダー ID>` |
 
-残っているのは 2 つだけ。
+上記はすべて設定済みで、クオの Echo で実運用している（シークレット登録・アカウントリンク・デバイス検出まで完了）。
 
-1. アカウントリンクの **クライアントシークレット**（サーバーの `deploy/.env` の `ALEXA_CLIENT_SECRET`）を貼って保存する。
-2. Alexa アプリ → スキル → 「結ホーム」→ 有効にする → 結にログイン → デバイス検出。
+## 公開審査（2026-08-23 提出）
+
+公式スキル「結ホーム」を Amazon の認定審査へ提出した（ステータス: 審査中）。
+
+- 提出物（説明文・発話例・テスト手順）の正本は [alexa-store-listing.md](alexa-store-listing.md)
+- 審査用アカウント: `alexa-review@kitepon.dev`。課金はサーバー `.env` の `YUI_BILLING_EXEMPT` で免除
+- 審査用デバイスはクオ家の SwitchBot プラグ1台（名前「電気」）。審査中は負荷を抜き、
+  審査期間中オンラインを維持する（Amazon の要件）
+- 審査が通ったら: kitepon.dev と README に Echo 対応の記載を戻す。落ちたら指摘へ対応して再提出
 
 Lambda のタイムアウトは **8 秒**（Alexa の上限）。既定の 3 秒では、Smart Life の操作（トークン→状態→コマンドの 3 往復）が入りきらない。
 
