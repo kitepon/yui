@@ -11,6 +11,7 @@ ENV VITE_PUBLIC_HOSTNAME=yuihome.kitepon.dev
 
 COPY .output /app/.output
 COPY package.json /app/package.json
+COPY scripts/hosted-metrics.mjs /app/scripts/hosted-metrics.mjs
 
 RUN useradd --system --uid 1001 --create-home yui \
   && mkdir -p /data \
