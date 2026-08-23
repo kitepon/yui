@@ -63,3 +63,5 @@ Required values are `BETTER_AUTH_SECRET`, `HOME_SECRETS_KEY`, and `BETTER_AUTH_U
 For vulnerabilities, use the private route in [SECURITY.md](SECURITY.md). For bugs and compatibility reports, use [GitHub Issues](https://github.com/kitepon/yui/issues). Contributions are described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Yui is an Independent Product operated and supported by [kitepon.dev](https://kitepon.dev). Licensed under the [MIT License](LICENSE), without warranty.
+
+Release history is recorded in [CHANGELOG.md](CHANGELOG.md).

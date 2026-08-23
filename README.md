@@ -85,3 +85,5 @@ npm run dev
 「面白いを見つけ、面白いを動かす。」というkitepon.devの姿勢を、毎日の家の操作へ届けます。
 
 MIT（[LICENSE](LICENSE)）。無保証。家の機器を扱うsoftwareなので、自分の環境で確かめてから使ってください。
+
+変更履歴は[CHANGELOG.md](CHANGELOG.md)に記録します。
