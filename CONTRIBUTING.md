@@ -5,6 +5,8 @@
 ## Issue
 
 先に既存Issueを検索し、再現手順、期待した結果、実際の結果、環境、対象機器を記載してください。
+対応機種の報告には、コネクタ名（Nature Remo / SwitchBot / Smart Life / ダイキン）、
+Tuya なら `category`、SwitchBot なら `deviceType`、できた操作とできなかった操作を書いてください。
 家電token、住所、メールアドレス、Stripe情報、server log内のsecretは載せないでください。
 脆弱性は公開Issueではなく[SECURITY.md](SECURITY.md)の非公開窓口へ送ってください。
 

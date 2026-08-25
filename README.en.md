@@ -29,6 +29,14 @@
 
 Yui only shows modes and temperature ranges reported by each air conditioner. Unsupported controls are not presented as if they worked.
 
+## What the cloud connectors actually do
+
+Yui does not ship Home Assistant. Device kinds are copied from [Home Assistant core](https://github.com/home-assistant/core) tables. Re-sync each connector after connecting so new fields appear.
+
+- **Nature Remo** — sensors, air conditioners (temperature, mode, fan speed, swing), lights, and learned IR. Swing is vertical or fixed; independent left/right is not supported.
+- **SwitchBot** — bots, plugs, lights, curtains, locks, meters/sensors, and IR air conditioners (temperature, mode, fan speed). Vacuums and humidifiers appear in the list but have no dedicated controls.
+- **Smart Life** — lights (brightness), plugs, curtains, air conditioners, and temperature/humidity/water sensors. Commands are sent only for data points the device actually has. Unknown Tuya categories stay `other`.
+
 ## Hosted or self-hosted
 
 |            | Hosted service                                     | Self-hosted                          |
@@ -57,6 +65,7 @@ Required values are `BETTER_AUTH_SECRET`, `HOME_SECRETS_KEY`, and `BETTER_AUTH_U
 - Odelic lighting protocol and the author's private bridge are not distributed in this repository.
 - Pre-2018 Daikin adapters using the older API are not supported.
 - Direct Daikin control has been measured on one 2020 Urusara X unit; other models are not yet verified.
+- Unknown cloud device types, vacuums, humidifiers, and Nature Remo left/right swing are out of scope. Smart Life cannot send commands the device does not expose.
 - While releases are `v0.x`, long-term database and configuration upgrade compatibility is not guaranteed.
 - The native iPhone app and the production Cloudflare migration remain future work.
 

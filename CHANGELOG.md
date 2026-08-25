@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-26
+
+本番 image `yuihome:20260825-b21e822`。
+
+### 変わったこと
+
+- Nature Remo・SwitchBot・Smart Life の機器種別と操作を、Home Assistant の機器表に合わせて広げた
+- Nature Remo のエアコンで風量と風向（上下スイング／固定）を読み書きする
+- SwitchBot は同期時に状態を取り、IR エアコンは温度・モード・風量をまとめて送る
+- Smart Life は照明の明るさ、カーテンの開き、エアコンの温度などを、機器が持つ項目だけ送る
+
+### 限界
+
+- Home Assistant 自体は同梱しない
+- 掃除機・加湿器など、結に kind が無い機器は詳細操作を出さない
+- Nature Remo の風向は左右の独立指定をしない
+- Smart Life の表に無い category は other
+
 ## v0.1.0 — 2026-08-23
 
 結 Yuiの最初の公開snapshotです。

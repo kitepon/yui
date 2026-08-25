@@ -15,6 +15,7 @@ Grok App Builder由来の一般テンプレートや`.grok/skills/auth`と矛盾
 - 認証、家電tokenの暗号化、1ユーザー1家、SQLite、`tickAllHomes()`の境界を勝手に変えない。
 - 公式hosted版の課金とself-hosted版の無料利用を混同しない。
 - オーデリックのprotocolやbridge本体をrepositoryへ含めない。
+- Home Assistant 本体を repository や runtime へ入れない。機器表の写し（`src/lib/home/ha-catalog.ts`）だけを持つ。
 - production secret、家電token、利用者情報、Stripe情報をcommitしない。
 - 公開metadata、README、Release、support/security窓口は実装済みの範囲と限界だけを書く。
 

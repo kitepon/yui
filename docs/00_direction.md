@@ -27,6 +27,14 @@
 - self-hosted版はMITで無料、機能制限を設けない。`STRIPE_SECRET_KEY`を設定しなければ課金機能と
   課金ゲートは起動せず、登録した人はそのまま家を操作できる。
 
+## クラウド家電（Home Assistant は同梱しない）
+
+- 結は Home Assistant プロセスを埋め込まない。ランタイム依存にもしない。
+- Tuya の `category` と SwitchBot の `deviceType` から結の kind への写しは、Home Assistant core（Apache-2.0）の静的表。正本は `src/lib/home/ha-catalog.ts`。
+- Nature Remo エアコンの風量・風向は hass-nature-remo（MIT）と同じ `air_volume` / `air_direction`。Remo の風向は上下が主で、左右の独立指定は持たない。
+- 結に kind が無い機種（掃除機・加湿器など）は一覧に出ても詳細操作を出さない。未実装を実装済みに見せない。
+- 新しい種別を画面へ載せるには、接続タブでその社を再同期する。
+
 ## オーデリック（この repo は対応を配布しない / オーナー裁定 2026-08-21）
 
 - オーデリック CONNECTED LIGHTING の制御は、**商品機能として配布しない**。理由は不正競争防止法（技術的制限手段）、著作権（複製・翻案）、アプリ利用規約、製造物責任の 4 面。商品としてのオーデリック対応は公式 Alexa スキルの案内に留める。
