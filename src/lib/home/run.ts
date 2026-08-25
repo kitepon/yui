@@ -12,6 +12,8 @@ export async function runCommand(device: Device, patch: Partial<Device>) {
     brightness: next.brightness,
     targetTemp: next.targetTemp,
     targetHumidity: next.targetHumidity,
+    fanSpeed: next.fanSpeed,
+    fanSwing: next.fanSwing,
     mode: next.mode,
     position: next.position,
   });

@@ -35,6 +35,8 @@ export const DEMO_DEVICES: Device[] = [
     on: true,
     targetTemp: 26,
     mode: "cool",
+    fanSpeed: "auto",
+    fanSwing: "off",
     extra: "Alexa経由が本線。Remoのエアコン登録が最短",
   },
   {
@@ -102,6 +104,7 @@ export const DEMO_DEVICES: Device[] = [
     on: false,
     targetTemp: 27,
     mode: "dry",
+    fanSwing: "off",
   },
   {
     id: "demo-bed-bot",

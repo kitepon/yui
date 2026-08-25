@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { AC_MODE_LABEL, DRY_HUMIDITY_CHOICES, HUMIDIFY_HUMIDITY_CHOICES, KIND_LABEL, sourceLabel, type AcMode, type Device } from "@/lib/home/types";
+import { AC_MODE_LABEL, DRY_HUMIDITY_CHOICES, FAN_SPEED_LABEL, FAN_SWING_LABEL, FAN_SWINGS, HUMIDIFY_HUMIDITY_CHOICES, KIND_LABEL, sourceLabel, type AcMode, type Device } from "@/lib/home/types";
 import { useHome } from "@/lib/home/store";
 import { Button } from "./ui/button";
 
@@ -182,6 +182,8 @@ export function DeviceSheet({
             <AcModeButtons device={device} onChange={onChange} />
             <AcTempControl device={device} onChange={onChange} />
             <AcHumidityControl device={device} onChange={onChange} />
+            <AcFanSpeedControl device={device} onChange={onChange} />
+            <AcFanSwingControl device={device} onChange={onChange} />
           </div>
         ) : null}
 
@@ -280,6 +282,78 @@ function AcHumidityControl({
             }`}
           >
             {h === 0 ? "連続" : `${h}%`}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function acChipClass(active: boolean) {
+  return `h-12 rounded-sm text-xs ${active ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"}`;
+}
+
+/** 風量。その運転で風量プロパティがあるときだけ（除湿は自動固定なので出さない）。 */
+function AcFanSpeedControl({
+  device,
+  onChange,
+}: {
+  device: Device;
+  onChange: (device: Device, patch: Partial<Device>) => void;
+}) {
+  if (device.fanSpeed == null) return null;
+  return (
+    <div>
+      <p className="mb-1 text-sm text-muted">風量</p>
+      <div className="mb-1.5 grid grid-cols-2 gap-1.5">
+        {(["auto", "quiet"] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onChange(device, { fanSpeed: s, on: true })}
+            className={acChipClass(device.fanSpeed === s)}
+          >
+            {FAN_SPEED_LABEL[s]}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-5 gap-1.5">
+        {(["1", "2", "3", "4", "5"] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onChange(device, { fanSpeed: s, on: true })}
+            className={acChipClass(device.fanSpeed === s)}
+          >
+            {FAN_SPEED_LABEL[s]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 風向スイング。その運転で風向プロパティがあるときだけ。固定羽根の多段位置は出さない。 */
+function AcFanSwingControl({
+  device,
+  onChange,
+}: {
+  device: Device;
+  onChange: (device: Device, patch: Partial<Device>) => void;
+}) {
+  if (device.fanSwing == null) return null;
+  return (
+    <div>
+      <p className="mb-1 text-sm text-muted">風向</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {FAN_SWINGS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onChange(device, { fanSwing: s, on: true })}
+            className={acChipClass(device.fanSwing === s)}
+          >
+            {FAN_SWING_LABEL[s]}
           </button>
         ))}
       </div>

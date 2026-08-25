@@ -18,6 +18,8 @@ export type DeviceKind =
   | "other";
 
 export type AcMode = "cool" | "heat" | "dry" | "fan" | "auto" | "humidify";
+export type FanSpeed = "auto" | "quiet" | "1" | "2" | "3" | "4" | "5";
+export type FanSwing = "off" | "vertical" | "horizontal" | "both";
 
 export type DeviceSource = "live" | "demo";
 
@@ -37,6 +39,10 @@ export interface Device {
   targetTemp?: number;
   /** 除湿の目標湿度（%）。0 は「連続」。対応機（ダイキン直結）だけが持つ。 */
   targetHumidity?: number;
+  /** 風量。ダイキン直結で、その運転モードが風量プロパティを持つときだけ。除湿は自動固定なので無い。 */
+  fanSpeed?: FanSpeed;
+  /** 風向スイング。ダイキン直結で、その運転モードが風向プロパティを持つときだけ。 */
+  fanSwing?: FanSwing;
   mode?: AcMode;
   /** エアコンの実機能力表（同期時に Nature から取得）。モード → 選べる温度値の昇順リスト。空はそのモードで温度指定不可。無い機器は従来の固定範囲で扱う。 */
   acModes?: Partial<Record<AcMode, string[]>>;
@@ -106,6 +112,8 @@ export interface DeviceCommand {
   brightness?: number;
   targetTemp?: number;
   targetHumidity?: number;
+  fanSpeed?: FanSpeed;
+  fanSwing?: FanSwing;
   mode?: AcMode;
   position?: number;
 }
@@ -163,6 +171,25 @@ export const AC_MODE_LABEL: Record<AcMode, string> = {
   fan: "送風",
   auto: "自動",
   humidify: "加湿",
+};
+
+export const FAN_SWINGS: FanSwing[] = ["off", "vertical", "horizontal", "both"];
+
+export const FAN_SPEED_LABEL: Record<FanSpeed, string> = {
+  auto: "自動",
+  quiet: "しずか",
+  "1": "1",
+  "2": "2",
+  "3": "3",
+  "4": "4",
+  "5": "5",
+};
+
+export const FAN_SWING_LABEL: Record<FanSwing, string> = {
+  off: "固定",
+  vertical: "上下",
+  horizontal: "左右",
+  both: "両方",
 };
 
 export const KIND_LABEL: Record<DeviceKind, string> = {

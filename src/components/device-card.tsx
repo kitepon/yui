@@ -10,7 +10,7 @@ import {
   ToggleLeft,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { connectorBadge, stripConnectorFromExtra, type Device, type DeviceKind } from "@/lib/home/types";
+import { connectorBadge, stripConnectorFromExtra, AC_MODE_LABEL, FAN_SPEED_LABEL, type Device, type DeviceKind } from "@/lib/home/types";
 
 const ICONS: Record<DeviceKind, typeof Lamp> = {
   light: Lamp,
@@ -34,17 +34,10 @@ function statusLine(device: Device) {
   }
   if (device.kind === "ac") {
     if (!device.on) return "停止";
-    const mode =
-      device.mode === "cool"
-        ? "冷房"
-        : device.mode === "heat"
-          ? "暖房"
-          : device.mode === "dry"
-            ? "除湿"
-            : device.mode === "fan"
-              ? "送風"
-              : "自動";
-    return `${mode} ${device.targetTemp ?? "—"}°`;
+    const mode = device.mode ? AC_MODE_LABEL[device.mode] : "—";
+    const bits = [`${mode} ${device.targetTemp ?? "—"}°`];
+    if (device.fanSpeed) bits.push(FAN_SPEED_LABEL[device.fanSpeed]);
+    return bits.join(" · ");
   }
   if (device.kind === "curtain") {
     return device.position === 0 ? "閉" : `開 ${device.position ?? 0}%`;

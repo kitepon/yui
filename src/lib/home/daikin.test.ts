@@ -32,6 +32,9 @@ const STATUS = [
               { pn: "p_01", pv: "0200" },
               { pn: "p_02", pv: "30", md: { st: 245, mi: "22", mx: "40" } },
               { pn: "p_03", pv: "30", md: { st: 245, mi: "1C", mx: "3E" } },
+              { pn: "p_09", pv: "0A00" },
+              { pn: "p_05", pv: "100000" },
+              { pn: "p_06", pv: "100000" },
             ],
           },
           {
@@ -61,6 +64,8 @@ test("読み取り: 実機応答から電源・モード・目標温度・室温
   assert.equal(device.acModes?.heat?.at(-1), "31");
   assert.deepEqual(device.acModes?.dry, []);
   assert.deepEqual(device.acModes?.auto, []);
+  assert.equal(device.fanSpeed, "auto");
+  assert.equal(device.fanSwing, "off");
 });
 
 const AC = deviceFromDsiot("リビング", "192.168.1.16", "MAC", flattenDsiot(STATUS));
@@ -149,4 +154,67 @@ test("読み取り: 未知のモード値は偽らずに undefined にする", (
   const device = deviceFromDsiot("リビング", "h", "m", flat);
   assert.equal(device.mode, undefined);
   assert.equal(device.targetTemp, undefined);
+  assert.equal(device.fanSpeed, undefined);
+  assert.equal(device.fanSwing, undefined);
+});
+
+test("読み取り: 風量はモード別プロパティ、未知の符号は偽らない。除湿は風量なし", () => {
+  const withFan = (mode: string, fanPn: string, fanPv: string) => {
+    const m = new Map(flattenDsiot(STATUS));
+    m.get("/dgc_status/e_1002/e_3001/p_01")!.pv = mode;
+    m.set(`/dgc_status/e_1002/e_3001/${fanPn}`, { pn: fanPn, pv: fanPv });
+    return deviceFromDsiot("リビング", "h", "m", m);
+  };
+  assert.equal(withFan("0100", "p_0A", "0B00").fanSpeed, "quiet");
+  assert.equal(withFan("0000", "p_28", "0500").fanSpeed, "3");
+  assert.equal(withFan("0300", "p_26", "0700").fanSpeed, "5");
+  assert.equal(withFan("0200", "p_09", "FFFF").fanSpeed, undefined);
+  const dry = withFan("0500", "p_09", "0A00");
+  assert.equal(dry.mode, "dry");
+  assert.equal(dry.fanSpeed, undefined);
+});
+
+test("読み取り: 風向は F の有無でスイングを判定する（実機の固定 100000 は停止）", () => {
+  const withSwing = (mode: string, vPn: string, hPn: string, v: string, h: string) => {
+    const m = new Map(flattenDsiot(STATUS));
+    m.get("/dgc_status/e_1002/e_3001/p_01")!.pv = mode;
+    m.set(`/dgc_status/e_1002/e_3001/${vPn}`, { pn: vPn, pv: v });
+    m.set(`/dgc_status/e_1002/e_3001/${hPn}`, { pn: hPn, pv: h });
+    return deviceFromDsiot("リビング", "h", "m", m);
+  };
+  assert.equal(withSwing("0200", "p_05", "p_06", "0F0000", "000000").fanSwing, "vertical");
+  assert.equal(withSwing("0200", "p_05", "p_06", "000000", "0F0000").fanSwing, "horizontal");
+  assert.equal(withSwing("0200", "p_05", "p_06", "0F0000", "0F0000").fanSwing, "both");
+  assert.equal(withSwing("0500", "p_22", "p_23", "100000", "100000").fanSwing, "off");
+  assert.equal(withSwing("0800", "p_05", "p_06", "0F0000", "0F0000").fanSwing, undefined);
+});
+
+test("書き込み: 風量は現在モードのプロパティへ送る。除湿では送れない", () => {
+  assert.deepEqual(buildDaikinWrite(AC, { fanSpeed: "quiet", on: true }), [
+    { pn: "e_A002", pch: [{ pn: "p_01", pv: "01" }] },
+    { pn: "e_3001", pch: [{ pn: "p_09", pv: "0B00" }] },
+  ]);
+  assert.deepEqual(buildDaikinWrite({ ...AC, mode: "heat" }, { fanSpeed: "3" }), [
+    { pn: "e_3001", pch: [{ pn: "p_0A", pv: "0500" }] },
+  ]);
+  assert.throws(
+    () => buildDaikinWrite({ ...AC, mode: "dry" }, { fanSpeed: "auto" }),
+    /風量/,
+  );
+});
+
+test("書き込み: 風向は上下・左右を対で送る。加湿では送れない", () => {
+  assert.deepEqual(buildDaikinWrite(AC, { fanSwing: "both" }), [
+    { pn: "e_3001", pch: [{ pn: "p_05", pv: "0F0000" }, { pn: "p_06", pv: "0F0000" }] },
+  ]);
+  assert.deepEqual(buildDaikinWrite(AC, { fanSwing: "vertical" }), [
+    { pn: "e_3001", pch: [{ pn: "p_05", pv: "0F0000" }, { pn: "p_06", pv: "000000" }] },
+  ]);
+  assert.deepEqual(buildDaikinWrite({ ...AC, mode: "dry" }, { fanSwing: "off" }), [
+    { pn: "e_3001", pch: [{ pn: "p_22", pv: "000000" }, { pn: "p_23", pv: "000000" }] },
+  ]);
+  assert.throws(
+    () => buildDaikinWrite({ ...AC, mode: "humidify" }, { fanSwing: "off" }),
+    /風向/,
+  );
 });
