@@ -71,7 +71,9 @@ export function DeviceSheet({
           </Button>
         </div>
 
-        {device.extra ? <p className="mb-4 text-sm text-muted">{device.extra}</p> : null}
+        {device.extra && device.extra !== "水温" ? (
+          <p className="mb-4 text-sm text-muted">{device.extra}</p>
+        ) : null}
 
         <div className="mb-4 grid grid-cols-2 gap-2">
           <label className="block">
@@ -109,13 +111,7 @@ export function DeviceSheet({
           </p>
         ) : null}
 
-        {device.kind === "sensor" ? (
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="気温" value={device.temperature != null ? `${device.temperature.toFixed(1)}°` : "—"} />
-            <Stat label="湿度" value={device.humidity != null ? `${device.humidity}%` : "—"} />
-            <Stat label="照度" value={device.lux != null ? `${device.lux}` : "—"} />
-          </div>
-        ) : null}
+        {device.kind === "sensor" ? <SensorStats device={device} /> : null}
 
         {device.kind === "light" || device.kind === "plug" || device.kind === "bot" || device.kind === "lock" ? (
           <Button
@@ -287,6 +283,25 @@ function AcHumidityControl({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function SensorStats({ device }: { device: Device }) {
+  const tempLabel = device.extra === "水温" ? "水温" : "気温";
+  const stats = [
+    device.temperature != null ? { label: tempLabel, value: `${device.temperature.toFixed(1)}°` } : null,
+    device.humidity != null ? { label: "湿度", value: `${device.humidity}%` } : null,
+    device.lux != null ? { label: "照度", value: `${device.lux}` } : null,
+  ].filter((s): s is { label: string; value: string } => s != null);
+  if (!stats.length) {
+    return <p className="text-sm text-muted">計測中</p>;
+  }
+  return (
+    <div className={`grid gap-2 ${stats.length === 1 ? "grid-cols-1" : "grid-cols-3"}`}>
+      {stats.map((s) => (
+        <Stat key={s.label} label={s.label} value={s.value} />
+      ))}
     </div>
   );
 }

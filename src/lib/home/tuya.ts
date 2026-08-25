@@ -170,13 +170,76 @@ function asRooms(result: unknown): Array<{ room_id?: number; roomId?: number; na
   return [];
 }
 
+type TuyaStatus = { code: string; value: unknown };
+
+/** 水温・温度計。Tuya の標準 category。swtz は水温計、szjcy は水質（水温を含む）、wsdcg は温湿度。 */
+const TEMP_SENSOR_CATS = new Set(["swtz", "szjcy", "wsdcg", "sz"]);
+const WATER_TEMP_CATS = new Set(["swtz", "szjcy"]);
+const TEMP_CODES = [
+  "water_temp",
+  "temp_current",
+  "va_temperature",
+  "temp_current_external",
+  "temp_value",
+  "sensor_temperature",
+];
+const HUMIDITY_CODES = ["humidity_value", "humidity_current", "va_humidity", "humidity"];
+const LUX_CODES = ["bright_value", "illuminance"];
+
 function kindFromCategory(cat: string): DeviceKind {
   const c = cat.toLowerCase();
+  if (TEMP_SENSOR_CATS.has(c)) return "sensor";
   if (c.includes("dj") || c.includes("dd") || c.includes("light") || c.includes("lamp")) return "light";
   if (c.includes("kg") || c.includes("cz") || c.includes("pc") || c.includes("plug") || c.includes("socket")) return "plug";
   if (c.includes("cl") || c.includes("curtain")) return "curtain";
   if (c.includes("kt") || c.includes("ac") || c.includes("air")) return "ac";
   return "other";
+}
+
+function isWaterName(name: string) {
+  return /水温|水槽|アクアリウム|aquarium|pool\s*temp|water\s*temp/i.test(name);
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+/** Tuya の温度・湿度は整数の十分の一（scale 1）が多い。100 未満はそのまま。 */
+function scaleTenths(value: number) {
+  if (Number.isInteger(value) && Math.abs(value) >= 100) return value / 10;
+  return value;
+}
+
+function statusByCode(status: TuyaStatus[] | undefined) {
+  const map = new Map<string, unknown>();
+  for (const s of status ?? []) map.set(s.code, s.value);
+  return map;
+}
+
+function firstReading(map: Map<string, unknown>, codes: string[]) {
+  for (const code of codes) {
+    const n = asNumber(map.get(code));
+    if (n != null) return { code, value: n };
+  }
+  return undefined;
+}
+
+export function readingsFromTuyaStatus(status: TuyaStatus[] | undefined) {
+  const map = statusByCode(status);
+  const temp = firstReading(map, TEMP_CODES);
+  const humidity = firstReading(map, HUMIDITY_CODES);
+  const lux = firstReading(map, LUX_CODES);
+  return {
+    temperature: temp ? scaleTenths(temp.value) : undefined,
+    humidity: humidity ? scaleTenths(humidity.value) : undefined,
+    lux: lux?.value,
+    water: Boolean(map.has("water_temp") || temp?.code === "water_temp"),
+  };
 }
 
 function guessRoom(name: string, hinted?: string) {
@@ -187,12 +250,17 @@ function guessRoom(name: string, hinted?: string) {
   return "その他";
 }
 
-function mapDevices(raw: RawDevice[], roomHint?: string): Device[] {
+export function mapTuyaDevices(raw: RawDevice[], roomHint?: string): Device[] {
   const devices: Device[] = [];
   for (const d of raw) {
     const nativeId = String(d.id || d.devId || d.device_id || d.deviceId || "");
     if (!nativeId) continue;
     const name = d.name || d.product_name || nativeId;
+    const cat = (d.category || "").toLowerCase();
+    const reading = readingsFromTuyaStatus(d.status);
+    const water = WATER_TEMP_CATS.has(cat) || isWaterName(name) || reading.water;
+    let kind = kindFromCategory(cat);
+    if (kind === "other" && (reading.temperature != null || water)) kind = "sensor";
     const switchStatus = d.status?.find(
       (s) => s.code === "switch_1" || s.code === "switch" || s.code === "switch_led",
     );
@@ -200,14 +268,17 @@ function mapDevices(raw: RawDevice[], roomHint?: string): Device[] {
       id: `smartlife:${nativeId}`,
       name,
       room: guessRoom(name, roomHint),
-      extra: d.category || d.product_name,
+      extra: water ? "水温" : d.category || d.product_name,
       brand: "smartlife",
-      kind: kindFromCategory(d.category || ""),
+      kind,
       online: Boolean(d.online),
       source: "live",
       nativeId,
       connector: "smartlife",
       on: typeof switchStatus?.value === "boolean" ? switchStatus.value : false,
+      temperature: reading.temperature,
+      humidity: reading.humidity,
+      lux: reading.lux,
     });
   }
   return devices;
@@ -220,8 +291,36 @@ function mergeDevices(into: Map<string, Device>, list: Device[]) {
       into.set(d.nativeId, d);
       continue;
     }
-    if (prev.room === "その他" && d.room !== "その他") into.set(d.nativeId, d);
+    into.set(d.nativeId, {
+      ...prev,
+      ...d,
+      room: prev.room !== "その他" ? prev.room : d.room,
+      kind: prev.kind !== "other" ? prev.kind : d.kind,
+      extra: d.extra === "水温" || prev.extra === "水温" ? "水温" : d.extra || prev.extra,
+      temperature: d.temperature ?? prev.temperature,
+      humidity: d.humidity ?? prev.humidity,
+      lux: d.lux ?? prev.lux,
+    });
   }
+}
+
+function asStatusList(result: unknown): TuyaStatus[] {
+  if (Array.isArray(result)) return result as TuyaStatus[];
+  if (result && typeof result === "object") {
+    const obj = result as { status?: unknown; result?: unknown };
+    if (Array.isArray(obj.status)) return obj.status as TuyaStatus[];
+    if (Array.isArray(obj.result)) return obj.result as TuyaStatus[];
+  }
+  return [];
+}
+
+function applyReadings(device: Device, status: TuyaStatus[]) {
+  const reading = readingsFromTuyaStatus(status);
+  if (reading.temperature != null) device.temperature = reading.temperature;
+  if (reading.humidity != null) device.humidity = reading.humidity;
+  if (reading.lux != null) device.lux = reading.lux;
+  if (reading.water) device.extra = "水温";
+  if (device.kind === "other" && reading.temperature != null) device.kind = "sensor";
 }
 
 async function tryGet(host: string, accessId: string, secret: string, path: string, token: string) {
@@ -251,7 +350,7 @@ async function listForUid(
   ];
   for (const path of paths) {
     const result = await tryGet(host, accessId, secret, path, token);
-    if (result) mergeDevices(bag, mapDevices(asDeviceList(result)));
+    if (result) mergeDevices(bag, mapTuyaDevices(asDeviceList(result)));
   }
 
   let lastKey = "";
@@ -261,7 +360,7 @@ async function listForUid(
       : "/v1.3/iot-03/devices?page_size=100";
     const result = await tryGet(host, accessId, secret, q, token);
     if (!result) break;
-    mergeDevices(bag, mapDevices(asDeviceList(result)));
+    mergeDevices(bag, mapTuyaDevices(asDeviceList(result)));
     const rec = result as { last_row_key?: string; has_more?: boolean };
     if (!rec.has_more || !rec.last_row_key || rec.last_row_key === lastKey) break;
     lastKey = rec.last_row_key;
@@ -273,7 +372,7 @@ async function listForUid(
     const homeId = home.home_id ?? home.homeId;
     if (homeId == null) continue;
     const homeDevices = await tryGet(host, accessId, secret, `/v1.0/homes/${homeId}/devices`, token);
-    if (homeDevices) mergeDevices(bag, mapDevices(asDeviceList(homeDevices)));
+    if (homeDevices) mergeDevices(bag, mapTuyaDevices(asDeviceList(homeDevices)));
 
     const roomsRaw = await tryGet(host, accessId, secret, `/v1.0/homes/${homeId}/rooms`, token);
     for (const room of asRooms(roomsRaw)) {
@@ -286,11 +385,42 @@ async function listForUid(
         `/v1.0/homes/${homeId}/rooms/${roomId}/devices`,
         token,
       );
-      if (roomDevices) mergeDevices(bag, mapDevices(asDeviceList(roomDevices), room.name));
+      if (roomDevices) mergeDevices(bag, mapTuyaDevices(asDeviceList(roomDevices), room.name));
     }
   }
 
-  return [...bag.values()];
+  const devices = [...bag.values()];
+  await fillMissingReadings(host, accessId, secret, token, devices);
+  return devices;
+}
+
+async function fillMissingReadings(
+  host: string,
+  accessId: string,
+  secret: string,
+  token: string,
+  devices: Device[],
+) {
+  const pending = devices.filter(
+    (d) =>
+      d.kind === "sensor" &&
+      d.temperature == null &&
+      d.humidity == null &&
+      d.lux == null,
+  );
+  await Promise.all(
+    pending.map(async (d) => {
+      const raw = await tryGet(
+        host,
+        accessId,
+        secret,
+        `/v1.0/iot-03/devices/${d.nativeId}/status`,
+        token,
+      );
+      const status = asStatusList(raw);
+      if (status.length) applyReadings(d, status);
+    }),
+  );
 }
 
 export async function tuyaSync(
