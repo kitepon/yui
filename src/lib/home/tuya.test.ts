@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mapTuyaDevices, readingsFromTuyaStatus, tuyaCommandsFromPatch } from "./tuya.ts";
+import { mapTuyaDevices, readingsFromTuyaStatus, tuyaCommandsFromPatch, applyTuyaStatus } from "./tuya.ts";
 import type { Device } from "./types.ts";
 
 test("Tuya の temp_current は十分の一度", () => {
@@ -25,6 +25,20 @@ test("実機の水温計は va_temperature を十分の一度で読む", () => {
   assert.equal(d.kind, "sensor");
   assert.equal(d.temperature, 26.5);
   assert.equal(d.extra, "水温");
+});
+
+test("既に温度がある水温計でも status の新しい値で上書きする", () => {
+  const [d] = mapTuyaDevices([
+    {
+      id: "probe",
+      name: "水温計",
+      category: "wsdcg",
+      status: [{ code: "va_temperature", value: 265 }],
+    },
+  ]);
+  assert.equal(d.temperature, 26.5);
+  applyTuyaStatus(d, [{ code: "va_temperature", value: 261 }]);
+  assert.equal(d.temperature, 26.1);
 });
 
 test("100 未満の温度はそのまま", () => {

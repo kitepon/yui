@@ -1,6 +1,7 @@
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation, SensorMetric } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
+import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync } from "@/lib/home/daikin";
 import { homeBelongsToLanOwner } from "./lan-owner";
 import { listAutomationHomeIds, loadHomeRecord, saveHomeRecord } from "./home-db";
@@ -96,6 +97,22 @@ async function tickSensors(homeId: string, snap: HomeSnapshot) {
         return { ...d, ...live, name: d.name, room: d.room };
       });
       cur = await saveHomeRecord(homeId, { devices: [...merged, ...incoming.values()] });
+    } catch {
+      /* keep last */
+    }
+  }
+  const tuya = cur.credentials;
+  if (
+    tuya.tuyaAccessId.trim() &&
+    tuya.tuyaSecret.trim() &&
+    tuya.tuyaRegion.trim() &&
+    tuya.tuyaRegion !== "auto" &&
+    cur.devices.some((d) => d.connector === "smartlife" && d.kind === "sensor")
+  ) {
+    try {
+      const devices = cur.devices.map((d) => ({ ...d }));
+      await tuyaRefreshSensors(tuya.tuyaAccessId, tuya.tuyaSecret, tuya.tuyaRegion, devices);
+      cur = await saveHomeRecord(homeId, { devices });
     } catch {
       /* keep last */
     }

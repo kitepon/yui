@@ -501,6 +501,58 @@ function applyReadings(device: Device, status: TuyaStatus[]) {
   if (device.kind === "other" && reading.temperature != null) device.kind = "sensor";
 }
 
+/** 一覧の古い値があっても、status の読み取りで上書きする。 */
+export function applyTuyaStatus(device: Device, status: TuyaStatus[]) {
+  applyReadings(device, status);
+  return device;
+}
+
+function tuyaSensorsOf(devices: Device[]) {
+  return devices.filter((d) => d.kind === "sensor");
+}
+
+async function refreshTuyaSensorStatus(
+  host: string,
+  accessId: string,
+  secret: string,
+  token: string,
+  devices: Device[],
+) {
+  const pending = tuyaSensorsOf(devices);
+  for (let i = 0; i < pending.length; i += 5) {
+    const chunk = pending.slice(i, i + 5);
+    await Promise.all(
+      chunk.map(async (d) => {
+        const raw = await tryGet(
+          host,
+          accessId,
+          secret,
+          `/v1.0/iot-03/devices/${d.nativeId}/status`,
+          token,
+        );
+        const status = asStatusList(raw);
+        if (status.length) applyReadings(d, status);
+      }),
+    );
+  }
+}
+
+/** 保存済みリージョンでセンサーの status だけ取り直す。一覧の全件同期はしない。 */
+export async function tuyaRefreshSensors(
+  accessId: string,
+  secret: string,
+  region: string,
+  devices: Device[],
+): Promise<Device[]> {
+  const dc = TUYA_REGIONS.find((r) => r.id === region);
+  if (!dc || !accessId.trim() || !secret.trim()) return devices;
+  const sensors = tuyaSensorsOf(devices.filter((d) => d.connector === "smartlife"));
+  if (!sensors.length) return devices;
+  const token = await getToken(dc.host, accessId, secret);
+  await refreshTuyaSensorStatus(dc.host, accessId, secret, token.access_token, sensors);
+  return devices;
+}
+
 async function tryGet(host: string, accessId: string, secret: string, path: string, token: string) {
   try {
     return await tuyaGet<unknown>(host, accessId, secret, path, token);
@@ -568,37 +620,8 @@ async function listForUid(
   }
 
   const devices = [...bag.values()];
-  await fillMissingReadings(host, accessId, secret, token, devices);
+  await refreshTuyaSensorStatus(host, accessId, secret, token, devices);
   return devices;
-}
-
-async function fillMissingReadings(
-  host: string,
-  accessId: string,
-  secret: string,
-  token: string,
-  devices: Device[],
-) {
-  const pending = devices.filter(
-    (d) =>
-      d.kind === "sensor" &&
-      d.temperature == null &&
-      d.humidity == null &&
-      d.lux == null,
-  );
-  await Promise.all(
-    pending.map(async (d) => {
-      const raw = await tryGet(
-        host,
-        accessId,
-        secret,
-        `/v1.0/iot-03/devices/${d.nativeId}/status`,
-        token,
-      );
-      const status = asStatusList(raw);
-      if (status.length) applyReadings(d, status);
-    }),
-  );
 }
 
 export async function tuyaSync(
