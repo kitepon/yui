@@ -1,4 +1,5 @@
-import { AC_MODE_LABEL, type AcMode, type Climate, type Device } from "./types.ts";
+import { AC_MODE_LABEL, type AcMode, type Climate, type Device, type FanSpeed, type FanSwing } from "./types.ts";
+import type { DevicePatch } from "./device-patch.ts";
 
 const BASE = "https://api.nature.global/1";
 
@@ -35,11 +36,13 @@ interface RemoAppliance {
   nickname: string;
   type: string;
   device?: { name?: string };
-  aircon?: { range?: { modes?: Record<string, { temp?: string[] }> } };
+  aircon?: { range?: { modes?: Record<string, { temp?: string[]; vol?: string[]; dir?: string[] }> } };
   settings?: {
     temp?: string;
     mode?: string;
     button?: string;
+    vol?: string;
+    dir?: string;
   };
   light?: { state?: { power?: string; brightness?: string } };
   signals?: Array<{ id: string; name: string }>;
@@ -50,6 +53,35 @@ function roomFromName(name: string) {
   if (/玄関|廊下|entry|hall/i.test(name)) return "玄関";
   if (/リビング|居間|living|ldk/i.test(name)) return "リビング";
   return "その他";
+}
+
+/** Nature Remo の vol。hass-nature-remo と同じ語彙を結の風量へ写す。 */
+export function remoVolToFanSpeed(vol?: string): FanSpeed | undefined {
+  if (vol == null) return undefined;
+  const v = vol.trim().toLowerCase();
+  if (v === "" || v === "auto") return "auto";
+  if (v === "silent" || v === "quiet") return "quiet";
+  if (v === "1" || v === "2" || v === "3" || v === "4" || v === "5") return v;
+  return undefined;
+}
+
+export function fanSpeedToRemoVol(speed: FanSpeed): string {
+  if (speed === "quiet") return "silent";
+  if (speed === "auto") return "auto";
+  return speed;
+}
+
+/** Remo の dir は上下が主。左右・両方はスイングへ寄せる。 */
+export function remoDirToFanSwing(dir?: string): FanSwing | undefined {
+  if (dir == null) return undefined;
+  const d = dir.trim().toLowerCase();
+  if (d === "swing" || d === "sway" || d === "auto") return "vertical";
+  return "off";
+}
+
+export function fanSwingToRemoDir(swing: FanSwing): string {
+  if (swing === "off") return "";
+  return "swing";
 }
 
 function mapMode(raw?: string): AcMode {
@@ -140,13 +172,18 @@ export function appliancesToDevices(list: RemoAppliance[]): Device[] {
       const off = a.settings?.button === "power-off";
       // 自動モードの相対値は "0" や負値がありうるので、|| で既定値へ丸めない。
       const temp = a.settings?.temp === "" || a.settings?.temp == null ? NaN : Number(a.settings.temp);
+      const modes = a.aircon?.range?.modes;
+      const hasVol = Object.values(modes ?? {}).some((m) => (m.vol ?? []).length > 0);
+      const hasDir = Object.values(modes ?? {}).some((m) => (m.dir ?? []).length > 0);
       return {
         ...base,
         kind: "ac" as const,
         on: !off,
         targetTemp: Number.isFinite(temp) ? temp : 26,
         mode: mapMode(a.settings?.mode),
-        acModes: acModesFromRange(a.aircon?.range?.modes),
+        fanSpeed: remoVolToFanSpeed(a.settings?.vol) ?? (hasVol ? "auto" : undefined),
+        fanSwing: remoDirToFanSwing(a.settings?.dir) ?? (hasDir ? "off" : undefined),
+        acModes: acModesFromRange(modes),
       };
     }
     if (a.type === "LIGHT") {
@@ -195,16 +232,7 @@ export async function remoSync(token: string) {
   };
 }
 
-export async function remoControl(
-  token: string,
-  device: Device,
-  cmd: {
-    on?: boolean;
-    brightness?: number;
-    targetTemp?: number;
-    mode?: AcMode;
-  },
-) {
+export async function remoControl(token: string, device: Device, cmd: DevicePatch) {
   if (device.kind === "ac") {
     const body = new URLSearchParams();
     if (cmd.on === false) body.set("button", "power-off");
@@ -218,7 +246,7 @@ export async function remoControl(
         body.set("operation_mode", raw);
       }
       if (cmd.targetTemp != null) {
-        const mode = device.mode;
+        const mode = cmd.mode ?? device.mode;
         if (device.acModes && mode) {
           const temp = pickAcTemp(device.acModes[mode], cmd.targetTemp);
           if (temp != null) body.set("temperature", temp);
@@ -226,6 +254,8 @@ export async function remoControl(
           body.set("temperature", String(cmd.targetTemp));
         }
       }
+      if (cmd.fanSpeed) body.set("air_volume", fanSpeedToRemoVol(cmd.fanSpeed));
+      if (cmd.fanSwing) body.set("air_direction", fanSwingToRemoDir(cmd.fanSwing));
     }
     await remo(token, `/appliances/${device.nativeId}/aircon_settings`, {
       method: "POST",

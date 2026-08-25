@@ -1,6 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { acModesFromRange, appliancesToDevices, pickAcTemp, pickRemoSignal } from "./remo.ts";
+import {
+  acModesFromRange,
+  appliancesToDevices,
+  fanSpeedToRemoVol,
+  fanSwingToRemoDir,
+  pickAcTemp,
+  pickRemoSignal,
+  remoDirToFanSwing,
+  remoVolToFanSpeed,
+} from "./remo.ts";
 
 test("オンとオフの信号名があれば向きどおりに選ぶ", () => {
   const signals = [
@@ -65,6 +74,34 @@ test("温度選択: 相対値モードは一致だけ許し、外れは送らな
 test("温度選択: 温度指定の無いモードは送らない", () => {
   assert.equal(pickAcTemp([], 26), null);
   assert.equal(pickAcTemp(undefined, 26), null);
+});
+
+test("同期: vol と dir を風量・風向へ写す", () => {
+  const [device] = appliancesToDevices([
+    {
+      id: "a2",
+      nickname: "エアコン",
+      type: "AC",
+      settings: { temp: "26", mode: "cool", button: "", vol: "3", dir: "swing" },
+      aircon: {
+        range: {
+          modes: {
+            cool: { temp: ["18", "26"], vol: ["auto", "1", "3"], dir: ["", "swing"] },
+          },
+        },
+      },
+    },
+  ]);
+  assert.equal(device.fanSpeed, "3");
+  assert.equal(device.fanSwing, "vertical");
+});
+
+test("風量の語彙は silent をしずかへ、空文字は自動へ", () => {
+  assert.equal(remoVolToFanSpeed(""), "auto");
+  assert.equal(remoVolToFanSpeed("silent"), "quiet");
+  assert.equal(fanSpeedToRemoVol("quiet"), "silent");
+  assert.equal(remoDirToFanSwing("1"), "off");
+  assert.equal(fanSwingToRemoDir("both"), "swing");
 });
 
 test("同期: 自動モードの相対値 0 を 26 へ丸めない", () => {

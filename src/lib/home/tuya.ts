@@ -1,5 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
-import type { Device, DeviceKind } from "./types";
+import { tuyaKindFromCategory } from "./ha-catalog.ts";
+import type { DevicePatch } from "./device-patch.ts";
+import type { AcMode, Device, FanSpeed } from "./types";
 
 export const TUYA_REGIONS = [
   { id: "us", label: "Western America (tuyaus)", host: "https://openapi.tuyaus.com" },
@@ -184,16 +186,101 @@ const TEMP_CODES = [
   "sensor_temperature",
 ];
 const HUMIDITY_CODES = ["humidity_value", "humidity_current", "va_humidity", "humidity"];
-const LUX_CODES = ["bright_value", "illuminance"];
+const LUX_CODES = ["illuminance", "bright_value"];
+const BRIGHT_CODES = ["bright_value_v2", "bright_value", "bright_value_1"];
+const POSITION_CODES = ["percent_control", "percent_control_2", "percent_state"];
+const TEMP_SET_CODES = ["temp_set", "temp_set_f"];
+const MODE_CODES = ["mode", "work_mode"];
+const FAN_CODES = ["fan_speed_enum", "fan_speed", "windspeed"];
 
-function kindFromCategory(cat: string): DeviceKind {
-  const c = cat.toLowerCase();
-  if (TEMP_SENSOR_CATS.has(c)) return "sensor";
-  if (c.includes("dj") || c.includes("dd") || c.includes("light") || c.includes("lamp")) return "light";
-  if (c.includes("kg") || c.includes("cz") || c.includes("pc") || c.includes("plug") || c.includes("socket")) return "plug";
-  if (c.includes("cl") || c.includes("curtain")) return "curtain";
-  if (c.includes("kt") || c.includes("ac") || c.includes("air")) return "ac";
+function kindFromCategory(cat: string): Device["kind"] {
+  const mapped = tuyaKindFromCategory(cat);
+  if (mapped !== "other") return mapped;
+  if (TEMP_SENSOR_CATS.has(cat.toLowerCase())) return "sensor";
   return "other";
+}
+
+const AC_MODE_VOCAB: Array<[AcMode, string[]]> = [
+  ["cool", ["cold", "cool"]],
+  ["heat", ["hot", "heat", "warm"]],
+  ["dry", ["wet", "dry", "dehumidify"]],
+  ["fan", ["wind", "fan", "blow"]],
+  ["auto", ["auto"]],
+];
+
+function tuyaModeToAc(value: unknown): AcMode | undefined {
+  if (typeof value !== "string") return undefined;
+  const lower = value.toLowerCase();
+  for (const [mode, tokens] of AC_MODE_VOCAB) {
+    if (tokens.includes(lower)) return mode;
+  }
+  return undefined;
+}
+
+function acModeToTuya(mode: AcMode, current: unknown): string {
+  const tokens = AC_MODE_VOCAB.find(([m]) => m === mode)?.[1] ?? ["auto"];
+  if (typeof current === "string") {
+    for (const row of [
+      ["cold", "hot", "wet", "wind", "auto"],
+      ["cool", "heat", "dry", "fan", "auto"],
+      ["COOL", "HEAT", "DRY", "FAN", "AUTO"],
+    ]) {
+      if (row.some((x) => x.toLowerCase() === current.toLowerCase())) {
+        const idx = { cool: 0, heat: 1, dry: 2, fan: 3, auto: 4, humidify: 2 }[mode];
+        return row[idx] ?? tokens[0];
+      }
+    }
+  }
+  return tokens[0];
+}
+
+function tuyaFanToSpeed(value: unknown): FanSpeed | undefined {
+  if (typeof value === "number") {
+    if (value <= 1) return "1";
+    if (value === 2) return "2";
+    if (value >= 3) return "3";
+  }
+  if (typeof value !== "string") return undefined;
+  const v = value.toLowerCase();
+  if (v === "auto") return "auto";
+  if (v === "low" || v === "min" || v === "quiet") return "1";
+  if (v === "middle" || v === "mid" || v === "medium") return "3";
+  if (v === "high" || v === "max") return "5";
+  if (v === "1" || v === "2" || v === "3" || v === "4" || v === "5") return v;
+  return undefined;
+}
+
+function fanSpeedToTuya(speed: FanSpeed, current: unknown): unknown {
+  if (typeof current === "number") {
+    if (speed === "auto" || speed === "quiet" || speed === "1") return 1;
+    if (speed === "2") return 2;
+    return 3;
+  }
+  const v = String(current ?? "auto").toLowerCase();
+  const mapped =
+    speed === "auto" ? "auto" : speed === "quiet" || speed === "1" || speed === "2" ? "low" : speed === "3" ? "middle" : "high";
+  if (v === "mid" && mapped === "middle") return "mid";
+  if (typeof current === "string" && current === current.toUpperCase()) return mapped.toUpperCase();
+  return mapped;
+}
+
+function invertCurtainPercent(category: string, percent: number) {
+  // HA の CL / CLKG は inverted percentage（機器 0 = 開）
+  if (category === "cl" || category === "clkg") return 100 - percent;
+  return percent;
+}
+
+function brightnessToDevice(percent: number, current: unknown) {
+  const p = Math.max(0, Math.min(100, Math.round(percent)));
+  const n = asNumber(current);
+  if (n != null && n > 100) return Math.max(10, Math.min(1000, p * 10));
+  if (n != null) return p;
+  return Math.max(10, p * 10);
+}
+
+function brightnessFromDevice(value: number) {
+  if (value > 100) return Math.max(0, Math.min(100, Math.round(value / 10)));
+  return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function isWaterName(name: string) {
@@ -261,9 +348,15 @@ export function mapTuyaDevices(raw: RawDevice[], roomHint?: string): Device[] {
     const water = WATER_TEMP_CATS.has(cat) || isWaterName(name) || reading.water;
     let kind = kindFromCategory(cat);
     if (kind === "other" && (reading.temperature != null || water)) kind = "sensor";
-    const switchStatus = d.status?.find(
-      (s) => s.code === "switch_1" || s.code === "switch" || s.code === "switch_led",
-    );
+    const status = d.status ?? [];
+    const switchStatus =
+      pickSwitchStatus(status, kind) ??
+      status.find((s) => s.code === "switch_1" || s.code === "switch" || s.code === "switch_led");
+    const bright = firstReading(statusByCode(status), BRIGHT_CODES);
+    const pos = firstReading(statusByCode(status), POSITION_CODES);
+    const tempSet = firstReading(statusByCode(status), TEMP_SET_CODES);
+    const modeRaw = status.find((s) => MODE_CODES.includes(s.code));
+    const fanRaw = status.find((s) => FAN_CODES.includes(s.code));
     devices.push({
       id: `smartlife:${nativeId}`,
       name,
@@ -276,9 +369,14 @@ export function mapTuyaDevices(raw: RawDevice[], roomHint?: string): Device[] {
       nativeId,
       connector: "smartlife",
       on: typeof switchStatus?.value === "boolean" ? switchStatus.value : false,
+      brightness: kind === "light" && bright ? brightnessFromDevice(bright.value) : undefined,
+      position: kind === "curtain" && pos ? invertCurtainPercent(cat, pos.value) : undefined,
+      targetTemp: kind === "ac" && tempSet ? scaleTenths(tempSet.value) : undefined,
+      mode: kind === "ac" ? tuyaModeToAc(modeRaw?.value) : undefined,
+      fanSpeed: kind === "ac" ? tuyaFanToSpeed(fanRaw?.value) : undefined,
       temperature: reading.temperature,
       humidity: reading.humidity,
-      lux: reading.lux,
+      lux: kind === "sensor" ? reading.lux : firstReading(statusByCode(status), ["illuminance"])?.value,
     });
   }
   return devices;
@@ -300,6 +398,11 @@ function mergeDevices(into: Map<string, Device>, list: Device[]) {
       temperature: d.temperature ?? prev.temperature,
       humidity: d.humidity ?? prev.humidity,
       lux: d.lux ?? prev.lux,
+      brightness: d.brightness ?? prev.brightness,
+      position: d.position ?? prev.position,
+      targetTemp: d.targetTemp ?? prev.targetTemp,
+      mode: d.mode ?? prev.mode,
+      fanSpeed: d.fanSpeed ?? prev.fanSpeed,
     });
   }
 }
@@ -312,6 +415,81 @@ function asStatusList(result: unknown): TuyaStatus[] {
     if (Array.isArray(obj.result)) return obj.result as TuyaStatus[];
   }
   return [];
+}
+
+function pickSwitchStatus(status: TuyaStatus[], kind: Device["kind"]) {
+  const bools = status.filter((s) => typeof s.value === "boolean");
+  const preferred =
+    kind === "light"
+      ? ["switch_led", "switch_led_1", "light", "switch_1", "switch"]
+      : kind === "ac"
+        ? ["switch", "switch_1"]
+        : ["switch_1", "switch", "switch_led"];
+  for (const code of preferred) {
+    const hit = bools.find((s) => s.code === code);
+    if (hit) return hit;
+  }
+  return bools.find((s) => s.code.startsWith("switch") || s.code === "light");
+}
+
+function pickStatus(status: TuyaStatus[], codes: string[]) {
+  for (const code of codes) {
+    const hit = status.find((s) => s.code === code);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+/** 機器が持つ DP だけを見て、結の操作を Tuya commands へ写す。 */
+export function tuyaCommandsFromPatch(
+  status: TuyaStatus[],
+  device: Device,
+  cmd: DevicePatch,
+): Array<{ code: string; value: unknown }> {
+  const commands: Array<{ code: string; value: unknown }> = [];
+  const category = (device.extra ?? "").toLowerCase();
+
+  if (cmd.on !== undefined) {
+    const sw = pickSwitchStatus(status, device.kind);
+    if (sw) commands.push({ code: sw.code, value: cmd.on });
+  }
+
+  if (cmd.brightness != null) {
+    const bright = pickStatus(status, BRIGHT_CODES);
+    if (bright) commands.push({ code: bright.code, value: brightnessToDevice(cmd.brightness, bright.value) });
+  }
+
+  if (cmd.position != null) {
+    const pos = pickStatus(status, ["percent_control", "percent_control_2"]) ?? pickStatus(status, POSITION_CODES);
+    if (pos) {
+      const sent = invertCurtainPercent(category, cmd.position);
+      commands.push({ code: pos.code === "percent_state" ? "percent_control" : pos.code, value: sent });
+    }
+  }
+
+  if (cmd.targetTemp != null) {
+    const temp = pickStatus(status, TEMP_SET_CODES);
+    if (temp) {
+      const current = asNumber(temp.value);
+      const value =
+        current != null && Number.isInteger(current) && Math.abs(current) >= 100
+          ? Math.round(cmd.targetTemp * 10)
+          : cmd.targetTemp;
+      commands.push({ code: temp.code, value });
+    }
+  }
+
+  if (cmd.mode) {
+    const mode = pickStatus(status, MODE_CODES);
+    if (mode) commands.push({ code: mode.code, value: acModeToTuya(cmd.mode, mode.value) });
+  }
+
+  if (cmd.fanSpeed) {
+    const fan = pickStatus(status, FAN_CODES);
+    if (fan) commands.push({ code: fan.code, value: fanSpeedToTuya(cmd.fanSpeed, fan.value) });
+  }
+
+  return commands;
 }
 
 function applyReadings(device: Device, status: TuyaStatus[]) {
@@ -456,32 +634,31 @@ export async function tuyaSync(
   throw lastError;
 }
 
-/** Smart Life（Tuya）の操作。機器が実際に持つ switch 系のコードを見てから送る。 */
+/** Smart Life（Tuya）の操作。機器が実際に持つ DP だけを送る。 */
 export async function tuyaControl(
   accessId: string,
   secret: string,
   region: string,
   device: Device,
-  cmd: { on?: boolean },
+  cmd: DevicePatch,
 ) {
-  if (cmd.on === undefined) {
-    throw new Error(`${device.name} はオンとオフだけを操作できます`);
-  }
   const dc = TUYA_REGIONS.find((r) => r.id === region);
   if (!dc) {
     throw new Error("Smart Life のデータセンターが未確定です。接続タブで一度同期してください。");
   }
   const token = await getToken(dc.host, accessId, secret);
-  const status = await tuyaGet<Array<{ code: string; value: unknown }>>(
-    dc.host,
-    accessId,
-    secret,
-    `/v1.0/iot-03/devices/${device.nativeId}/status`,
-    token.access_token,
+  const status = asStatusList(
+    await tuyaGet<unknown>(
+      dc.host,
+      accessId,
+      secret,
+      `/v1.0/iot-03/devices/${device.nativeId}/status`,
+      token.access_token,
+    ),
   );
-  const sw = status.find((s) => typeof s.value === "boolean" && s.code.startsWith("switch"));
-  if (!sw) {
-    throw new Error(`${device.name} にオンオフのスイッチがありません`);
+  const commands = tuyaCommandsFromPatch(status, device, cmd);
+  if (!commands.length) {
+    throw new Error(`${device.name} に送れる操作がありません`);
   }
   await tuyaPost(
     dc.host,
@@ -489,6 +666,6 @@ export async function tuyaControl(
     secret,
     `/v1.0/iot-03/devices/${device.nativeId}/commands`,
     token.access_token,
-    { commands: [{ code: sw.code, value: cmd.on }] },
+    { commands },
   );
 }

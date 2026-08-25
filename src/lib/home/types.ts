@@ -39,9 +39,9 @@ export interface Device {
   targetTemp?: number;
   /** 除湿の目標湿度（%）。0 は「連続」。対応機（ダイキン直結）だけが持つ。 */
   targetHumidity?: number;
-  /** 風量。ダイキン直結で、その運転モードが風量プロパティを持つときだけ。除湿は自動固定なので無い。 */
+  /** 風量。ダイキン直結・Nature Remo・SwitchBot の IR エアコンで、値が載ったとき。 */
   fanSpeed?: FanSpeed;
-  /** 風向スイング。ダイキン直結で、その運転モードが風向プロパティを持つときだけ。 */
+  /** 風向スイング。ダイキン直結と Nature Remo で、値が載ったとき。 */
   fanSwing?: FanSwing;
   mode?: AcMode;
   /** エアコンの実機能力表（同期時に Nature から取得）。モード → 選べる温度値の昇順リスト。空はそのモードで温度指定不可。無い機器は従来の固定範囲で扱う。 */

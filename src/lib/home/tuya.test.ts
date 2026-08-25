@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mapTuyaDevices, readingsFromTuyaStatus } from "./tuya.ts";
+import { mapTuyaDevices, readingsFromTuyaStatus, tuyaCommandsFromPatch } from "./tuya.ts";
+import type { Device } from "./types.ts";
 
 test("Tuya の temp_current は十分の一度", () => {
   const reading = readingsFromTuyaStatus([{ code: "temp_current", value: 256 }]);
@@ -111,4 +112,98 @@ test("コンセントは温度があってもプラグのまま", () => {
   assert.equal(d.kind, "plug");
   assert.equal(d.on, true);
   assert.equal(d.temperature, undefined);
+});
+
+test("照明 dj は light で、kg を含む category でもコンセントに落とさない", () => {
+  const [d] = mapTuyaDevices([{ id: "bulb", name: "電球", category: "dj", status: [{ code: "switch_led", value: true }] }]);
+  assert.equal(d.kind, "light");
+  assert.equal(d.on, true);
+});
+
+test("短い category の部分一致でカーテンにしない", () => {
+  const [d] = mapTuyaDevices([{ id: "x", name: "未知", category: "clk" }]);
+  assert.equal(d.kind, "other");
+});
+
+test("カーテン cl は開きを反転して読み、percent_control へ反転して送る", () => {
+  const [d] = mapTuyaDevices([
+    {
+      id: "c1",
+      name: "カーテン",
+      category: "cl",
+      status: [
+        { code: "percent_control", value: 20 },
+        { code: "control", value: "stop" },
+      ],
+    },
+  ]);
+  assert.equal(d.kind, "curtain");
+  assert.equal(d.position, 80);
+  const commands = tuyaCommandsFromPatch(
+    [{ code: "percent_control", value: 20 }],
+    d,
+    { position: 100 },
+  );
+  assert.deepEqual(commands, [{ code: "percent_control", value: 0 }]);
+});
+
+test("照明の明るさは 0-1000 を百分率へ写して戻す", () => {
+  const [d] = mapTuyaDevices([
+    {
+      id: "l1",
+      name: "電球",
+      category: "dj",
+      status: [
+        { code: "switch_led", value: true },
+        { code: "bright_value", value: 500 },
+      ],
+    },
+  ]);
+  assert.equal(d.kind, "light");
+  assert.equal(d.brightness, 50);
+  const commands = tuyaCommandsFromPatch(
+    [
+      { code: "switch_led", value: true },
+      { code: "bright_value", value: 500 },
+    ],
+    d,
+    { brightness: 80, on: true },
+  );
+  assert.deepEqual(commands, [
+    { code: "switch_led", value: true },
+    { code: "bright_value", value: 800 },
+  ]);
+});
+
+test("エアコン kt は温度とモードの DP を機器の語彙のまま送る", () => {
+  const device: Device = {
+    id: "smartlife:ac",
+    name: "エアコン",
+    room: "リビング",
+    brand: "smartlife",
+    kind: "ac",
+    online: true,
+    source: "live",
+    nativeId: "ac",
+    connector: "smartlife",
+    extra: "kt",
+    mode: "cool",
+    targetTemp: 26,
+  };
+  const commands = tuyaCommandsFromPatch(
+    [
+      { code: "switch", value: true },
+      { code: "temp_set", value: 260 },
+      { code: "mode", value: "cold" },
+      { code: "fan_speed_enum", value: "auto" },
+    ],
+    device,
+    { on: true, targetTemp: 24, mode: "heat", fanSpeed: "3" },
+  );
+  assert.deepEqual(commands, [
+    { code: "switch", value: true },
+    { code: "temp_set", value: 240 },
+    { code: "mode", value: "hot" },
+    { code: "fan_speed_enum", value: "middle" },
+  ]);
 });
