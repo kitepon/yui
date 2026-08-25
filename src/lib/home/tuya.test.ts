@@ -7,6 +7,25 @@ test("Tuya の temp_current は十分の一度", () => {
   assert.equal(reading.temperature, 25.6);
 });
 
+test("実機の水温計は va_temperature を十分の一度で読む", () => {
+  const [d] = mapTuyaDevices([
+    {
+      id: "probe",
+      name: "水温計",
+      category: "wsdcg",
+      online: true,
+      status: [
+        { code: "va_temperature", value: 265 },
+        { code: "temp_unit_convert", value: "c" },
+        { code: "maxtemp_set", value: 1200 },
+      ],
+    },
+  ]);
+  assert.equal(d.kind, "sensor");
+  assert.equal(d.temperature, 26.5);
+  assert.equal(d.extra, "水温");
+});
+
 test("100 未満の温度はそのまま", () => {
   const reading = readingsFromTuyaStatus([{ code: "temp_current", value: 26 }]);
   assert.equal(reading.temperature, 26);
