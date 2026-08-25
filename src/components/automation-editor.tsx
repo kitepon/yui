@@ -1,27 +1,21 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DeviceControls } from "@/components/device-controls";
 import { useHome } from "@/lib/home/store";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
+import { applyDevicePatch, patchFromAction } from "@/lib/home/device-patch";
 import {
-  type AcMode,
   type AutoAction,
   type AutoTrigger,
   type AutoTriggerType,
   type Automation,
+  type Device,
   type TimeRepeat,
   METRIC_LABEL,
   WEEKDAYS,
   newActionId,
 } from "@/lib/home/types";
-
-const MODES: { id: AcMode; label: string }[] = [
-  { id: "cool", label: "冷房" },
-  { id: "heat", label: "暖房" },
-  { id: "dry", label: "除湿" },
-  { id: "fan", label: "送風" },
-  { id: "auto", label: "自動" },
-];
 
 export function AutomationEditor({
   initial,
@@ -290,11 +284,12 @@ function ActionFields({
 }: {
   index: number;
   action: AutoAction;
-  devices: { id: string; name: string; room: string; kind: string }[];
+  devices: Device[];
   onChange: (a: AutoAction) => void;
   onRemove: () => void;
 }) {
-  const kind = devices.find((d) => d.id === action.deviceId)?.kind;
+  const device = devices.find((d) => d.id === action.deviceId);
+  const preview = device ? { ...device, ...patchFromAction(action) } : null;
   return (
     <div className="rounded-md border border-border bg-bg p-3">
       <div className="flex items-center justify-between">
@@ -306,34 +301,16 @@ function ActionFields({
       <Select
         label="機器"
         value={action.deviceId ?? ""}
-        onChange={(deviceId) => onChange({ ...action, deviceId })}
+        onChange={(deviceId) => onChange({ id: action.id, deviceId, on: true })}
         options={devices.map((d) => ({ id: d.id, label: `${d.room} ${d.name}` }))}
       />
-      <Select
-        label="操作"
-        value={action.on === false ? "off" : "on"}
-        onChange={(v) => onChange({ ...action, on: v === "on" })}
-        options={[
-          { id: "on", label: "入れる" },
-          { id: "off", label: "切る" },
-        ]}
-      />
-      {kind === "light" ? (
-        <Num label="明るさ" value={action.brightness ?? 80} min={1} max={100} onChange={(brightness) => onChange({ ...action, brightness })} />
-      ) : null}
-      {kind === "ac" ? (
-        <>
-          <Num label="温度" value={action.targetTemp ?? 26} min={16} max={32} onChange={(targetTemp) => onChange({ ...action, targetTemp })} />
-          <Select
-            label="モード"
-            value={action.mode ?? "cool"}
-            onChange={(mode) => onChange({ ...action, mode: mode as AcMode })}
-            options={MODES.map((m) => ({ id: m.id, label: m.label }))}
+      {preview ? (
+        <div className="mt-3">
+          <DeviceControls
+            device={preview}
+            onChange={(_, patch) => onChange(applyDevicePatch(action, preview, patch))}
           />
-        </>
-      ) : null}
-      {kind === "curtain" ? (
-        <Num label="開き" value={action.position ?? 100} min={0} max={100} onChange={(position) => onChange({ ...action, position })} />
+        </div>
       ) : null}
     </div>
   );

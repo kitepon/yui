@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { clockInTokyo } from "./clock";
+import { describePatch, patchFromAction } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
 import type { AutoAction, Automation, SensorMetric } from "./types";
@@ -38,13 +39,7 @@ export function describeTrigger(auto: Automation) {
 
 export function describeAction(action: AutoAction) {
   const device = useHome.getState().devices.find((d) => d.id === action.deviceId);
-  const bits = [device?.name ?? "機器"];
-  if (action.on === true) bits.push("入");
-  if (action.on === false) bits.push("切");
-  if (action.brightness != null) bits.push(`${action.brightness}%`);
-  if (action.targetTemp != null) bits.push(`${action.targetTemp}°`);
-  if (action.position != null) bits.push(`開${action.position}`);
-  return bits.join(" ");
+  return [device?.name ?? "機器", ...describePatch(action)].join(" ");
 }
 
 async function runActions(auto: Automation) {
@@ -52,13 +47,7 @@ async function runActions(auto: Automation) {
     if (!action.deviceId) continue;
     const device = useHome.getState().devices.find((d) => d.id === action.deviceId);
     if (!device) continue;
-    await runCommand(device, {
-      on: action.on,
-      brightness: action.brightness,
-      targetTemp: action.targetTemp,
-      mode: action.mode,
-      position: action.position,
-    });
+    await runCommand(device, patchFromAction(action));
   }
 }
 

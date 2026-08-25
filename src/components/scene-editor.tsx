@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Num, Select } from "@/components/automation-editor";
+import { Select } from "@/components/automation-editor";
+import { DeviceControls } from "@/components/device-controls";
 import { Button } from "@/components/ui/button";
+import { applyDevicePatch, patchFromAction } from "@/lib/home/device-patch";
 import { useHome } from "@/lib/home/store";
 import { type Scene, type SceneStep, newActionId } from "@/lib/home/types";
 
@@ -63,7 +65,8 @@ export function SceneEditor({
         <div className="mt-2 space-y-3">
           {steps.map((step, index) => {
             const id = step.match.id ?? "";
-            const kind = actuators.find((d) => d.id === id)?.kind;
+            const device = actuators.find((d) => d.id === id);
+            const preview = device ? { ...device, ...patchFromAction(step.patch) } : null;
             return (
               <div key={index} className="rounded-md border border-border bg-bg p-3">
                 <div className="flex justify-end">
@@ -79,61 +82,25 @@ export function SceneEditor({
                   label="機器"
                   value={id}
                   onChange={(deviceId) =>
-                    setSteps(steps.map((s, i) => (i === index ? { ...s, match: { id: deviceId } } : s)))
+                    setSteps(
+                      steps.map((s, i) => (i === index ? { match: { id: deviceId }, patch: { on: true } } : s)),
+                    )
                   }
                   options={actuators.map((d) => ({ id: d.id, label: `${d.room} ${d.name}` }))}
                 />
-                <Select
-                  label="操作"
-                  value={step.patch.on === false ? "off" : "on"}
-                  onChange={(v) =>
-                    setSteps(
-                      steps.map((s, i) => (i === index ? { ...s, patch: { ...s.patch, on: v === "on" } } : s)),
-                    )
-                  }
-                  options={[
-                    { id: "on", label: "入れる" },
-                    { id: "off", label: "切る" },
-                  ]}
-                />
-                {kind === "light" ? (
-                  <Num
-                    label="明るさ"
-                    value={step.patch.brightness ?? 80}
-                    min={1}
-                    max={100}
-                    onChange={(brightness) =>
-                      setSteps(
-                        steps.map((s, i) => (i === index ? { ...s, patch: { ...s.patch, brightness } } : s)),
-                      )
-                    }
-                  />
-                ) : null}
-                {kind === "ac" ? (
-                  <Num
-                    label="温度"
-                    value={step.patch.targetTemp ?? 26}
-                    min={16}
-                    max={32}
-                    onChange={(targetTemp) =>
-                      setSteps(
-                        steps.map((s, i) => (i === index ? { ...s, patch: { ...s.patch, targetTemp } } : s)),
-                      )
-                    }
-                  />
-                ) : null}
-                {kind === "curtain" ? (
-                  <Num
-                    label="開き"
-                    value={step.patch.position ?? 100}
-                    min={0}
-                    max={100}
-                    onChange={(position) =>
-                      setSteps(
-                        steps.map((s, i) => (i === index ? { ...s, patch: { ...s.patch, position } } : s)),
-                      )
-                    }
-                  />
+                {preview ? (
+                  <div className="mt-3">
+                    <DeviceControls
+                      device={preview}
+                      onChange={(_, patch) =>
+                        setSteps(
+                          steps.map((s, i) =>
+                            i === index ? { ...s, patch: applyDevicePatch(s.patch, preview, patch) } : s,
+                          ),
+                        )
+                      }
+                    />
+                  </div>
                 ) : null}
               </div>
             );

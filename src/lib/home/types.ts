@@ -73,9 +73,7 @@ export interface SceneStep {
     brand?: Brand;
     id?: string;
   };
-  patch: Partial<
-    Pick<Device, "on" | "brightness" | "targetTemp" | "mode" | "position">
-  >;
+  patch: Omit<DeviceCommand, "id">;
 }
 
 export interface ConnectorStatus {
@@ -229,14 +227,9 @@ export interface AutoTrigger {
   value?: number;
 }
 
-export interface AutoAction {
+export interface AutoAction extends Omit<DeviceCommand, "id"> {
   id: string;
   deviceId?: string;
-  on?: boolean;
-  brightness?: number;
-  targetTemp?: number;
-  mode?: AcMode;
-  position?: number;
 }
 
 export interface Automation {
@@ -290,6 +283,9 @@ export function migrateAutomation(raw: unknown): Automation | null {
       on: x.on,
       brightness: x.brightness,
       targetTemp: x.targetTemp,
+      targetHumidity: x.targetHumidity,
+      fanSpeed: x.fanSpeed,
+      fanSwing: x.fanSwing,
       mode: x.mode,
       position: x.position,
     }));

@@ -4,6 +4,7 @@ import { tuyaControl } from "@/lib/home/tuya";
 import { odelicControl } from "@/lib/home/odelic";
 import { daikinControl } from "@/lib/home/daikin";
 import { matchesStep } from "@/lib/home/demo";
+import { patchFromAction } from "@/lib/home/device-patch";
 import type { AutoAction, Device } from "@/lib/home/types";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import { loadHomeRecord, saveHomeRecord } from "./home-db";
@@ -81,13 +82,7 @@ export async function executeAction(homeId: string, snap: HomeSnapshot, action: 
   const device = snap.devices.find((d) => d.id === action.deviceId);
   if (!device) return snap;
   try {
-    return await executeDevice(homeId, snap, device, {
-      on: action.on,
-      brightness: action.brightness,
-      targetTemp: action.targetTemp,
-      mode: action.mode,
-      position: action.position,
-    });
+    return await executeDevice(homeId, snap, device, patchFromAction(action));
   } catch {
     return (await loadHomeRecord(homeId))?.snap ?? snap;
   }
