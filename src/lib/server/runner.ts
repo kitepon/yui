@@ -1,7 +1,8 @@
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation, SensorMetric } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
-import { sensorTriggerDecision } from "@/lib/home/sensor-trigger";
+import { patchAlreadyApplied, patchFromAction, reportsActuatorState } from "@/lib/home/device-patch";
+import { sensorHoldsWhileInRange, sensorTriggerDecision } from "@/lib/home/sensor-trigger";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync } from "@/lib/home/daikin";
@@ -25,10 +26,21 @@ function metricValue(
   return device.lux;
 }
 
-async function runAutomation(homeId: string, snap: HomeSnapshot, auto: Automation) {
+async function runAutomation(
+  homeId: string,
+  snap: HomeSnapshot,
+  auto: Automation,
+  opts?: { onlyIfDifferent?: boolean },
+) {
   if (!auto.enabled || !auto.actions.length) return snap;
   let cur = snap;
+  const onlyIfDifferent = opts?.onlyIfDifferent === true;
   for (const action of auto.actions) {
+    if (onlyIfDifferent) {
+      const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
+      if (!device || !reportsActuatorState(device)) continue;
+      if (patchAlreadyApplied(device, patchFromAction(action))) continue;
+    }
     cur = await executeAction(homeId, cur, action);
   }
   return cur;
@@ -141,7 +153,12 @@ async function tickSensors(homeId: string, snap: HomeSnapshot) {
     const device = cur.devices.find((d) => d.id === t.deviceId);
     const raw = device ? metricValue(device, metric) : metricValue(cur.climate, metric);
     if (raw == null || t.value == null) continue;
+    if (sensorHoldsWhileInRange(t) && t.valueMax == null) continue;
     const { pass, key } = sensorTriggerDecision(raw, t);
+    if (sensorHoldsWhileInRange(t)) {
+      if (pass) cur = await runAutomation(homeId, cur, auto, { onlyIfDifferent: true });
+      continue;
+    }
     if (auto.lastFiredKey === key) continue;
     cur = await saveHomeRecord(homeId, {
       automations: cur.automations.map((a) => (a.id === auto.id ? { ...a, lastFiredKey: key } : a)),

@@ -43,3 +43,25 @@ test("古い pass / fail キーとは一致しない", () => {
   assert.notEqual(now.key, "pass");
   assert.notEqual(now.key, "fail");
 });
+
+const band: AutoTrigger = {
+  type: "sensor",
+  deviceId: "water",
+  metric: "temperature",
+  op: "between",
+  value: 24,
+  valueMax: 26.5,
+};
+
+test("範囲内なら pass、外なら fail", () => {
+  assert.equal(sensorTriggerDecision(23.9, band).pass, false);
+  assert.equal(sensorTriggerDecision(24, band).pass, true);
+  assert.equal(sensorTriggerDecision(25.2, band).pass, true);
+  assert.equal(sensorTriggerDecision(26.5, band).pass, true);
+  assert.equal(sensorTriggerDecision(26.6, band).pass, false);
+});
+
+test("下限と上限が逆でも範囲として扱う", () => {
+  assert.equal(sensorTriggerDecision(25, { ...band, value: 26.5, valueMax: 24 }).pass, true);
+});
+

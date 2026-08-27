@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DeviceControls } from "@/components/device-controls";
 import { useHome } from "@/lib/home/store";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
-import { applyDevicePatch, patchFromAction } from "@/lib/home/device-patch";
+import { applyDevicePatch, patchFromAction, reportsActuatorState } from "@/lib/home/device-patch";
 import { parseDecimalInput, roundToStep } from "@/lib/home/round-to-step";
 import {
   type AutoAction,
@@ -40,6 +40,11 @@ export function AutomationEditor({
     () => devices.filter((d) => d.kind === "sensor" || (d.kind === "ac" && d.temperature != null)),
     [devices],
   );
+  const rangeHold = trigger.type === "sensor" && trigger.op === "between";
+  const actionDevices = useMemo(
+    () => (rangeHold ? actuators.filter(reportsActuatorState) : actuators),
+    [actuators, rangeHold],
+  );
 
   function setTriggerType(type: AutoTriggerType) {
     if (type === "time") setTrigger({ type, repeat: "daily", hour: 7, minute: 0 });
@@ -61,10 +66,29 @@ export function AutomationEditor({
       toast.error("アクションを1つ以上入れてください");
       return;
     }
+    const nextTrigger = { ...trigger };
+    if (nextTrigger.type === "sensor" && nextTrigger.op === "between") {
+      if (nextTrigger.value == null || nextTrigger.valueMax == null) {
+        toast.error("下限と上限を入れてください");
+        return;
+      }
+      const lo = Math.min(nextTrigger.value, nextTrigger.valueMax);
+      const hi = Math.max(nextTrigger.value, nextTrigger.valueMax);
+      nextTrigger.value = lo;
+      nextTrigger.valueMax = hi;
+      const blocked = actions.filter((a) => {
+        const device = devices.find((d) => d.id === a.deviceId);
+        return !device || !reportsActuatorState(device);
+      });
+      if (blocked.length) {
+        toast.error("範囲条件は、いまの設定を読み返せる機器だけに使えます");
+        return;
+      }
+    }
     const payload = {
       name: name.trim() || "オートメーション",
       enabled: initial?.enabled ?? true,
-      trigger,
+      trigger: nextTrigger,
       actions,
     };
     if (initial) updateAutomation(initial.id, { ...payload, lastFiredKey: undefined });
@@ -222,16 +246,46 @@ export function AutomationEditor({
               onChange={(metric) => setTrigger({ ...trigger, metric: metric as AutoTrigger["metric"] })}
               options={Object.entries(METRIC_LABEL).map(([id, label]) => ({ id, label }))}
             />
-            <div className="grid grid-cols-2 gap-2">
-              <Select
-                label="条件"
-                value={trigger.op ?? "gte"}
-                onChange={(op) => setTrigger({ ...trigger, op: op as AutoTrigger["op"] })}
-                options={[
-                  { id: "gte", label: "以上" },
-                  { id: "lte", label: "以下" },
-                ]}
-              />
+            <Select
+              label="条件"
+              value={trigger.op ?? "gte"}
+              onChange={(op) => {
+                if (op === "between") {
+                  setTrigger({
+                    ...trigger,
+                    op: "between",
+                    valueMax: trigger.valueMax ?? Math.min(100, (trigger.value ?? 24) + 2),
+                  });
+                  return;
+                }
+                setTrigger({ ...trigger, op: op as AutoTrigger["op"] });
+              }}
+              options={[
+                { id: "gte", label: "以上" },
+                { id: "lte", label: "以下" },
+                { id: "between", label: "範囲内" },
+              ]}
+            />
+            {trigger.op === "between" ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Num
+                  label="下限"
+                  value={trigger.value ?? 24}
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  onChange={(value) => setTrigger({ ...trigger, value })}
+                />
+                <Num
+                  label="上限"
+                  value={trigger.valueMax ?? 26}
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  onChange={(valueMax) => setTrigger({ ...trigger, valueMax })}
+                />
+              </div>
+            ) : (
               <Num
                 label="しきい値"
                 value={trigger.value ?? 28}
@@ -240,11 +294,11 @@ export function AutomationEditor({
                 step={0.1}
                 onChange={(value) => setTrigger({ ...trigger, value })}
               />
-            </div>
+            )}
             <p className="text-xs leading-relaxed text-faint">
-              しきい値は小数点第一位まで入れられます。センサーの値はサーバーが{SENSOR_TICK_SECONDS}
-              秒ごとに確認します。条件を満たしてから動くまで最大{SENSOR_TICK_SECONDS}
-              秒かかります。アプリを開いていなくても動きます。
+              {trigger.op === "between"
+                ? `範囲内のあいだ、いまの設定と違うときだけ送ります。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`
+                : `しきい値は小数点第一位まで入れられます。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。条件を満たしてから動くまで最大${SENSOR_TICK_SECONDS}秒かかります。アプリを開いていなくても動きます。`}
             </p>
           </div>
         ) : null}
@@ -256,7 +310,7 @@ export function AutomationEditor({
               key={action.id}
               index={index}
               action={action}
-              devices={actuators}
+              devices={actionDevices}
               onChange={(next) => setActions(actions.map((a) => (a.id === action.id ? next : a)))}
               onRemove={() => setActions(actions.filter((a) => a.id !== action.id))}
             />
@@ -266,9 +320,14 @@ export function AutomationEditor({
           type="button"
           variant="outline"
           className="mt-3 h-12 w-full"
-          onClick={() =>
-            setActions([...actions, { id: newActionId(), deviceId: actuators[0]?.id, on: true }])
-          }
+          onClick={() => {
+            const deviceId = actionDevices[0]?.id;
+            if (!deviceId) {
+              toast.error("範囲条件に使える機器がありません");
+              return;
+            }
+            setActions([...actions, { id: newActionId(), deviceId, on: true }]);
+          }}
         >
           機器を足す
         </Button>

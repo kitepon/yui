@@ -210,7 +210,7 @@ export interface DeviceOverride {
 export type AutoTriggerType = "time" | "device" | "scene" | "sensor";
 export type TimeRepeat = "daily" | "interval" | "weekly";
 export type SensorMetric = "temperature" | "humidity" | "lux";
-export type CompareOp = "gte" | "lte";
+export type CompareOp = "gte" | "lte" | "between";
 
 export interface AutoTrigger {
   type: AutoTriggerType;
@@ -225,6 +225,8 @@ export interface AutoTrigger {
   metric?: SensorMetric;
   op?: CompareOp;
   value?: number;
+  /** `op === "between"` の上限。下限は `value`。 */
+  valueMax?: number;
 }
 
 export interface AutoAction extends Omit<DeviceCommand, "id"> {

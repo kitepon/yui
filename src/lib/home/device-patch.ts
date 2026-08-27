@@ -61,6 +61,38 @@ export function patchFromAction(action: DevicePatch): DevicePatch {
   return patch;
 }
 
+/**
+ * いまの設定を機器から読み返せるか。
+ * SwitchBot IR は `targetTemp: 26` を仮置きしているだけなので、値があることでは判定しない。
+ */
+export function reportsActuatorState(device: Device): boolean {
+  if (device.kind === "sensor" || device.kind === "ir" || device.kind === "other") return false;
+  if (device.id.startsWith("switchbot-ir:")) return false;
+  if (device.connector === "odelec") return false;
+  if (device.source === "demo") return true;
+  if (device.connector === "daikin" || device.connector === "smartlife") return true;
+  if (device.connector === "switchbot") return true;
+  if (device.connector === "nature") {
+    return device.kind === "ac" || device.kind === "light" || device.kind === "plug";
+  }
+  return false;
+}
+
+/** patch に載った項目が、いまの機器状態と同じなら true（送る必要なし）。 */
+export function patchAlreadyApplied(device: Device, patch: DevicePatch): boolean {
+  const p = patchFromAction(patch);
+  if (Object.keys(p).length === 0) return true;
+  if (p.on !== undefined && device.on !== p.on) return false;
+  if (p.brightness != null && device.brightness !== p.brightness) return false;
+  if (p.targetTemp != null && device.targetTemp !== p.targetTemp) return false;
+  if (p.targetHumidity != null && device.targetHumidity !== p.targetHumidity) return false;
+  if (p.fanSpeed && device.fanSpeed !== p.fanSpeed) return false;
+  if (p.fanSwing && device.fanSwing !== p.fanSwing) return false;
+  if (p.mode && device.mode !== p.mode) return false;
+  if (p.position != null && device.position !== p.position) return false;
+  return true;
+}
+
 /** 操作を足したあと、その運転では送れない項目を落とす。 */
 export function applyDevicePatch<T extends DevicePatch>(action: T, device: Device, patch: DevicePatch): T {
   const next = { ...action, ...patch };

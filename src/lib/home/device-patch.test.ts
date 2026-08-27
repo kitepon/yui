@@ -6,7 +6,9 @@ import {
   canSetFanSpeed,
   canSetFanSwing,
   canSetTargetHumidity,
+  patchAlreadyApplied,
   patchFromAction,
+  reportsActuatorState,
 } from "./device-patch.ts";
 import { migrateAutomation, type Device } from "./types.ts";
 
@@ -69,6 +71,58 @@ test("操作の合成は、その運転では送れない項目を落とす", ()
 test("patchFromAction は載っている項目だけを残す", () => {
   assert.deepEqual(patchFromAction({ on: true, fanSpeed: "3" }), { on: true, fanSpeed: "3" });
   assert.deepEqual(patchFromAction({}), {});
+});
+
+test("ダイキンと Smart Life は設定を読み返せ、SwitchBot IR と学習リモコンは読めない", () => {
+  assert.equal(reportsActuatorState(ac()), true);
+  assert.equal(
+    reportsActuatorState(ac({ connector: "smartlife", brand: "smartlife", id: "tuya:1", nativeId: "1" })),
+    true,
+  );
+  assert.equal(
+    reportsActuatorState(
+      ac({
+        id: "switchbot-ir:ac",
+        connector: "switchbot",
+        brand: "switchbot",
+        nativeId: "ir",
+        targetTemp: 26,
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    reportsActuatorState(ac({ kind: "ir", connector: "nature", brand: "nature", id: "remo:ir" })),
+    false,
+  );
+});
+
+test("設定が同じなら送らず、違う項目が1つでもあれば送る", () => {
+  const d = ac({ on: true, mode: "cool", targetTemp: 26, fanSpeed: "auto" });
+  assert.equal(patchAlreadyApplied(d, { on: true, mode: "cool", targetTemp: 26 }), true);
+  assert.equal(patchAlreadyApplied(d, { on: true, mode: "cool", targetTemp: 24 }), false);
+  assert.equal(patchAlreadyApplied(d, { on: false }), false);
+  assert.equal(patchAlreadyApplied(d, {}), true);
+});
+
+test("migrateAutomation は範囲の上限を落とさない", () => {
+  const auto = migrateAutomation({
+    id: "a2",
+    name: "水温",
+    enabled: true,
+    trigger: {
+      type: "sensor",
+      deviceId: "water",
+      metric: "temperature",
+      op: "between",
+      value: 24,
+      valueMax: 26.5,
+    },
+    actions: [{ id: "act1", deviceId: "ac-1", on: true, targetTemp: 26 }],
+  });
+  assert.equal(auto?.trigger.op, "between");
+  assert.equal(auto?.trigger.value, 24);
+  assert.equal(auto?.trigger.valueMax, 26.5);
 });
 
 test("migrateAutomation は風量・風向・湿度を落とさない", () => {

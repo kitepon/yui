@@ -1,9 +1,9 @@
 import { toast } from "sonner";
 import { clockInTokyo } from "./clock";
-import { describePatch, patchFromAction } from "./device-patch";
+import { describePatch, patchAlreadyApplied, patchFromAction, reportsActuatorState } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
-import { sensorTriggerDecision } from "./sensor-trigger";
+import { sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger";
 import type { AutoAction, Automation, SensorMetric } from "./types";
 import { METRIC_LABEL, WEEKDAYS } from "./types";
 
@@ -30,7 +30,12 @@ export function describeTrigger(auto: Automation) {
   }
   if (t.type === "sensor") {
     const device = useHome.getState().devices.find((d) => d.id === t.deviceId);
-    const metric = METRIC_LABEL[t.metric ?? "temperature"];
+    const metric = device?.extra === "水温" ? "水温" : METRIC_LABEL[t.metric ?? "temperature"];
+    if (t.op === "between") {
+      const lo = Math.min(t.value ?? 0, t.valueMax ?? t.value ?? 0);
+      const hi = Math.max(t.value ?? 0, t.valueMax ?? t.value ?? 0);
+      return `${device?.name ?? "センサー"} ${metric}${lo}〜${hi}の範囲`;
+    }
     const op = t.op === "lte" ? "以下" : "以上";
     return `${device?.name ?? "センサー"} ${metric}${t.value ?? 0}${op}`;
   }
@@ -43,22 +48,31 @@ export function describeAction(action: AutoAction) {
   return [device?.name ?? "機器", ...describePatch(action)].join(" ");
 }
 
-async function runActions(auto: Automation) {
+async function runActions(auto: Automation, onlyIfDifferent: boolean) {
+  let sent = 0;
   for (const action of auto.actions) {
     if (!action.deviceId) continue;
     const device = useHome.getState().devices.find((d) => d.id === action.deviceId);
     if (!device) continue;
-    await runCommand(device, patchFromAction(action));
+    const patch = patchFromAction(action);
+    if (onlyIfDifferent) {
+      if (!reportsActuatorState(device)) continue;
+      if (patchAlreadyApplied(device, patch)) continue;
+    }
+    await runCommand(device, patch);
+    sent += 1;
   }
+  return sent;
 }
 
-export async function executeAutomation(auto: Automation) {
+export async function executeAutomation(auto: Automation, opts?: { onlyIfDifferent?: boolean }) {
   if (!auto.enabled || !auto.actions.length) return;
   if (depth > 2) return;
   depth += 1;
   try {
-    toast.message(auto.name);
-    await runActions(auto);
+    const onlyIfDifferent = opts?.onlyIfDifferent === true;
+    const sent = await runActions(auto, onlyIfDifferent);
+    if (!onlyIfDifferent || sent > 0) toast.message(auto.name);
   } finally {
     depth -= 1;
   }
@@ -135,7 +149,12 @@ export function fireSensorAutomations() {
     const device = devices.find((d) => d.id === t.deviceId);
     const raw = device ? metricValue(device, metric) : metricValue(climate, metric);
     if (raw == null || t.value == null) continue;
+    if (sensorHoldsWhileInRange(t) && t.valueMax == null) continue;
     const { pass, key } = sensorTriggerDecision(raw, t);
+    if (sensorHoldsWhileInRange(t)) {
+      if (pass) void executeAutomation(auto, { onlyIfDifferent: true });
+      continue;
+    }
     if (auto.lastFiredKey === key) continue;
     markAutomationFired(auto.id, key);
     if (pass) void executeAutomation(auto);
