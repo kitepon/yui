@@ -5,6 +5,7 @@ import { DeviceControls } from "@/components/device-controls";
 import { useHome } from "@/lib/home/store";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
 import { applyDevicePatch, patchFromAction } from "@/lib/home/device-patch";
+import { parseDecimalInput, roundToStep } from "@/lib/home/round-to-step";
 import {
   type AutoAction,
   type AutoTrigger,
@@ -233,12 +234,14 @@ export function AutomationEditor({
                 value={trigger.value ?? 28}
                 min={0}
                 max={100}
+                step={0.1}
                 onChange={(value) => setTrigger({ ...trigger, value })}
               />
             </div>
             <p className="text-xs leading-relaxed text-faint">
-              センサーの値はサーバーが{SENSOR_TICK_SECONDS}秒ごとに確認します。条件を満たしてから動くまで最大
-              {SENSOR_TICK_SECONDS}秒かかります。アプリを開いていなくても動きます。
+              しきい値は小数点第一位まで入れられます。センサーの値はサーバーが{SENSOR_TICK_SECONDS}
+              秒ごとに確認します。条件を満たしてから動くまで最大{SENSOR_TICK_SECONDS}
+              秒かかります。アプリを開いていなくても動きます。
             </p>
           </div>
         ) : null}
@@ -321,40 +324,53 @@ export function Num({
   value,
   min,
   max,
+  step = 1,
   onChange,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
+  step?: number;
   onChange: (n: number) => void;
 }) {
   // 打っている間は文字のまま持つ。1文字ごとに丸めると、消せなくなり、
   // 下限より小さい桁から始まる数（16〜32 の 2 など）が打てなくなる。
   const [draft, setDraft] = useState<string | null>(null);
+  const decimal = step < 1;
+
+  function commit(n: number, clamp: boolean) {
+    const rounded = roundToStep(n, step);
+    onChange(clamp ? Math.min(max, Math.max(min, rounded)) : rounded);
+  }
 
   return (
     <label className="mt-2 block">
       <span className="mb-1 block text-xs text-muted">{label}</span>
       <input
-        type="number"
-        inputMode="numeric"
-        min={min}
-        max={max}
+        // iOS は type=number だと inputMode=decimal を無視し、小数点のないテンキーになる。
+        type={decimal ? "text" : "number"}
+        inputMode={decimal ? "decimal" : "numeric"}
+        min={decimal ? undefined : min}
+        max={decimal ? undefined : max}
+        step={decimal ? undefined : step}
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         value={draft ?? String(value)}
         onChange={(e) => {
           const raw = e.target.value;
           setDraft(raw);
-          const n = Number(raw);
-          if (raw.trim() !== "" && Number.isFinite(n) && n >= min && n <= max) {
-            onChange(Math.round(n));
+          const n = parseDecimalInput(raw);
+          if (n != null && n >= min && n <= max) {
+            commit(n, false);
           }
         }}
         onBlur={(e) => {
           const raw = e.target.value;
-          const n = Number(raw);
-          if (raw.trim() !== "" && Number.isFinite(n)) {
-            onChange(Math.min(max, Math.max(min, Math.round(n))));
+          const n = parseDecimalInput(raw) ?? parseDecimalInput(raw.replace(/[.,]+$/, ""));
+          if (n != null) {
+            commit(n, true);
           }
           setDraft(null);
         }}

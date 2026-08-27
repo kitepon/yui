@@ -18,7 +18,7 @@
 - 識別は Better Auth のセッション（Cookie または `Authorization: Bearer`）。本番のサインインはメール＋パスワードと、結専用 Google。Grok broker / プレビュー用 OAuth は使わない。Sign in with Apple は iPhone アプリ工程で足す。
 - 永続は SQLite 方言だけ（ローカルはファイル、移転先は D1）。Postgres / PGLite / `yui.json` を正本にしない。
 - オートメーションの入口は `tickAllHomes()` だけ。ローカルは 60 秒間隔で同じ関数を呼ぶ（周期の正本は`src/lib/home/control-tick.ts`。画面の説明文も同じ定数を読む）。起動時の着火は Nitro プラグイン（`server/plugins/control-runner.ts`）が正で、初回リクエスト待ちにしない。Cloudflare では Cron が同じ関数を呼ぶ。プロセス常駐の 20 秒ループと、起きっぱなしの家単位ワーカーを正にしない。
-- 時刻オートメーションの粒度は 1 分。比較する時計は `Asia/Tokyo`。センサーは有効なオートメーションがある家だけを起こす。全戸 20 秒ポーリングを正にしない。
+- 時刻オートメーションの粒度は 1 分。比較する時計は `Asia/Tokyo`。センサーしきい値の粒度は小数点第一位。センサーは有効なオートメーションがある家だけを起こす。全戸 20 秒ポーリングを正にしない。
 - 秘密は環境変数だけに置く。リポジトリと image に入れない。必須は `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`、`HOME_SECRETS_KEY`。バックアップを使うなら `YUI_BACKUP_URL` と `YUI_BACKUP_SECRET` も。Google で入るなら `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET`。Echo なら `ALEXA_CLIENT_ID` と `ALEXA_CLIENT_SECRET`。
 - 公式hosted版は、1つの家あたり月額100円または年額1,000円（税込）、初回30日間無料で提供する。
   Checkout、entitlement、解約はStripeを正とし、料金や契約条件は`src/lib/billing-plan.ts`、
