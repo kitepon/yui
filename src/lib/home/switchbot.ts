@@ -135,6 +135,14 @@ export function switchbotToDevices(list: SbDevice[]): Device[] {
   });
 }
 
+/** 保存済みの Meter など、センサーの status だけ取り直す。一覧の全件同期はしない。 */
+export async function switchbotRefreshSensors(token: string, secret: string, devices: Device[]) {
+  const sensors = devices.filter((d) => d.connector === "switchbot" && d.kind === "sensor");
+  if (!sensors.length) return devices;
+  await fillSwitchbotStatus(token, secret, sensors);
+  return devices;
+}
+
 async function fillSwitchbotStatus(token: string, secret: string, devices: Device[]) {
   const pending = devices.filter((d) => !d.id.startsWith("switchbot-ir:"));
   for (let i = 0; i < pending.length; i += 5) {

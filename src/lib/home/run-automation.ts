@@ -3,6 +3,7 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchFromAction } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
+import { sensorTriggerDecision } from "./sensor-trigger";
 import type { AutoAction, Automation, SensorMetric } from "./types";
 import { METRIC_LABEL, WEEKDAYS } from "./types";
 
@@ -134,8 +135,7 @@ export function fireSensorAutomations() {
     const device = devices.find((d) => d.id === t.deviceId);
     const raw = device ? metricValue(device, metric) : metricValue(climate, metric);
     if (raw == null || t.value == null) continue;
-    const pass = t.op === "lte" ? raw <= t.value : raw >= t.value;
-    const key = pass ? "pass" : "fail";
+    const { pass, key } = sensorTriggerDecision(raw, t);
     if (auto.lastFiredKey === key) continue;
     markAutomationFired(auto.id, key);
     if (pass) void executeAutomation(auto);

@@ -1,6 +1,8 @@
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation, SensorMetric } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
+import { sensorTriggerDecision } from "@/lib/home/sensor-trigger";
+import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync } from "@/lib/home/daikin";
 import { homeBelongsToLanOwner } from "./lan-owner";
@@ -101,6 +103,21 @@ async function tickSensors(homeId: string, snap: HomeSnapshot) {
       /* keep last */
     }
   }
+  const sbToken = cur.credentials.switchbotToken;
+  const sbSecret = cur.credentials.switchbotSecret;
+  if (
+    sbToken.trim() &&
+    sbSecret.trim() &&
+    cur.devices.some((d) => d.connector === "switchbot" && d.kind === "sensor")
+  ) {
+    try {
+      const devices = cur.devices.map((d) => ({ ...d }));
+      await switchbotRefreshSensors(sbToken, sbSecret, devices);
+      cur = await saveHomeRecord(homeId, { devices });
+    } catch {
+      /* keep last */
+    }
+  }
   const tuya = cur.credentials;
   if (
     tuya.tuyaAccessId.trim() &&
@@ -124,8 +141,7 @@ async function tickSensors(homeId: string, snap: HomeSnapshot) {
     const device = cur.devices.find((d) => d.id === t.deviceId);
     const raw = device ? metricValue(device, metric) : metricValue(cur.climate, metric);
     if (raw == null || t.value == null) continue;
-    const pass = t.op === "lte" ? raw <= t.value : raw >= t.value;
-    const key = pass ? "pass" : "fail";
+    const { pass, key } = sensorTriggerDecision(raw, t);
     if (auto.lastFiredKey === key) continue;
     cur = await saveHomeRecord(homeId, {
       automations: cur.automations.map((a) => (a.id === auto.id ? { ...a, lastFiredKey: key } : a)),

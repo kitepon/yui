@@ -36,7 +36,10 @@ export function AutomationEditor({
   const [actions, setActions] = useState<AutoAction[]>(initial?.actions ?? []);
 
   const actuators = useMemo(() => devices.filter((d) => d.kind !== "sensor"), [devices]);
-  const sensors = useMemo(() => devices.filter((d) => d.kind === "sensor"), [devices]);
+  const sensors = useMemo(
+    () => devices.filter((d) => d.kind === "sensor" || (d.kind === "ac" && d.temperature != null)),
+    [devices],
+  );
 
   function setTriggerType(type: AutoTriggerType) {
     if (type === "time") setTrigger({ type, repeat: "daily", hour: 7, minute: 0 });
@@ -64,7 +67,7 @@ export function AutomationEditor({
       trigger,
       actions,
     };
-    if (initial) updateAutomation(initial.id, payload);
+    if (initial) updateAutomation(initial.id, { ...payload, lastFiredKey: undefined });
     else addAutomation(payload);
     toast.success("保存しました");
     onClose();
