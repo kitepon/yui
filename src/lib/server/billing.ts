@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { auth } from "../auth/server.ts";
+import { HOSTED_PRICE_COPY } from "../billing-plan.ts";
 import { getSqlite } from "./sqlite.ts";
 import { publicOrigin } from "./origin.ts";
 import {
@@ -97,7 +98,7 @@ async function fetchEntitlement(userId: string): Promise<Entitlement> {
   }
   const customer = loadCustomerId(userId);
   if (!customer) {
-    return emptyEntitlement(`月額${BILLING.monthlyYen}円または年額${BILLING.annualYen.toLocaleString("ja-JP")}円。初回${BILLING.trialDays}日間は無料です。`);
+    return emptyEntitlement(HOSTED_PRICE_COPY);
   }
   const list = await getStripe().subscriptions.list({
     customer,

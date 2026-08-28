@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { authClient, authEnabled, signInWithGoogle } from "@/lib/auth/client";
+import { HOSTED_PRICE_COPY } from "@/lib/billing-plan";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/login")({ component: Login });
@@ -57,7 +58,8 @@ function Login() {
       <form className="w-full max-w-sm" onSubmit={(e) => void submit(e)}>
         <p className="text-xs tracking-[0.2em] text-faint">YUI</p>
         <h1 className="mt-2 font-display text-4xl text-fg">結に入る</h1>
-        <p className="mt-2 mb-8 text-sm text-muted">自分の家だけが見えます。アカウントが必要です。</p>
+        <p className="mt-2 text-sm text-muted">自分の家だけが見えます。アカウントが必要です。</p>
+        <p className="mt-4 mb-8 text-sm text-fg">{HOSTED_PRICE_COPY}</p>
         {authEnabled ? (
           <div className="space-y-3">
             <Button
