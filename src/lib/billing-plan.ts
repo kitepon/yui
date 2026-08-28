@@ -13,5 +13,5 @@ export const BILLING = {
 export const MONTHLY_YEN_LABEL = `${BILLING.monthlyYen.toLocaleString("ja-JP")}円`;
 export const ANNUAL_YEN_LABEL = `${BILLING.annualYen.toLocaleString("ja-JP")}円`;
 
-/** 契約前に出す公式hosted版の料金。入る画面と未契約時の案内で同じ文を使う。 */
-export const HOSTED_PRICE_COPY = `月額${MONTHLY_YEN_LABEL}または年額${ANNUAL_YEN_LABEL}。初回${BILLING.trialDays}日間は無料です。`;
+/** 契約前に出す公式hosted版の料金。年額と無料のあと有料を先に書く。入る画面と未契約時の案内で同じ文を使う。 */
+export const HOSTED_PRICE_COPY = `年額${ANNUAL_YEN_LABEL}。無料のあと有料です。初回${BILLING.trialDays}日間は無料、月額は${MONTHLY_YEN_LABEL}です。`;
