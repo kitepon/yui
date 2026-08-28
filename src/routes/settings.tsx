@@ -264,7 +264,7 @@ export function SettingsPage() {
           <ConnectorCard
             title="ダイキン"
             badge="自宅のLAN直結"
-            desc="無線LAN内蔵のダイキンエアコンと家の中で直接会話します。クラウドも Alexa スキルも通りません。"
+            desc="無線LAN内蔵のダイキンエアコンと家の中で直接会話します。風向は自動・固定・スイング。自動運転の相対温度と外気温も扱います。クラウドも Alexa スキルも通りません。"
             connected={connectors.daikin.connected}
             deviceCount={connectors.daikin.deviceCount}
             error={connectors.daikin.error}

@@ -69,7 +69,7 @@ Product decisions live in [docs/00_direction.md](docs/00_direction.md).
 
 - Odelic lighting protocol and the author's private bridge are not distributed in this repository.
 - Pre-2018 Daikin adapters using the older API are not supported.
-- Direct Daikin control has been measured on one 2020 Urusara X unit; other models are not yet verified.
+- Direct Daikin control has been measured on one 2020 Urusara X unit; other models are not yet verified. Airflow direction is auto, fixed, or swing — stepped vane positions, Powerful, and Streamer are not exposed.
 - Unknown cloud device types, vacuums, humidifiers, and Nature Remo left/right swing are out of scope. Smart Life cannot send commands the device does not expose.
 - While releases are `v0.x`, long-term database and configuration upgrade compatibility is not guaranteed.
 - The native iPhone app and the production Cloudflare migration remain future work.
