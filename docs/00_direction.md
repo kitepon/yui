@@ -34,6 +34,7 @@
 - Tuya の `category` と SwitchBot の `deviceType` から結の kind への写しは、Home Assistant core（Apache-2.0）の静的表。正本は `src/lib/home/ha-catalog.ts`。
 - Nature Remo エアコンの風量・風向は hass-nature-remo（MIT）と同じ `air_volume` / `air_direction`。Remo の風向は上下が主で、左右の独立指定は持たない。
 - 結に kind が無い機種（掃除機・加湿器など）は一覧に出ても詳細操作を出さない。未実装を実装済みに見せない。
+- ダイキン直結の風向は自動・固定・上下スイング・左右スイングだけ。固定羽根の多段位置は出さない。自動運転の相対温度は `p_1F`、外気温は読み取りだけ。
 - 新しい種別を画面へ載せるには、接続タブでその社を再同期する。
 
 ## オーデリック（この repo は対応を配布しない / オーナー裁定 2026-08-21）

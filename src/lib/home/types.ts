@@ -19,7 +19,7 @@ export type DeviceKind =
 
 export type AcMode = "cool" | "heat" | "dry" | "fan" | "auto" | "humidify";
 export type FanSpeed = "auto" | "quiet" | "1" | "2" | "3" | "4" | "5";
-export type FanSwing = "off" | "vertical" | "horizontal" | "both";
+export type FanSwing = "auto" | "off" | "vertical" | "horizontal" | "both";
 
 export type DeviceSource = "live" | "demo";
 
@@ -47,6 +47,8 @@ export interface Device {
   /** エアコンの実機能力表（同期時に Nature から取得）。モード → 選べる温度値の昇順リスト。空はそのモードで温度指定不可。無い機器は従来の固定範囲で扱う。 */
   acModes?: Partial<Record<AcMode, string[]>>;
   humidity?: number;
+  /** ダイキン直結の室外温度。設定ではなく読み取り。 */
+  outdoorTemp?: number;
   lux?: number;
   position?: number;
   extra?: string;
@@ -171,7 +173,7 @@ export const AC_MODE_LABEL: Record<AcMode, string> = {
   humidify: "加湿",
 };
 
-export const FAN_SWINGS: FanSwing[] = ["off", "vertical", "horizontal", "both"];
+export const FAN_SWINGS: FanSwing[] = ["auto", "off", "vertical", "horizontal", "both"];
 
 export const FAN_SPEED_LABEL: Record<FanSpeed, string> = {
   auto: "自動",
@@ -184,6 +186,7 @@ export const FAN_SPEED_LABEL: Record<FanSpeed, string> = {
 };
 
 export const FAN_SWING_LABEL: Record<FanSwing, string> = {
+  auto: "自動",
   off: "固定",
   vertical: "上下",
   horizontal: "左右",

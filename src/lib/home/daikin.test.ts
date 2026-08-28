@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildDaikinWrite, deviceFromDsiot, flattenDsiot, parseDaikinAddrs, tempListFromRange } from "./daikin.ts";
+import {
+  buildDaikinWrite,
+  deviceFromDsiot,
+  flattenDsiot,
+  parseDaikinAddrs,
+  tempListFromRange,
+  tempListFromSignedRange,
+} from "./daikin.ts";
 
 test("宛先: 部屋=IP と素の IP を読み分ける", () => {
   assert.deepEqual(parseDaikinAddrs("リビング=192.168.1.16, 192.168.1.17"), [
@@ -15,6 +22,12 @@ test("温度範囲: mi〜mx（温度×2）を 0.5 刻みのリストにする", 
   assert.deepEqual(tempListFromRange({ mi: "22", mx: "24" }), ["17", "17.5", "18"]);
   assert.deepEqual(tempListFromRange({}), []);
   assert.deepEqual(tempListFromRange(undefined), []);
+});
+
+test("相対温度: 符号付き温度×2 を 0.5 刻みにする", () => {
+  assert.deepEqual(tempListFromSignedRange({ mi: "FE", mx: "02" }), ["-1", "-0.5", "0", "0.5", "1"]);
+  assert.equal(tempListFromSignedRange({ mi: "F0", mx: "10" })?.[0], "-8");
+  assert.equal(tempListFromSignedRange({ mi: "F0", mx: "10" })?.at(-1), "8");
 });
 
 // 実機 F80XTRXP（2020 うるさらX）の応答から要点を抜いた fixture
@@ -65,7 +78,7 @@ test("読み取り: 実機応答から電源・モード・目標温度・室温
   assert.deepEqual(device.acModes?.dry, []);
   assert.deepEqual(device.acModes?.auto, []);
   assert.equal(device.fanSpeed, "auto");
-  assert.equal(device.fanSwing, "off");
+  assert.equal(device.fanSwing, "auto");
 });
 
 const AC = deviceFromDsiot("リビング", "192.168.1.16", "MAC", flattenDsiot(STATUS));
@@ -174,7 +187,7 @@ test("読み取り: 風量はモード別プロパティ、未知の符号は偽
   assert.equal(dry.fanSpeed, undefined);
 });
 
-test("読み取り: 風向は F の有無でスイングを判定する（実機の固定 100000 は停止）", () => {
+test("読み取り: 風向は自動 100000・固定 000000・スイング 0F0000", () => {
   const withSwing = (mode: string, vPn: string, hPn: string, v: string, h: string) => {
     const m = new Map(flattenDsiot(STATUS));
     m.get("/dgc_status/e_1002/e_3001/p_01")!.pv = mode;
@@ -185,7 +198,8 @@ test("読み取り: 風向は F の有無でスイングを判定する（実機
   assert.equal(withSwing("0200", "p_05", "p_06", "0F0000", "000000").fanSwing, "vertical");
   assert.equal(withSwing("0200", "p_05", "p_06", "000000", "0F0000").fanSwing, "horizontal");
   assert.equal(withSwing("0200", "p_05", "p_06", "0F0000", "0F0000").fanSwing, "both");
-  assert.equal(withSwing("0500", "p_22", "p_23", "100000", "100000").fanSwing, "off");
+  assert.equal(withSwing("0500", "p_22", "p_23", "100000", "100000").fanSwing, "auto");
+  assert.equal(withSwing("0200", "p_05", "p_06", "000000", "000000").fanSwing, "off");
   assert.equal(withSwing("0800", "p_05", "p_06", "0F0000", "0F0000").fanSwing, undefined);
 });
 
@@ -210,6 +224,9 @@ test("書き込み: 風向は上下・左右を対で送る。加湿では送れ
   assert.deepEqual(buildDaikinWrite(AC, { fanSwing: "vertical" }), [
     { pn: "e_3001", pch: [{ pn: "p_05", pv: "0F0000" }, { pn: "p_06", pv: "000000" }] },
   ]);
+  assert.deepEqual(buildDaikinWrite(AC, { fanSwing: "auto" }), [
+    { pn: "e_3001", pch: [{ pn: "p_05", pv: "100000" }, { pn: "p_06", pv: "100000" }] },
+  ]);
   assert.deepEqual(buildDaikinWrite({ ...AC, mode: "dry" }, { fanSwing: "off" }), [
     { pn: "e_3001", pch: [{ pn: "p_22", pv: "000000" }, { pn: "p_23", pv: "000000" }] },
   ]);
@@ -217,4 +234,28 @@ test("書き込み: 風向は上下・左右を対で送る。加湿では送れ
     () => buildDaikinWrite({ ...AC, mode: "humidify" }, { fanSwing: "off" }),
     /風向/,
   );
+});
+
+test("読み取り: 自動運転は p_1D が無ければ相対値 p_1F を使う", () => {
+  const m = new Map(flattenDsiot(STATUS));
+  m.get("/dgc_status/e_1002/e_3001/p_01")!.pv = "0300";
+  m.set("/dgc_status/e_1002/e_3001/p_1F", { pn: "p_1F", pv: "00", md: { st: 245, mi: "F0", mx: "10" } });
+  const device = deviceFromDsiot("リビング", "h", "m", m);
+  assert.equal(device.mode, "auto");
+  assert.equal(device.targetTemp, 0);
+  assert.equal(device.acModes?.auto?.[0], "-8");
+  assert.equal(device.acModes?.auto?.at(-1), "8");
+  assert.deepEqual(buildDaikinWrite(device, { targetTemp: 1 }), [
+    { pn: "e_3001", pch: [{ pn: "p_1F", pv: "02" }] },
+  ]);
+  assert.deepEqual(buildDaikinWrite(device, { targetTemp: -1 }), [
+    { pn: "e_3001", pch: [{ pn: "p_1F", pv: "FE" }] },
+  ]);
+});
+
+test("読み取り: 外気温は adr_0200 の e_A00D から取る", () => {
+  const m = new Map(flattenDsiot(STATUS));
+  m.set("/dgc_status/e_1003/e_A00D/p_01", { pn: "p_01", pv: "4300" });
+  const device = deviceFromDsiot("リビング", "h", "m", m);
+  assert.equal(device.outdoorTemp, 33.5);
 });

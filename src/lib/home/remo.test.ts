@@ -101,7 +101,9 @@ test("風量の語彙は silent をしずかへ、空文字は自動へ", () => 
   assert.equal(remoVolToFanSpeed("silent"), "quiet");
   assert.equal(fanSpeedToRemoVol("quiet"), "silent");
   assert.equal(remoDirToFanSwing("1"), "off");
+  assert.equal(remoDirToFanSwing("auto"), "auto");
   assert.equal(fanSwingToRemoDir("both"), "swing");
+  assert.equal(fanSwingToRemoDir("auto"), "auto");
 });
 
 test("同期: 自動モードの相対値 0 を 26 へ丸めない", () => {

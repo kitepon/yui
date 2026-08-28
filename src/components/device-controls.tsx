@@ -264,7 +264,7 @@ function AcFanSwingControl({
   return (
     <div>
       <p className="mb-1 text-sm text-muted">風向</p>
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-5 gap-1.5">
         {FAN_SWINGS.map((s) => (
           <button
             key={s}

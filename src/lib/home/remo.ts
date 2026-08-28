@@ -75,12 +75,14 @@ export function fanSpeedToRemoVol(speed: FanSpeed): string {
 export function remoDirToFanSwing(dir?: string): FanSwing | undefined {
   if (dir == null) return undefined;
   const d = dir.trim().toLowerCase();
-  if (d === "swing" || d === "sway" || d === "auto") return "vertical";
+  if (d === "auto") return "auto";
+  if (d === "swing" || d === "sway") return "vertical";
   return "off";
 }
 
 export function fanSwingToRemoDir(swing: FanSwing): string {
   if (swing === "off") return "";
+  if (swing === "auto") return "auto";
   return "swing";
 }
 

@@ -10,7 +10,15 @@ import {
   ToggleLeft,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { connectorBadge, stripConnectorFromExtra, AC_MODE_LABEL, FAN_SPEED_LABEL, type Device, type DeviceKind } from "@/lib/home/types";
+import {
+  connectorBadge,
+  stripConnectorFromExtra,
+  AC_MODE_LABEL,
+  FAN_SPEED_LABEL,
+  FAN_SWING_LABEL,
+  type Device,
+  type DeviceKind,
+} from "@/lib/home/types";
 
 const ICONS: Record<DeviceKind, typeof Lamp> = {
   light: Lamp,
@@ -37,6 +45,8 @@ function statusLine(device: Device) {
     const mode = device.mode ? AC_MODE_LABEL[device.mode] : "—";
     const bits = [`${mode} ${device.targetTemp ?? "—"}°`];
     if (device.fanSpeed) bits.push(FAN_SPEED_LABEL[device.fanSpeed]);
+    if (device.fanSwing) bits.push(FAN_SWING_LABEL[device.fanSwing]);
+    if (device.outdoorTemp != null) bits.push(`外${device.outdoorTemp}°`);
     return bits.join(" · ");
   }
   if (device.kind === "curtain") {

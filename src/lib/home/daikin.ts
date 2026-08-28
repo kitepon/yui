@@ -13,7 +13,8 @@ import type { AcMode, Device, FanSpeed, FanSwing } from "./types.ts";
  *   e_A002/p_01 電源、e_3001/p_01 運転モード、e_3001/p_02・p_03 冷房・暖房目標（値は温度×2）、
  *   e_A00B/p_01 室温、e_A00B/p_02 湿度。
  *   風量はモード別（自動 p_26 / 冷房 p_09 / 暖房 p_0A / 送風 p_28。除湿は自動固定でプロパティなし）。
- *   風向スイングもモード別（上下・左右の対。停止 000000 / スイング 0F0000。固定羽根の多段位置は未解読）。
+ *   風向もモード別（上下・左右の対。自動 100000 / 固定 000000 / スイング 0F0000。固定羽根の多段位置は未解読）。
+ *   自動運転の相対温度は p_1D が無い機種では p_1F。外気温は adr_0200 の e_A00D/p_01。
  */
 
 const NOT_CONFIGURED = "ダイキン直結（YUI_DAIKIN_ADDRS）が未設定です。";
@@ -146,15 +147,32 @@ const SWING_PROP: Partial<Record<AcMode, { vertical: string; horizontal: string 
 
 const SWING_OFF = "000000";
 const SWING_ON = "0F0000";
+const SWING_AUTO = "100000";
+
+function axisFromDsiot(raw?: unknown): "swing" | "auto" | "off" | undefined {
+  if (typeof raw !== "string") return undefined;
+  if (/f/i.test(raw)) return "swing";
+  if (raw.toLowerCase().startsWith("10")) return "auto";
+  return "off";
+}
 
 function swingFromDsiot(vertical?: unknown, horizontal?: unknown): FanSwing | undefined {
-  if (typeof vertical !== "string" || typeof horizontal !== "string") return undefined;
-  const vert = /f/i.test(vertical);
-  const horiz = /f/i.test(horizontal);
-  if (vert && horiz) return "both";
-  if (vert) return "vertical";
-  if (horiz) return "horizontal";
+  const vert = axisFromDsiot(vertical);
+  const horiz = axisFromDsiot(horizontal);
+  if (vert == null || horiz == null) return undefined;
+  if (vert === "swing" && horiz === "swing") return "both";
+  if (vert === "swing") return "vertical";
+  if (horiz === "swing") return "horizontal";
+  if (vert === "auto" || horiz === "auto") return "auto";
   return "off";
+}
+
+function swingToDsiot(swing: FanSwing): { vertical: string; horizontal: string } {
+  if (swing === "auto") return { vertical: SWING_AUTO, horizontal: SWING_AUTO };
+  if (swing === "both") return { vertical: SWING_ON, horizontal: SWING_ON };
+  if (swing === "vertical") return { vertical: SWING_ON, horizontal: SWING_OFF };
+  if (swing === "horizontal") return { vertical: SWING_OFF, horizontal: SWING_ON };
+  return { vertical: SWING_OFF, horizontal: SWING_OFF };
 }
 
 type DaikinCmd = {
@@ -175,8 +193,32 @@ function halfDeg(hex: unknown): number | undefined {
 /** 符号付き1バイトの整数（室温・湿度）。 */
 function signedByte(hex: unknown): number | undefined {
   if (typeof hex !== "string" || !hex) return undefined;
-  const v = parseInt(hex, 16);
+  const v = parseInt(hex.slice(0, 2), 16);
+  if (!Number.isFinite(v)) return undefined;
   return v > 0x7f ? v - 0x100 : v;
+}
+
+/** 符号付き温度×2（自動運転の相対値 p_1F）。 */
+function signedHalfDeg(hex: unknown): number | undefined {
+  const n = signedByte(hex);
+  return n == null ? undefined : n / 2;
+}
+
+function toSignedHalfDegHex(temp: number): string {
+  let n = Math.round(temp * 2);
+  if (n < 0) n += 256;
+  return n.toString(16).padStart(2, "0").toUpperCase();
+}
+
+/** md の mi〜mx（符号付き温度×2）から相対温度リストを 0.5 刻みで作る。 */
+export function tempListFromSignedRange(md?: { mi?: string; mx?: string }): string[] {
+  if (!md?.mi || !md.mx) return [];
+  const lo = signedHalfDeg(md.mi);
+  const hi = signedHalfDeg(md.mx);
+  if (lo == null || hi == null || hi < lo) return [];
+  const out: string[] = [];
+  for (let t = lo; t <= hi + 1e-9; t += 0.5) out.push(String(t));
+  return out;
 }
 
 /** md の mi〜mx（温度×2）から選べる温度リストを 0.5 刻みで作る。 */
@@ -200,16 +242,20 @@ export function deviceFromDsiot(
   const mode = MODE_FROM_DSIOT[modeRaw];
   const cool = status.get("/dgc_status/e_1002/e_3001/p_02");
   const heat = status.get("/dgc_status/e_1002/e_3001/p_03");
-  const auto = status.get("/dgc_status/e_1002/e_3001/p_1D");
-  const targetNode = mode === "cool" ? cool : mode === "heat" ? heat : mode === "auto" ? auto : undefined;
+  const autoAbs = status.get("/dgc_status/e_1002/e_3001/p_1D");
+  const autoRel = status.get("/dgc_status/e_1002/e_3001/p_1F");
   const acModes: Device["acModes"] = {
     cool: tempListFromRange(cool?.md),
     heat: tempListFromRange(heat?.md),
     dry: [],
     fan: [],
   };
-  // 自動の目標温度プロパティ（p_1D）を持たない機種でも自動運転自体はできる。
-  acModes.auto = auto ? tempListFromRange(auto.md) : [];
+  // 絶対温度 p_1D が無い機種は相対値 p_1F。どちらも無いときは温度指定なし。
+  acModes.auto = autoAbs ? tempListFromRange(autoAbs.md) : autoRel ? tempListFromSignedRange(autoRel.md) : [];
+  const autoRelative = !autoAbs && Boolean(autoRel);
+  const targetNode = mode === "cool" ? cool : mode === "heat" ? heat : mode === "auto" ? autoAbs ?? autoRel : undefined;
+  const targetTemp =
+    mode === "auto" && autoRelative ? signedHalfDeg(autoRel?.pv) : halfDeg(targetNode?.pv);
   // 加湿（うるる加湿）を持つ機種は目標湿度 p_32 を公開する。それを対応の印にする。
   if (status.get("/dgc_status/e_1002/e_3001/p_32")) acModes.humidify = [];
   // 目標湿度: 除湿は p_31 が種別（01=湿度指定 / 06=連続）・p_30 が %、加湿は p_33・p_32 の対（実機観測）
@@ -243,24 +289,26 @@ export function deviceFromDsiot(
     connector: "daikin",
     on: status.get("/dgc_status/e_1002/e_A002/p_01")?.pv === "01",
     mode,
-    targetTemp: halfDeg(targetNode?.pv),
+    targetTemp,
     targetHumidity: dryHumidity,
     fanSpeed,
     fanSwing,
     temperature: signedByte(status.get("/dgc_status/e_1002/e_A00B/p_01")?.pv),
     humidity: signedByte(status.get("/dgc_status/e_1002/e_A00B/p_02")?.pv),
+    outdoorTemp: signedHalfDeg(status.get("/dgc_status/e_1003/e_A00D/p_01")?.pv),
     acModes,
     extra: `直結 · ${host}`,
   };
 }
 
 async function readOne(room: string, host: string): Promise<Device> {
-  const [info, statusRoots] = await Promise.all([
+  const [info, statusRoots, outdoorRoots] = await Promise.all([
     multireq(host, [{ op: 2, to: "/dsiot/edge.adp_i" }]),
     multireq(host, [{ op: 2, to: "/dsiot/edge/adr_0100.dgc_status?filter=pv,pt,md" }]),
+    multireq(host, [{ op: 2, to: "/dsiot/edge/adr_0200.dgc_status?filter=pv,pt,md" }]),
   ]);
   const mac = String(flattenDsiot(info).get("/adp_i/mac")?.pv ?? host.replace(/\./g, "-"));
-  return deviceFromDsiot(room, host, mac, flattenDsiot(statusRoots));
+  return deviceFromDsiot(room, host, mac, flattenDsiot([...statusRoots, ...outdoorRoots]));
 }
 
 export async function daikinSync(): Promise<{ devices: Device[] }> {
@@ -309,13 +357,18 @@ export function buildDaikinWrite(device: Device, cmd: DaikinCmd): DsiotWrite[] {
   }
   if (cmd.targetTemp != null) {
     const mode = device.mode;
-    const prop = mode === "cool" ? "p_02" : mode === "heat" ? "p_03" : null;
     const list = mode ? device.acModes?.[mode] : undefined;
+    const relative = Boolean(list?.some((t) => Number(t) < 0));
+    const prop =
+      mode === "cool" ? "p_02" : mode === "heat" ? "p_03" : mode === "auto" ? (relative ? "p_1F" : "p_1D") : null;
     if (prop && list?.length) {
       const hit = list.reduce((a, b) =>
         Math.abs(Number(b) - cmd.targetTemp!) < Math.abs(Number(a) - cmd.targetTemp!) ? b : a,
       );
-      props.push({ pn: prop, pv: toHalfDegHex(Number(hit)) });
+      props.push({
+        pn: prop,
+        pv: relative ? toSignedHalfDegHex(Number(hit)) : toHalfDegHex(Number(hit)),
+      });
     }
   }
   if (cmd.targetHumidity != null && (device.mode === "dry" || device.mode === "humidify")) {
@@ -335,10 +388,9 @@ export function buildDaikinWrite(device: Device, cmd: DaikinCmd): DsiotWrite[] {
   if (cmd.fanSwing) {
     const axes = device.mode ? SWING_PROP[device.mode] : undefined;
     if (!axes) throw new Error(`${device.name} はこの運転では風向を変えられません`);
-    const vert = cmd.fanSwing === "vertical" || cmd.fanSwing === "both" ? SWING_ON : SWING_OFF;
-    const horiz = cmd.fanSwing === "horizontal" || cmd.fanSwing === "both" ? SWING_ON : SWING_OFF;
-    props.push({ pn: axes.vertical, pv: vert });
-    props.push({ pn: axes.horizontal, pv: horiz });
+    const pv = swingToDsiot(cmd.fanSwing);
+    props.push({ pn: axes.vertical, pv: pv.vertical });
+    props.push({ pn: axes.horizontal, pv: pv.horizontal });
   }
   if (props.length) entities.push({ pn: "e_3001", pch: props });
   return entities;
