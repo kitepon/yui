@@ -18,6 +18,7 @@
 <p align="center">
   <a href="https://github.com/kitepon/yui/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kitepon/yui/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-37584b"></a>
+  <a href="https://yuihome.kitepon.dev"><img alt="Hosted" src="https://img.shields.io/badge/hosted-yuihome.kitepon.dev-bb4d36"></a>
 </p>
 
 ## What Yui does
@@ -25,7 +26,7 @@
 - Brings Nature Remo, SwitchBot, and Smart Life (Tuya) devices into one dashboard.
 - Controls supported Daikin air conditioners directly over your LAN, without a cloud round trip.
 - Runs multi-device scenes and server-side automations triggered by time or sensor readings. Values shown on screen are saved even if left at their defaults. Sensor thresholds accept one decimal place. In-range conditions send a command only when the current setting differs, and only to devices that can report that setting.
-- Works with Alexa Smart Home and can be installed from Safari as a home-screen web app.
+- Works with Alexa Smart Home and can be installed from Safari as a home-screen web app. The official skill 「結ホーム」 is under Amazon review (submitted 2026-08-23). Until it is published, you can run your own skill from your server by following [docs/alexa.md](docs/alexa.md).
 
 Yui only shows modes and temperature ranges reported by each air conditioner. Unsupported controls are not presented as if they worked.
 
@@ -60,6 +61,10 @@ Development runs at `http://localhost:8080`. Production is designed for Docker b
 
 Required values are `BETTER_AUTH_SECRET`, `HOME_SECRETS_KEY`, and `BETTER_AUTH_URL`. Losing `HOME_SECRETS_KEY` makes stored device tokens impossible to decrypt.
 
+For direct Daikin control, set `YUI_DAIKIN_ADDRS` (for example `リビング=192.168.0.10`) and run Yui on the same LAN as the home.
+
+Product decisions live in [docs/00_direction.md](docs/00_direction.md).
+
 ## Current limits
 
 - Odelic lighting protocol and the author's private bridge are not distributed in this repository.
@@ -71,6 +76,6 @@ Required values are `BETTER_AUTH_SECRET`, `HOME_SECRETS_KEY`, and `BETTER_AUTH_U
 
 For vulnerabilities, use the private route in [SECURITY.md](SECURITY.md). For bugs and compatibility reports, use [GitHub Issues](https://github.com/kitepon/yui/issues). Contributions are described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Yui is an Independent Product operated and supported by [kitepon.dev](https://kitepon.dev). Licensed under the [MIT License](LICENSE), without warranty.
+Yui is an Independent Product operated and supported by [kitepon.dev](https://kitepon.dev). It brings kitepon.dev's stance — 「面白いを見つけ、面白いを動かす。」— to everyday home control. Licensed under the [MIT License](LICENSE), without warranty.
 
 Release history is recorded in [CHANGELOG.md](CHANGELOG.md).
