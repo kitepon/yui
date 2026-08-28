@@ -265,17 +265,54 @@ export const METRIC_LABEL: Record<SensorMetric, string> = {
   lux: "照度",
 };
 
+/** 画面に出している初期値。触らなくても保存する。 */
+export function completeTrigger(trigger: AutoTrigger): AutoTrigger {
+  if (trigger.type === "time") {
+    const repeat = trigger.repeat ?? "daily";
+    if (repeat === "interval") {
+      return { type: "time", repeat, everyHours: trigger.everyHours ?? 2 };
+    }
+    const next: AutoTrigger = {
+      type: "time",
+      repeat,
+      hour: trigger.hour ?? 7,
+      minute: trigger.minute ?? 0,
+    };
+    if (repeat === "weekly") next.days = trigger.days?.length ? trigger.days : [0, 6];
+    return next;
+  }
+  if (trigger.type === "device") {
+    return { type: "device", deviceId: trigger.deviceId, deviceOn: trigger.deviceOn ?? true };
+  }
+  if (trigger.type === "scene") {
+    return { type: "scene", sceneId: trigger.sceneId };
+  }
+  const op = trigger.op ?? "gte";
+  const next: AutoTrigger = {
+    type: "sensor",
+    deviceId: trigger.deviceId,
+    metric: trigger.metric ?? "temperature",
+    op,
+    value: trigger.value ?? (op === "between" ? 24 : 28),
+  };
+  if (op === "between") {
+    next.valueMax = trigger.valueMax ?? Math.min(100, (next.value ?? 24) + 2);
+  }
+  return next;
+}
+
 export function migrateAutomation(raw: unknown): Automation | null {
   if (!raw || typeof raw !== "object") return null;
   const a = raw as Record<string, unknown>;
   if (!a.id) return null;
-  const trigger = (a.trigger as AutoTrigger | undefined) ?? {
-    type: "time" as const,
-    repeat: "daily" as const,
-    hour: typeof a.hour === "number" ? a.hour : 7,
-    minute: typeof a.minute === "number" ? a.minute : 0,
-  };
-  if (trigger.type === "time" && !trigger.repeat) trigger.repeat = "daily";
+  const trigger = completeTrigger(
+    (a.trigger as AutoTrigger | undefined) ?? {
+      type: "time" as const,
+      repeat: "daily" as const,
+      hour: typeof a.hour === "number" ? a.hour : 7,
+      minute: typeof a.minute === "number" ? a.minute : 0,
+    },
+  );
   const rawActions = (Array.isArray(a.actions) ? a.actions : []) as Array<AutoAction & { type?: string; sceneId?: string }>;
   const actions = rawActions
     .filter((x) => x && x.type !== "scene")

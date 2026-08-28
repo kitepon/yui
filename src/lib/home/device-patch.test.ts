@@ -6,6 +6,7 @@ import {
   canSetFanSpeed,
   canSetFanSwing,
   canSetTargetHumidity,
+  fillVisibleDefaults,
   patchAlreadyApplied,
   patchFromAction,
   reportsActuatorState,
@@ -71,6 +72,34 @@ test("操作の合成は、その運転では送れない項目を落とす", ()
 test("patchFromAction は載っている項目だけを残す", () => {
   assert.deepEqual(patchFromAction({ on: true, fanSpeed: "3" }), { on: true, fanSpeed: "3" });
   assert.deepEqual(patchFromAction({}), {});
+});
+
+test("画面に出ているエアコンの項目は、触っていなくても載せる", () => {
+  const seeded = fillVisibleDefaults(
+    ac({ acModes: { cool: ["18", "24", "26"], heat: ["16"], dry: [], fan: [], auto: [], humidify: [] } }),
+    { on: true },
+  );
+  assert.equal(seeded.on, true);
+  assert.equal(seeded.mode, "cool");
+  assert.equal(seeded.targetTemp, 24);
+  assert.equal(seeded.fanSpeed, "auto");
+  assert.equal(seeded.fanSwing, "off");
+});
+
+test("触った値は機器のいまの値で上書きしない", () => {
+  const seeded = fillVisibleDefaults(ac(), { on: true, mode: "heat", targetTemp: 20 });
+  assert.equal(seeded.mode, "heat");
+  assert.equal(seeded.targetTemp, 20);
+});
+
+test("運転を変えたあとに新しく出る項目も空にしない", () => {
+  const next = fillVisibleDefaults(
+    ac(),
+    applyDevicePatch({ on: true, mode: "cool", fanSpeed: "quiet", targetTemp: 24 }, ac(), { mode: "dry" }),
+  );
+  assert.equal(next.mode, "dry");
+  assert.equal(next.fanSpeed, undefined);
+  assert.equal(next.targetHumidity, 50);
 });
 
 test("ダイキンと Smart Life は設定を読み返せ、SwitchBot IR と学習リモコンは読めない", () => {

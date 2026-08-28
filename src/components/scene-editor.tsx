@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Select } from "@/components/automation-editor";
 import { DeviceControls } from "@/components/device-controls";
 import { Button } from "@/components/ui/button";
-import { applyDevicePatch, patchFromAction } from "@/lib/home/device-patch";
+import { applyDevicePatch, fillVisibleDefaults, patchFromAction } from "@/lib/home/device-patch";
 import { useHome } from "@/lib/home/store";
 import { type Scene, type SceneStep, newActionId } from "@/lib/home/types";
 
@@ -27,7 +27,14 @@ export function SceneEditor({
       toast.error("名前を入れてください");
       return;
     }
-    const payload = { name: name.trim(), hint: hint.trim(), steps };
+    const payload = {
+      name: name.trim(),
+      hint: hint.trim(),
+      steps: steps.map((step) => {
+        const device = actuators.find((d) => d.id === step.match.id);
+        return device ? { ...step, patch: fillVisibleDefaults(device, step.patch) } : step;
+      }),
+    };
     if (initial) updateScene(initial.id, payload);
     else addScene(payload);
     toast.success("保存しました");
@@ -83,7 +90,14 @@ export function SceneEditor({
                   value={id}
                   onChange={(deviceId) =>
                     setSteps(
-                      steps.map((s, i) => (i === index ? { match: { id: deviceId }, patch: { on: true } } : s)),
+                      steps.map((s, i) => {
+                        if (i !== index) return s;
+                        const nextDevice = actuators.find((d) => d.id === deviceId);
+                        return {
+                          match: { id: deviceId },
+                          patch: nextDevice ? fillVisibleDefaults(nextDevice, { on: true }) : { on: true },
+                        };
+                      }),
                     )
                   }
                   options={actuators.map((d) => ({ id: d.id, label: `${d.room} ${d.name}` }))}
@@ -95,7 +109,15 @@ export function SceneEditor({
                       onChange={(_, patch) =>
                         setSteps(
                           steps.map((s, i) =>
-                            i === index ? { ...s, patch: applyDevicePatch(s.patch, preview, patch) } : s,
+                            i === index
+                              ? {
+                                  ...s,
+                                  patch: fillVisibleDefaults(
+                                    device ?? preview,
+                                    applyDevicePatch(s.patch, preview, patch),
+                                  ),
+                                }
+                              : s,
                           ),
                         )
                       }
@@ -113,7 +135,13 @@ export function SceneEditor({
           onClick={() =>
             setSteps([
               ...steps,
-              { match: { id: actuators[0]?.id ?? newActionId() }, patch: { on: true } },
+              (() => {
+                const device = actuators[0];
+                return {
+                  match: { id: device?.id ?? newActionId() },
+                  patch: device ? fillVisibleDefaults(device, { on: true }) : { on: true },
+                };
+              })(),
             ])
           }
         >

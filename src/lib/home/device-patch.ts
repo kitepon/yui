@@ -1,5 +1,11 @@
 import type { AcMode, Device, DeviceCommand } from "./types.ts";
-import { AC_MODE_LABEL, FAN_SPEED_LABEL, FAN_SWING_LABEL } from "./types.ts";
+import {
+  AC_MODE_LABEL,
+  DRY_HUMIDITY_CHOICES,
+  FAN_SPEED_LABEL,
+  FAN_SWING_LABEL,
+  HUMIDIFY_HUMIDITY_CHOICES,
+} from "./types.ts";
 
 /** DeviceCommand から機器 id を除いた、機器へ送る操作。 */
 export type DevicePatch = Omit<DeviceCommand, "id">;
@@ -59,6 +65,61 @@ export function patchFromAction(action: DevicePatch): DevicePatch {
   if (action.mode) patch.mode = action.mode;
   if (action.position != null) patch.position = action.position;
   return patch;
+}
+
+function nearestTempIndex(temps: string[], target: number) {
+  let best = 0;
+  for (let i = 0; i < temps.length; i++) {
+    if (Math.abs(Number(temps[i]) - target) < Math.abs(Number(temps[best]) - target)) best = i;
+  }
+  return best;
+}
+
+/**
+ * 画面に出ている操作項目を、触っていなくても実データへ載せる。
+ * 未指定のまま保存すると、一覧も実行もその項目が空になる。
+ */
+export function fillVisibleDefaults<T extends DevicePatch>(device: Device, action: T): T {
+  const next: T = { ...action };
+  if (next.on === undefined) next.on = device.on ?? true;
+
+  if (device.kind === "light") {
+    if (next.on !== false && next.brightness == null) next.brightness = device.brightness ?? 80;
+    return applyDevicePatch(next, device, {});
+  }
+  if (device.kind === "curtain") {
+    if (next.position == null) next.position = device.position ?? 0;
+    return applyDevicePatch(next, device, {});
+  }
+  if (device.kind !== "ac") return applyDevicePatch(next, device, {});
+
+  const modes = acModesOf({ ...device, ...patchFromAction(next) });
+  if (!next.mode && modes.length) {
+    next.mode = device.mode && modes.includes(device.mode) ? device.mode : modes[0];
+  }
+  const preview: Device = { ...device, ...patchFromAction(next) };
+  const temps = acTempsOf(preview);
+  if (temps.length && next.targetTemp == null) {
+    const relative = temps.some((t) => Number(t) < 0);
+    const fromDevice = preview.targetTemp;
+    const exact = fromDevice != null ? temps.findIndex((t) => Number(t) === fromDevice) : -1;
+    if (exact >= 0) next.targetTemp = Number(temps[exact]);
+    else if (relative) next.targetTemp = Number(temps[Math.max(temps.indexOf("0"), 0)]);
+    else next.targetTemp = Number(temps[nearestTempIndex(temps, fromDevice ?? 26)]);
+  }
+  if (canSetTargetHumidity(preview) && next.targetHumidity == null) {
+    const choices = preview.mode === "dry" ? DRY_HUMIDITY_CHOICES : HUMIDIFY_HUMIDITY_CHOICES;
+    const fromDevice = preview.targetHumidity;
+    next.targetHumidity =
+      fromDevice != null && (choices as readonly number[]).includes(fromDevice)
+        ? fromDevice
+        : choices.includes(50)
+          ? 50
+          : choices[0];
+  }
+  if (canSetFanSpeed(preview) && !next.fanSpeed) next.fanSpeed = preview.fanSpeed ?? "auto";
+  if (canSetFanSwing(preview) && !next.fanSwing) next.fanSwing = preview.fanSwing ?? "off";
+  return applyDevicePatch(next, device, {});
 }
 
 /**

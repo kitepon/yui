@@ -4,7 +4,12 @@ import { Button } from "@/components/ui/button";
 import { DeviceControls } from "@/components/device-controls";
 import { useHome } from "@/lib/home/store";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
-import { applyDevicePatch, patchFromAction, reportsActuatorState } from "@/lib/home/device-patch";
+import {
+  applyDevicePatch,
+  fillVisibleDefaults,
+  patchFromAction,
+  reportsActuatorState,
+} from "@/lib/home/device-patch";
 import { parseDecimalInput, roundToStep } from "@/lib/home/round-to-step";
 import {
   type AutoAction,
@@ -15,6 +20,7 @@ import {
   type TimeRepeat,
   METRIC_LABEL,
   WEEKDAYS,
+  completeTrigger,
   newActionId,
 } from "@/lib/home/types";
 
@@ -66,7 +72,10 @@ export function AutomationEditor({
       toast.error("アクションを1つ以上入れてください");
       return;
     }
-    const nextTrigger = { ...trigger };
+    const nextTrigger = completeTrigger(trigger);
+    if (nextTrigger.type === "device" && !nextTrigger.deviceId) nextTrigger.deviceId = actuators[0]?.id;
+    if (nextTrigger.type === "scene" && !nextTrigger.sceneId) nextTrigger.sceneId = scenes[0]?.id;
+    if (nextTrigger.type === "sensor" && !nextTrigger.deviceId) nextTrigger.deviceId = sensors[0]?.id;
     if (nextTrigger.type === "sensor" && nextTrigger.op === "between") {
       if (nextTrigger.value == null || nextTrigger.valueMax == null) {
         toast.error("下限と上限を入れてください");
@@ -89,7 +98,12 @@ export function AutomationEditor({
       name: name.trim() || "オートメーション",
       enabled: initial?.enabled ?? true,
       trigger: nextTrigger,
-      actions,
+      actions: actions.map((action) => {
+        const deviceId = action.deviceId ?? actionDevices[0]?.id;
+        const device = devices.find((d) => d.id === deviceId);
+        const next = { ...action, deviceId };
+        return device ? fillVisibleDefaults(device, next) : next;
+      }),
     };
     if (initial) updateAutomation(initial.id, { ...payload, lastFiredKey: undefined });
     else addAutomation(payload);
@@ -326,7 +340,13 @@ export function AutomationEditor({
               toast.error("範囲条件に使える機器がありません");
               return;
             }
-            setActions([...actions, { id: newActionId(), deviceId, on: true }]);
+            const device = actionDevices.find((d) => d.id === deviceId);
+            setActions([
+              ...actions,
+              device
+                ? fillVisibleDefaults(device, { id: newActionId(), deviceId, on: true })
+                : { id: newActionId(), deviceId, on: true },
+            ]);
           }}
         >
           機器を足す
@@ -366,14 +386,23 @@ function ActionFields({
       <Select
         label="機器"
         value={action.deviceId ?? ""}
-        onChange={(deviceId) => onChange({ id: action.id, deviceId, on: true })}
+        onChange={(deviceId) => {
+          const nextDevice = devices.find((d) => d.id === deviceId);
+          onChange(
+            nextDevice
+              ? fillVisibleDefaults(nextDevice, { id: action.id, deviceId, on: true })
+              : { id: action.id, deviceId, on: true },
+          );
+        }}
         options={devices.map((d) => ({ id: d.id, label: `${d.room} ${d.name}` }))}
       />
       {preview ? (
         <div className="mt-3">
           <DeviceControls
             device={preview}
-            onChange={(_, patch) => onChange(applyDevicePatch(action, preview, patch))}
+            onChange={(_, patch) =>
+              onChange(fillVisibleDefaults(device ?? preview, applyDevicePatch(action, preview, patch)))
+            }
           />
         </div>
       ) : null}
@@ -456,11 +485,14 @@ export function Select({
   onChange: (v: string) => void;
   options: { id: string; label: string }[];
 }) {
+  const firstId = options[0]?.id ?? "";
+  const shown = options.some((o) => o.id === value) ? value : value || firstId;
+
   return (
     <label className="mt-2 block">
       <span className="mb-1 block text-xs text-muted">{label}</span>
       <select
-        value={value}
+        value={shown}
         onChange={(e) => onChange(e.target.value)}
         className="h-12 w-full rounded-md border border-border bg-bg px-3 text-base text-fg"
       >
