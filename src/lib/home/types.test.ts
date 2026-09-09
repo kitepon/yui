@@ -4,15 +4,57 @@ import {
   completeTrigger,
   connectorBadge,
   migrateAutomation,
+  migrateOutdoorSensorTrigger,
+  sensorMetricsOf,
   sensorTempLabel,
   stripConnectorFromExtra,
+  type Device,
 } from "./types.ts";
 
 test("気温の別名は extra をラベルにする", () => {
   assert.equal(sensorTempLabel({ extra: "水温" }), "水温");
-  assert.equal(sensorTempLabel({ extra: "外気温" }), "外気温");
   assert.equal(sensorTempLabel({ extra: "直結 · 192.168.1.16" }), "気温");
   assert.equal(sensorTempLabel(undefined), "気温");
+});
+
+test("ダイキンの外気温はエアコンが持つ値だけ出す", () => {
+  const ac: Device = {
+    id: "daikin:m",
+    name: "ダイキンエアコン",
+    room: "リビング",
+    brand: "daikin",
+    kind: "ac",
+    online: true,
+    source: "live",
+    nativeId: "h",
+    connector: "daikin",
+    temperature: 23,
+    humidity: 55,
+    outdoorTemp: 19.5,
+  };
+  assert.deepEqual(sensorMetricsOf(ac), ["temperature", "humidity", "outdoorTemp"]);
+  assert.deepEqual(sensorMetricsOf({ ...ac, outdoorTemp: undefined }), ["temperature", "humidity"]);
+});
+
+test("独立の外気温センサー条件はエアコンの外気温へ写す", () => {
+  const t = migrateOutdoorSensorTrigger({
+    type: "sensor",
+    deviceId: "daikin-outdoor:AABB",
+    metric: "temperature",
+    op: "gte",
+    value: 28,
+  });
+  assert.equal(t.deviceId, "daikin:AABB");
+  assert.equal(t.metric, "outdoorTemp");
+  const auto = migrateAutomation({
+    id: "a1",
+    name: "暑い",
+    enabled: true,
+    trigger: { type: "sensor", deviceId: "daikin-outdoor:AABB", metric: "temperature", op: "gte", value: 28 },
+    actions: [],
+  });
+  assert.equal(auto?.trigger.deviceId, "daikin:AABB");
+  assert.equal(auto?.trigger.metric, "outdoorTemp");
 });
 
 test("badge is the connector, not 実機", () => {

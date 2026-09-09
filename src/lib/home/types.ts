@@ -212,7 +212,7 @@ export interface DeviceOverride {
 
 export type AutoTriggerType = "time" | "device" | "scene" | "sensor";
 export type TimeRepeat = "daily" | "interval" | "weekly";
-export type SensorMetric = "temperature" | "humidity" | "lux";
+export type SensorMetric = "temperature" | "humidity" | "lux" | "outdoorTemp";
 export type CompareOp = "gte" | "lte" | "between";
 
 export interface AutoTrigger {
@@ -266,12 +266,31 @@ export const METRIC_LABEL: Record<SensorMetric, string> = {
   temperature: "気温",
   humidity: "湿度",
   lux: "照度",
+  outdoorTemp: "外気温",
 };
 
-/** 水温・外気温のように、気温の別名で出すセンサー。 */
+/** 水温のように、気温の別名で出すセンサー。 */
 export function sensorTempLabel(device: { extra?: string } | undefined) {
-  if (device?.extra === "水温" || device?.extra === "外気温") return device.extra;
+  if (device?.extra === "水温") return device.extra;
   return METRIC_LABEL.temperature;
+}
+
+export function isSensorSource(device: Device) {
+  return (
+    device.kind === "sensor" ||
+    (device.kind === "ac" && (device.temperature != null || device.outdoorTemp != null))
+  );
+}
+
+/** その機器が実際に持っている値だけ。無い項目は出さない。 */
+export function sensorMetricsOf(device: Device | undefined): SensorMetric[] {
+  if (!device) return ["temperature"];
+  const out: SensorMetric[] = [];
+  if (device.temperature != null) out.push("temperature");
+  if (device.humidity != null) out.push("humidity");
+  if (device.lux != null) out.push("lux");
+  if (device.outdoorTemp != null) out.push("outdoorTemp");
+  return out.length ? out : ["temperature"];
 }
 
 /** 画面に出している初期値。触らなくても保存する。 */
@@ -310,17 +329,30 @@ export function completeTrigger(trigger: AutoTrigger): AutoTrigger {
   return next;
 }
 
+/** 独立の外気温センサーを、エアコンの外気温項目へ写す。 */
+export function migrateOutdoorSensorTrigger(trigger: AutoTrigger): AutoTrigger {
+  const id = trigger.deviceId ?? "";
+  if (trigger.type !== "sensor" || !id.startsWith("daikin-outdoor:")) return trigger;
+  return {
+    ...trigger,
+    deviceId: `daikin:${id.slice("daikin-outdoor:".length)}`,
+    metric: "outdoorTemp",
+  };
+}
+
 export function migrateAutomation(raw: unknown): Automation | null {
   if (!raw || typeof raw !== "object") return null;
   const a = raw as Record<string, unknown>;
   if (!a.id) return null;
-  const trigger = completeTrigger(
-    (a.trigger as AutoTrigger | undefined) ?? {
-      type: "time" as const,
-      repeat: "daily" as const,
-      hour: typeof a.hour === "number" ? a.hour : 7,
-      minute: typeof a.minute === "number" ? a.minute : 0,
-    },
+  const trigger = migrateOutdoorSensorTrigger(
+    completeTrigger(
+      (a.trigger as AutoTrigger | undefined) ?? {
+        type: "time" as const,
+        repeat: "daily" as const,
+        hour: typeof a.hour === "number" ? a.hour : 7,
+        minute: typeof a.minute === "number" ? a.minute : 0,
+      },
+    ),
   );
   const rawActions = (Array.isArray(a.actions) ? a.actions : []) as Array<AutoAction & { type?: string; sceneId?: string }>;
   const actions = rawActions

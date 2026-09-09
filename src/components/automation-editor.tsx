@@ -21,7 +21,9 @@ import {
   METRIC_LABEL,
   WEEKDAYS,
   completeTrigger,
+  isSensorSource,
   newActionId,
+  sensorMetricsOf,
 } from "@/lib/home/types";
 
 export function AutomationEditor({
@@ -42,10 +44,7 @@ export function AutomationEditor({
   const [actions, setActions] = useState<AutoAction[]>(initial?.actions ?? []);
 
   const actuators = useMemo(() => devices.filter((d) => d.kind !== "sensor"), [devices]);
-  const sensors = useMemo(
-    () => devices.filter((d) => d.kind === "sensor" || (d.kind === "ac" && d.temperature != null)),
-    [devices],
-  );
+  const sensors = useMemo(() => devices.filter(isSensorSource), [devices]);
   const rangeHold = trigger.type === "sensor" && trigger.op === "between";
   const actionDevices = useMemo(
     () => (rangeHold ? actuators.filter(reportsActuatorState) : actuators),
@@ -57,10 +56,11 @@ export function AutomationEditor({
     if (type === "device") setTrigger({ type, deviceId: actuators[0]?.id, deviceOn: true });
     if (type === "scene") setTrigger({ type, sceneId: scenes[0]?.id });
     if (type === "sensor") {
+      const first = sensors[0];
       setTrigger({
         type,
-        deviceId: sensors[0]?.id,
-        metric: "temperature",
+        deviceId: first?.id,
+        metric: sensorMetricsOf(first)[0] ?? "temperature",
         op: "gte",
         value: 28,
       });
@@ -251,14 +251,24 @@ export function AutomationEditor({
             <Select
               label="センサー"
               value={trigger.deviceId ?? ""}
-              onChange={(deviceId) => setTrigger({ ...trigger, deviceId })}
+              onChange={(deviceId) => {
+                const device = sensors.find((d) => d.id === deviceId);
+                const metrics = sensorMetricsOf(device);
+                const metric = metrics.includes(trigger.metric ?? "temperature")
+                  ? trigger.metric
+                  : metrics[0];
+                setTrigger({ ...trigger, deviceId, metric });
+              }}
               options={sensors.map((d) => ({ id: d.id, label: `${d.room} ${d.name}` }))}
             />
             <Select
               label="値"
               value={trigger.metric ?? "temperature"}
               onChange={(metric) => setTrigger({ ...trigger, metric: metric as AutoTrigger["metric"] })}
-              options={Object.entries(METRIC_LABEL).map(([id, label]) => ({ id, label }))}
+              options={sensorMetricsOf(sensors.find((d) => d.id === trigger.deviceId)).map((id) => ({
+                id,
+                label: METRIC_LABEL[id],
+              }))}
             />
             <Select
               label="条件"

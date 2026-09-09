@@ -1,11 +1,11 @@
 import type { HomeSnapshot } from "@/lib/home/snapshot";
-import type { Automation, SensorMetric } from "@/lib/home/types";
+import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { patchAlreadyApplied, patchFromAction, reportsActuatorState } from "@/lib/home/device-patch";
-import { sensorHoldsWhileInRange, sensorTriggerDecision } from "@/lib/home/sensor-trigger";
+import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "@/lib/home/sensor-trigger";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
-import { daikinConfigured, daikinSync } from "@/lib/home/daikin";
+import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import { homeBelongsToLanOwner } from "./lan-owner";
 import { listAutomationHomeIds, loadHomeRecord, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
@@ -16,15 +16,6 @@ import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
 
 let started = false;
 let ticking = false;
-
-function metricValue(
-  device: { temperature?: number | null; humidity?: number | null; lux?: number | null },
-  metric: SensorMetric,
-) {
-  if (metric === "temperature") return device.temperature;
-  if (metric === "humidity") return device.humidity;
-  return device.lux;
-}
 
 async function runAutomation(
   homeId: string,
@@ -104,12 +95,14 @@ async function tickSensors(homeId: string, snap: HomeSnapshot) {
       const res = await daikinSync();
       // 認証不要の env 直結なので、手動同期を待たず新規機器もここで取り込む。
       const incoming = new Map(res.devices.map((n) => [n.id, n]));
-      const merged = cur.devices.map((d) => {
-        const live = incoming.get(d.id);
-        if (!live) return d;
-        incoming.delete(d.id);
-        return { ...d, ...live, name: d.name, room: d.room };
-      });
+      const merged = cur.devices
+        .filter((d) => !isRetiredDaikinOutdoorId(d.id))
+        .map((d) => {
+          const live = incoming.get(d.id);
+          if (!live) return d;
+          incoming.delete(d.id);
+          return { ...d, ...live, name: d.name, room: d.room };
+        });
       cur = await saveHomeRecord(homeId, { devices: [...merged, ...incoming.values()] });
     } catch {
       /* keep last */

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { sensorTriggerDecision } from "./sensor-trigger.ts";
+import { metricValue, sensorTriggerDecision } from "./sensor-trigger.ts";
 import type { AutoTrigger } from "./types.ts";
 
 const below: AutoTrigger = {
@@ -10,6 +10,12 @@ const below: AutoTrigger = {
   op: "lte",
   value: 26,
 };
+
+test("外気温は outdoorTemp を読む", () => {
+  assert.equal(metricValue({ temperature: 23, outdoorTemp: 19.5 }, "outdoorTemp"), 19.5);
+  assert.equal(metricValue({ temperature: 23, outdoorTemp: 19.5 }, "temperature"), 23);
+  assert.equal(metricValue({ temperature: 23 }, "outdoorTemp"), undefined);
+});
 
 test("室温がしきい値を下回ると pass になり、上回っている間は fail", () => {
   assert.equal(sensorTriggerDecision(26.1, below).pass, false);

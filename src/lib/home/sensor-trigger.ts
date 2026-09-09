@@ -1,4 +1,19 @@
-import type { AutoTrigger } from "./types";
+import type { AutoTrigger, SensorMetric } from "./types";
+
+export function metricValue(
+  device: {
+    temperature?: number | null;
+    humidity?: number | null;
+    lux?: number | null;
+    outdoorTemp?: number | null;
+  },
+  metric: SensorMetric,
+) {
+  if (metric === "humidity") return device.humidity;
+  if (metric === "lux") return device.lux;
+  if (metric === "outdoorTemp") return device.outdoorTemp;
+  return device.temperature;
+}
 
 export function sensorOp(trigger: AutoTrigger) {
   if (trigger.op === "lte") return "lte";

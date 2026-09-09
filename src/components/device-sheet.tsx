@@ -43,7 +43,7 @@ export function DeviceSheet({
           </Button>
         </div>
 
-        {device.extra && device.extra !== "水温" && device.extra !== "外気温" ? (
+        {device.extra && device.extra !== "水温" ? (
           <p className="mb-4 text-sm text-muted">{device.extra}</p>
         ) : null}
 

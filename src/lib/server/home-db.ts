@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { emptySnapshot, type HomeSnapshot } from "@/lib/home/snapshot";
 import { migrateAutomation } from "@/lib/home/types";
 import { applyOverrides } from "@/lib/home/overrides";
-import { daikinConfigured } from "@/lib/home/daikin";
+import { daikinConfigured, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import {
   credentialFlags,
   decryptJson,
@@ -53,6 +53,7 @@ function decodeRow(row: HomeRow): { id: string; ownerUserId: string; snap: HomeS
     snap: {
       ...base,
       ...body,
+      devices: (body.devices ?? base.devices).filter((d) => !isRetiredDaikinOutdoorId(d.id)),
       credentials,
       automations: (body.automations ?? []).map(migrateAutomation).filter((a): a is NonNullable<typeof a> => a != null),
       pairPin: row.pair_pin,
@@ -68,7 +69,13 @@ function decodeRow(row: HomeRow): { id: string; ownerUserId: string; snap: HomeS
  * 元に戻ってしまうため、保存の入口すべてがここを通る。
  */
 function withOverrides(snap: HomeSnapshot): HomeSnapshot {
-  return { ...snap, devices: applyOverrides(snap.devices, snap.overrides) };
+  return {
+    ...snap,
+    devices: applyOverrides(
+      snap.devices.filter((d) => !isRetiredDaikinOutdoorId(d.id)),
+      snap.overrides,
+    ),
+  };
 }
 
 function persistRow(id: string, ownerUserId: string, snap: HomeSnapshot) {

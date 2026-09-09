@@ -3,8 +3,8 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchAlreadyApplied, patchFromAction, reportsActuatorState } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
-import { sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger";
-import type { AutoAction, Automation, SensorMetric } from "./types";
+import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger";
+import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
 let depth = 0;
@@ -31,9 +31,7 @@ export function describeTrigger(auto: Automation) {
   if (t.type === "sensor") {
     const device = useHome.getState().devices.find((d) => d.id === t.deviceId);
     const metric =
-      device?.extra === "水温" || device?.extra === "外気温"
-        ? sensorTempLabel(device)
-        : METRIC_LABEL[t.metric ?? "temperature"];
+      device?.extra === "水温" ? sensorTempLabel(device) : METRIC_LABEL[t.metric ?? "temperature"];
     if (t.op === "between") {
       const lo = Math.min(t.value ?? 0, t.valueMax ?? t.value ?? 0);
       const hi = Math.max(t.value ?? 0, t.valueMax ?? t.value ?? 0);
@@ -132,15 +130,6 @@ export function fireSceneAutomations(sceneId: string) {
     if (auto.trigger.sceneId !== sceneId) continue;
     void executeAutomation(auto);
   }
-}
-
-function metricValue(
-  device: { temperature?: number | null; humidity?: number | null; lux?: number | null },
-  metric: SensorMetric,
-) {
-  if (metric === "temperature") return device.temperature;
-  if (metric === "humidity") return device.humidity;
-  return device.lux;
 }
 
 export function fireSensorAutomations() {

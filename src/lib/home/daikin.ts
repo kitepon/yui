@@ -15,7 +15,7 @@ import type { AcMode, Device, FanSpeed, FanSwing } from "./types.ts";
  *   風量はモード別（自動 p_26 / 冷房 p_09 / 暖房 p_0A / 送風 p_28。除湿は自動固定でプロパティなし）。
  *   風向もモード別（上下・左右の対。自動 100000 / 固定 000000 / スイング 0F0000。固定羽根の多段位置は未解読）。
  *   自動運転の相対温度は p_1D が無い機種では p_1F。外気温は adr_0200 の e_A00D/p_01。
- *   外気温は読み取り専用で、値があるときだけセンサーとして出す。
+ *   外気温は読み取り専用で、エアコンのセンサー項目として出す。
  */
 
 const NOT_CONFIGURED = "ダイキン直結（YUI_DAIKIN_ADDRS）が未設定です。";
@@ -302,43 +302,24 @@ export function deviceFromDsiot(
   };
 }
 
-/** 室外機の外気温。値が無いときはセンサーを出さない。 */
-export function outdoorSensorFromDsiot(ac: Device, mac: string): Device | undefined {
-  if (ac.outdoorTemp == null) return undefined;
-  return {
-    id: `daikin-outdoor:${mac}`,
-    name: "外気温",
-    room: ac.room,
-    brand: "daikin",
-    kind: "sensor",
-    online: ac.online,
-    source: ac.source,
-    nativeId: ac.nativeId,
-    connector: ac.connector,
-    temperature: ac.outdoorTemp,
-    extra: "外気温",
-  };
+/** 一度独立センサーとして出した外気温。エアコンの項目へ戻したので捨てる。 */
+export function isRetiredDaikinOutdoorId(id: string) {
+  return id.startsWith("daikin-outdoor:");
 }
 
-function devicesFromStatus(room: string, host: string, mac: string, status: Map<string, DsiotNode>): Device[] {
-  const ac = deviceFromDsiot(room, host, mac, status);
-  const outdoor = outdoorSensorFromDsiot(ac, mac);
-  return outdoor ? [ac, outdoor] : [ac];
-}
-
-async function readOne(room: string, host: string): Promise<Device[]> {
+async function readOne(room: string, host: string): Promise<Device> {
   const [info, statusRoots, outdoorRoots] = await Promise.all([
     multireq(host, [{ op: 2, to: "/dsiot/edge.adp_i" }]),
     multireq(host, [{ op: 2, to: "/dsiot/edge/adr_0100.dgc_status?filter=pv,pt,md" }]),
     multireq(host, [{ op: 2, to: "/dsiot/edge/adr_0200.dgc_status?filter=pv,pt,md" }]),
   ]);
   const mac = String(flattenDsiot(info).get("/adp_i/mac")?.pv ?? host.replace(/\./g, "-"));
-  return devicesFromStatus(room, host, mac, flattenDsiot([...statusRoots, ...outdoorRoots]));
+  return deviceFromDsiot(room, host, mac, flattenDsiot([...statusRoots, ...outdoorRoots]));
 }
 
 export async function daikinSync(): Promise<{ devices: Device[] }> {
-  const groups = await Promise.all(configuredAddrs().map((a) => readOne(a.room, a.host)));
-  return { devices: groups.flat() };
+  const devices = await Promise.all(configuredAddrs().map((a) => readOne(a.room, a.host)));
+  return { devices };
 }
 
 export function daikinConfigured(): boolean {
