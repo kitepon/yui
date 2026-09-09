@@ -25,7 +25,7 @@
 
 - Brings Nature Remo, SwitchBot, and Smart Life (Tuya) devices into one dashboard.
 - Controls supported Daikin air conditioners directly over your LAN, without a cloud round trip. Airflow direction is auto, fixed, or swing. Auto mode uses a relative temperature; outdoor temperature is shown as a reading on the air conditioner and available as a sensor metric for automations.
-- Runs multi-device scenes and server-side automations triggered by time or sensor readings. Values shown on screen are saved even if left at their defaults. Sensor thresholds accept one decimal place. In-range conditions send a command only when the current setting differs, and only to devices that can report that setting.
+- Runs multi-device scenes and server-side automations triggered by time or sensor readings. Values shown on screen are saved even if left at their defaults. Sensor thresholds accept one decimal place. In-range conditions send a command only when the current setting differs, and only to devices that can report that setting. When several matching automations share a device, the one higher in the list controls that device.
 - Works with Alexa Smart Home and can be installed from Safari as a home-screen web app. The official skill 「結ホーム」 is under Amazon review (submitted 2026-08-23). Until it is published, you can run your own skill from your server by following [docs/alexa.md](docs/alexa.md).
 
 Yui only shows modes and temperature ranges reported by each air conditioner. Unsupported controls are not presented as if they worked.

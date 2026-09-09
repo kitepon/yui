@@ -17,7 +17,7 @@
 - 機器の名前と場所は人が付け替えられる。付けた値は `overrides` が正本で、機器そのものの名前を正本にしない。各社の同期は毎回それぞれの元の名前を返すので、保存の入口で当て直す。片方の経路だけ当てると、結の画面と Alexa の呼び名が食い違って戻る。
 - 識別は Better Auth のセッション（Cookie または `Authorization: Bearer`）。本番のサインインはメール＋パスワードと、結専用 Google。Grok broker / プレビュー用 OAuth は使わない。Sign in with Apple は iPhone アプリ工程で足す。
 - 永続は SQLite 方言だけ（ローカルはファイル、移転先は D1）。Postgres / PGLite / `yui.json` を正本にしない。
-- オートメーションの入口は `tickAllHomes()` だけ。ローカルは 60 秒間隔で同じ関数を呼ぶ（周期の正本は`src/lib/home/control-tick.ts`。画面の説明文も同じ定数を読む）。起動時の着火は Nitro プラグイン（`server/plugins/control-runner.ts`）が正で、初回リクエスト待ちにしない。Cloudflare では Cron が同じ関数を呼ぶ。プロセス常駐の 20 秒ループと、起きっぱなしの家単位ワーカーを正にしない。
+- オートメーションの入口は `tickAllHomes()` だけ。ローカルは 60 秒間隔で同じ関数を呼ぶ（周期の正本は`src/lib/home/control-tick.ts`。画面の説明文も同じ定数を読む）。起動時の着火は Nitro プラグイン（`server/plugins/control-runner.ts`）が正で、初回リクエスト待ちにしない。Cloudflare では Cron が同じ関数を呼ぶ。プロセス常駐の 20 秒ループと、起きっぱなしの家単位ワーカーを正にしない。条件を満たした複数が同じ機器を含むとき、一覧の上だけがその機器を動かす。下は残った機器だけ動く。並びは場面タブのオートメーション欄が正。
 - 時刻オートメーションの粒度は 1 分。比較する時計は `Asia/Tokyo`。センサーしきい値の粒度は小数点第一位。センサー範囲条件は、現在設定を読み返せる機器だけを操作し、値が違うときだけ送る。赤外線など一方通行の機器には適用しない。センサーは有効なオートメーションがある家だけを起こす。全戸 20 秒ポーリングを正にしない。
 - オートメーションと場面の操作は、画面に出ている項目を保存する。触っていない初期値も載せる。載せていない項目は送らない。
 - 秘密は環境変数だけに置く。リポジトリと image に入れない。必須は `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`、`HOME_SECRETS_KEY`。バックアップを使うなら `YUI_BACKUP_URL` と `YUI_BACKUP_SECRET` も。Google で入るなら `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET`。Echo なら `ALEXA_CLIENT_ID` と `ALEXA_CLIENT_SECRET`。

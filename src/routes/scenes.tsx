@@ -26,6 +26,7 @@ export function ScenesPage() {
   const moveScene = useHome((s) => s.moveScene);
   const removeScene = useHome((s) => s.removeScene);
   const automations = useHome((s) => s.automations);
+  const moveAutomation = useHome((s) => s.moveAutomation);
   const toggleAutomation = useHome((s) => s.toggleAutomation);
   const removeAutomation = useHome((s) => s.removeAutomation);
   const [editingAuto, setEditingAuto] = useState<Automation | null | "new">(null);
@@ -79,6 +80,7 @@ export function ScenesPage() {
       <section className="mt-10 px-4">
         <p className="text-[11px] tracking-[0.22em] text-faint">AUTOMATION</p>
         <h2 className="mt-1 font-display text-2xl text-fg">オートメーション</h2>
+        <p className="mt-2 text-sm text-muted">上にあるほど、同じ機器では優先します。並べ替えできます。</p>
         <Button className="mt-4 h-12 w-full" onClick={() => setEditingAuto("new")}>
           新しく作る
         </Button>
@@ -87,41 +89,49 @@ export function ScenesPage() {
           {automations.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">まだありません。</p>
           ) : (
-            automations.map((auto) => (
-              <div key={auto.id} className="rounded-lg border border-border bg-bg-2 px-4 py-3">
-                <p className="text-base text-fg">{auto.name}</p>
-                <p className="mt-1 text-xs text-faint">
-                  {describeTrigger(auto)} → {auto.actions.map(describeAction).join("、") || "アクションなし"}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="h-11 rounded-md bg-surface px-3 text-sm text-fg"
-                    onClick={() => toggleAutomation(auto.id)}
-                  >
-                    {auto.enabled ? "止める" : "入れる"}
-                  </button>
-                  <button
-                    type="button"
-                    className="h-11 rounded-md bg-surface px-3 text-sm text-fg"
-                    onClick={() => setEditingAuto(auto)}
-                  >
-                    編集
-                  </button>
-                  <button
-                    type="button"
-                    className="h-11 rounded-md bg-surface px-3 text-sm text-fg"
-                    onClick={() => void executeAutomation({ ...auto, enabled: true })}
-                  >
-                    今すぐ
-                  </button>
-                  <button
-                    type="button"
-                    className="h-11 rounded-md px-3 text-sm text-muted"
-                    onClick={() => removeAutomation(auto.id)}
-                  >
-                    削除
-                  </button>
+            automations.map((auto, index) => (
+              <div key={auto.id} className="flex items-stretch gap-2 rounded-lg border border-border bg-bg-2 px-3 py-3">
+                <ReorderButtons
+                  disableUp={index === 0}
+                  disableDown={index === automations.length - 1}
+                  onUp={() => moveAutomation(auto.id, -1)}
+                  onDown={() => moveAutomation(auto.id, 1)}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-base text-fg">{auto.name}</p>
+                  <p className="mt-1 text-xs text-faint">
+                    {describeTrigger(auto)} → {auto.actions.map(describeAction).join("、") || "アクションなし"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="h-11 rounded-md bg-surface px-3 text-sm text-fg"
+                      onClick={() => toggleAutomation(auto.id)}
+                    >
+                      {auto.enabled ? "止める" : "入れる"}
+                    </button>
+                    <button
+                      type="button"
+                      className="h-11 rounded-md bg-surface px-3 text-sm text-fg"
+                      onClick={() => setEditingAuto(auto)}
+                    >
+                      編集
+                    </button>
+                    <button
+                      type="button"
+                      className="h-11 rounded-md bg-surface px-3 text-sm text-fg"
+                      onClick={() => void executeAutomation({ ...auto, enabled: true })}
+                    >
+                      今すぐ
+                    </button>
+                    <button
+                      type="button"
+                      className="h-11 rounded-md px-3 text-sm text-muted"
+                      onClick={() => removeAutomation(auto.id)}
+                    >
+                      削除
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

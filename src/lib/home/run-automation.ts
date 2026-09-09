@@ -3,6 +3,7 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchAlreadyApplied, patchFromAction, reportsActuatorState } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
+import { prioritizeAutomationActions } from "./automation-priority";
 import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger";
 import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
@@ -79,63 +80,43 @@ export async function executeAutomation(auto: Automation, opts?: { onlyIfDiffere
   }
 }
 
-export function fireTimeAutomations() {
-  const now = clockInTokyo();
-  const today = now.dayKey;
-  const hour = now.hour;
-  const minute = now.minute;
-  const weekday = now.weekday;
-  const { automations, markAutomationFired } = useHome.getState();
-  for (const auto of automations) {
-    if (!auto.enabled || auto.trigger.type !== "time") continue;
-    const t = auto.trigger;
-    const repeat = t.repeat ?? "daily";
+function fireWave(firing: Automation[], holds: Set<string>) {
+  const planned = prioritizeAutomationActions(firing);
+  for (const auto of firing) {
+    const actions = planned.get(auto.id) ?? [];
+    if (!actions.length) continue;
+    void executeAutomation({ ...auto, actions }, { onlyIfDifferent: holds.has(auto.id) });
+  }
+}
 
-    if (repeat === "interval") {
-      const ms = Math.max(1, t.everyHours ?? 1) * 60 * 60 * 1000;
-      const last = Number(auto.lastFiredKey ?? 0);
-      if (last && Date.now() - last < ms) continue;
-      markAutomationFired(auto.id, String(Date.now()));
-      void executeAutomation(auto);
+export function fireScheduledAutomations() {
+  const now = clockInTokyo();
+  const nowMs = Date.now();
+  const { automations, devices, climate, markAutomationFired } = useHome.getState();
+  const firing: Automation[] = [];
+  const holds = new Set<string>();
+  for (const auto of automations) {
+    if (!auto.enabled || !auto.actions.length) continue;
+    if (auto.trigger.type === "time") {
+      const t = auto.trigger;
+      const repeat = t.repeat ?? "daily";
+      if (repeat === "interval") {
+        const ms = Math.max(1, t.everyHours ?? 1) * 60 * 60 * 1000;
+        const last = Number(auto.lastFiredKey ?? 0);
+        if (last && nowMs - last < ms) continue;
+        markAutomationFired(auto.id, String(nowMs));
+        firing.push(auto);
+        continue;
+      }
+      if ((t.hour ?? 0) !== now.hour || (t.minute ?? 0) !== now.minute) continue;
+      if (repeat === "weekly" && !(t.days ?? []).includes(now.weekday)) continue;
+      const key = `${now.dayKey}-${now.hour}-${now.minute}`;
+      if (auto.lastFiredKey === key) continue;
+      markAutomationFired(auto.id, key);
+      firing.push(auto);
       continue;
     }
-
-    if ((t.hour ?? 0) !== hour || (t.minute ?? 0) !== minute) continue;
-    if (repeat === "weekly") {
-      const days = t.days ?? [];
-      if (!days.includes(weekday)) continue;
-    }
-    const key = `${today}-${hour}-${minute}`;
-    if (auto.lastFiredKey === key) continue;
-    markAutomationFired(auto.id, key);
-    void executeAutomation(auto);
-  }
-}
-
-export function fireDeviceAutomations(deviceId: string, on?: boolean) {
-  if (on === undefined) return;
-  const { automations } = useHome.getState();
-  for (const auto of automations) {
-    if (!auto.enabled || auto.trigger.type !== "device") continue;
-    if (auto.trigger.deviceId !== deviceId) continue;
-    if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) continue;
-    void executeAutomation(auto);
-  }
-}
-
-export function fireSceneAutomations(sceneId: string) {
-  const { automations } = useHome.getState();
-  for (const auto of automations) {
-    if (!auto.enabled || auto.trigger.type !== "scene") continue;
-    if (auto.trigger.sceneId !== sceneId) continue;
-    void executeAutomation(auto);
-  }
-}
-
-export function fireSensorAutomations() {
-  const { automations, devices, climate, markAutomationFired } = useHome.getState();
-  for (const auto of automations) {
-    if (!auto.enabled || auto.trigger.type !== "sensor") continue;
+    if (auto.trigger.type !== "sensor") continue;
     const t = auto.trigger;
     const metric = t.metric ?? "temperature";
     const device = devices.find((d) => d.id === t.deviceId);
@@ -144,11 +125,45 @@ export function fireSensorAutomations() {
     if (sensorHoldsWhileInRange(t) && t.valueMax == null) continue;
     const { pass, key } = sensorTriggerDecision(raw, t);
     if (sensorHoldsWhileInRange(t)) {
-      if (pass) void executeAutomation(auto, { onlyIfDifferent: true });
+      if (pass) {
+        firing.push(auto);
+        holds.add(auto.id);
+      }
       continue;
     }
     if (auto.lastFiredKey === key) continue;
     markAutomationFired(auto.id, key);
-    if (pass) void executeAutomation(auto);
+    if (pass) firing.push(auto);
   }
+  fireWave(firing, holds);
+}
+
+export function fireTimeAutomations() {
+  fireScheduledAutomations();
+}
+
+export function fireDeviceAutomations(deviceId: string, on?: boolean) {
+  if (on === undefined) return;
+  const { automations } = useHome.getState();
+  const firing = automations.filter((auto) => {
+    if (!auto.enabled || auto.trigger.type !== "device") return false;
+    if (auto.trigger.deviceId !== deviceId) return false;
+    if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) return false;
+    return true;
+  });
+  fireWave(firing, new Set());
+}
+
+export function fireSceneAutomations(sceneId: string) {
+  const { automations } = useHome.getState();
+  fireWave(
+    automations.filter(
+      (auto) => auto.enabled && auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
+    ),
+    new Set(),
+  );
+}
+
+export function fireSensorAutomations() {
+  fireScheduledAutomations();
 }

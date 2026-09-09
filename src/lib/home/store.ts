@@ -62,6 +62,7 @@ interface HomeState {
   updateAutomation: (id: string, patch: Partial<Automation>) => void;
   toggleAutomation: (id: string, enabled?: boolean) => void;
   removeAutomation: (id: string) => void;
+  moveAutomation: (id: string, dir: -1 | 1) => void;
   markAutomationFired: (id: string, key: string) => void;
 }
 
@@ -370,6 +371,15 @@ export const useHome = create<HomeState>()(
           automations: s.automations.filter((a) => a.id !== id),
           savedAt: nowIso(),
         })),
+      moveAutomation: (id, dir) =>
+        set((s) => {
+          const i = s.automations.findIndex((a) => a.id === id);
+          const j = i + dir;
+          if (i < 0 || j < 0 || j >= s.automations.length) return s;
+          const automations = [...s.automations];
+          [automations[i], automations[j]] = [automations[j], automations[i]];
+          return { automations, savedAt: nowIso() };
+        }),
       markAutomationFired: (id, key) =>
         set((s) => ({
           automations: s.automations.map((a) => (a.id === id ? { ...a, lastFiredKey: key } : a)),

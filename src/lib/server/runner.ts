@@ -2,6 +2,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { patchAlreadyApplied, patchFromAction, reportsActuatorState } from "@/lib/home/device-patch";
+import { prioritizeAutomationActions } from "@/lib/home/automation-priority";
 import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "@/lib/home/sensor-trigger";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
@@ -37,42 +38,91 @@ async function runAutomation(
   return cur;
 }
 
-async function tickTime(homeId: string, snap: HomeSnapshot) {
-  const now = clockInTokyo();
-  const today = now.dayKey;
-  const hour = now.hour;
-  const minute = now.minute;
-  const weekday = now.weekday;
+function timeWouldRun(auto: Automation, now: ReturnType<typeof clockInTokyo>, nowMs: number): { run: boolean; key?: string } {
+  if (!auto.enabled || auto.trigger.type !== "time") return { run: false };
+  const t = auto.trigger;
+  const repeat = t.repeat ?? "daily";
+  if (repeat === "interval") {
+    const ms = Math.max(1, t.everyHours ?? 1) * 60 * 60 * 1000;
+    const last = Number(auto.lastFiredKey ?? 0);
+    if (last && nowMs - last < ms) return { run: false };
+    return { run: true, key: String(nowMs) };
+  }
+  if ((t.hour ?? 0) !== now.hour || (t.minute ?? 0) !== now.minute) return { run: false };
+  if (repeat === "weekly" && !(t.days ?? []).includes(now.weekday)) return { run: false };
+  const key = `${now.dayKey}-${now.hour}-${now.minute}`;
+  if (auto.lastFiredKey === key) return { run: false };
+  return { run: true, key };
+}
+
+function sensorWouldRun(
+  auto: Automation,
+  snap: HomeSnapshot,
+): { run: boolean; holds: boolean; key?: string } {
+  if (!auto.enabled || auto.trigger.type !== "sensor") return { run: false, holds: false };
+  const t = auto.trigger;
+  const metric = t.metric ?? "temperature";
+  const device = snap.devices.find((d) => d.id === t.deviceId);
+  const raw = device ? metricValue(device, metric) : metricValue(snap.climate, metric);
+  if (raw == null || t.value == null) return { run: false, holds: false };
+  if (sensorHoldsWhileInRange(t) && t.valueMax == null) return { run: false, holds: false };
+  const { pass, key } = sensorTriggerDecision(raw, t);
+  if (sensorHoldsWhileInRange(t)) return { run: pass, holds: true };
+  if (auto.lastFiredKey === key) return { run: false, holds: false };
+  return { run: pass, holds: false, key };
+}
+
+async function runPrioritized(
+  homeId: string,
+  snap: HomeSnapshot,
+  firing: Automation[],
+  holds: Set<string>,
+) {
+  const planned = prioritizeAutomationActions(firing);
   let cur = snap;
-  for (const auto of cur.automations) {
-    if (!auto.enabled || auto.trigger.type !== "time") continue;
-    const t = auto.trigger;
-    const repeat = t.repeat ?? "daily";
-    if (repeat === "interval") {
-      const ms = Math.max(1, t.everyHours ?? 1) * 60 * 60 * 1000;
-      const last = Number(auto.lastFiredKey ?? 0);
-      if (last && Date.now() - last < ms) continue;
-      cur = await saveHomeRecord(homeId, {
-        automations: cur.automations.map((a) =>
-          a.id === auto.id ? { ...a, lastFiredKey: String(Date.now()) } : a,
-        ),
-      });
-      cur = await runAutomation(homeId, cur, auto);
-      continue;
-    }
-    if ((t.hour ?? 0) !== hour || (t.minute ?? 0) !== minute) continue;
-    if (repeat === "weekly" && !(t.days ?? []).includes(weekday)) continue;
-    const key = `${today}-${hour}-${minute}`;
-    if (auto.lastFiredKey === key) continue;
-    cur = await saveHomeRecord(homeId, {
-      automations: cur.automations.map((a) => (a.id === auto.id ? { ...a, lastFiredKey: key } : a)),
+  for (const auto of firing) {
+    const actions = planned.get(auto.id) ?? [];
+    if (!actions.length) continue;
+    cur = await runAutomation(homeId, cur, { ...auto, actions }, {
+      onlyIfDifferent: holds.has(auto.id),
     });
-    cur = await runAutomation(homeId, cur, auto);
   }
   return cur;
 }
 
-async function tickSensors(homeId: string, snap: HomeSnapshot) {
+async function tickMatching(homeId: string, snap: HomeSnapshot) {
+  const now = clockInTokyo();
+  const nowMs = Date.now();
+  const firing: Automation[] = [];
+  const holds = new Set<string>();
+  const keys = new Map<string, string>();
+  for (const auto of snap.automations) {
+    if (!auto.enabled || !auto.actions.length) continue;
+    if (auto.trigger.type === "time") {
+      const d = timeWouldRun(auto, now, nowMs);
+      if (d.key) keys.set(auto.id, d.key);
+      if (d.run) firing.push(auto);
+      continue;
+    }
+    if (auto.trigger.type === "sensor") {
+      const d = sensorWouldRun(auto, snap);
+      if (d.key) keys.set(auto.id, d.key);
+      if (d.run) {
+        firing.push(auto);
+        if (d.holds) holds.add(auto.id);
+      }
+    }
+  }
+  let cur = snap;
+  if (keys.size) {
+    cur = await saveHomeRecord(homeId, {
+      automations: cur.automations.map((a) => (keys.has(a.id) ? { ...a, lastFiredKey: keys.get(a.id) } : a)),
+    });
+  }
+  return runPrioritized(homeId, cur, firing, holds);
+}
+
+async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
   let cur = snap;
   const cred = cur.credentials.natureToken;
   if (cred.trim()) {
@@ -139,25 +189,6 @@ async function tickSensors(homeId: string, snap: HomeSnapshot) {
       /* keep last */
     }
   }
-  for (const auto of cur.automations) {
-    if (!auto.enabled || auto.trigger.type !== "sensor") continue;
-    const t = auto.trigger;
-    const metric = t.metric ?? "temperature";
-    const device = cur.devices.find((d) => d.id === t.deviceId);
-    const raw = device ? metricValue(device, metric) : metricValue(cur.climate, metric);
-    if (raw == null || t.value == null) continue;
-    if (sensorHoldsWhileInRange(t) && t.valueMax == null) continue;
-    const { pass, key } = sensorTriggerDecision(raw, t);
-    if (sensorHoldsWhileInRange(t)) {
-      if (pass) cur = await runAutomation(homeId, cur, auto, { onlyIfDifferent: true });
-      continue;
-    }
-    if (auto.lastFiredKey === key) continue;
-    cur = await saveHomeRecord(homeId, {
-      automations: cur.automations.map((a) => (a.id === auto.id ? { ...a, lastFiredKey: key } : a)),
-    });
-    if (pass) cur = await runAutomation(homeId, cur, auto);
-  }
   return cur;
 }
 
@@ -165,8 +196,8 @@ export async function tickHome(homeId: string) {
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
   let snap = rec.snap;
-  snap = await tickTime(homeId, snap);
-  await tickSensors(homeId, snap);
+  snap = await refreshSensorReadings(homeId, snap);
+  await tickMatching(homeId, snap);
 }
 
 /** Cloudflare Cron も同じ関数を呼ぶ。 */
@@ -204,22 +235,20 @@ export async function fireDeviceOnServer(homeId: string, deviceId: string, on?: 
   if (on === undefined) return;
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
-  let cur = rec.snap;
-  for (const auto of cur.automations) {
-    if (!auto.enabled || auto.trigger.type !== "device") continue;
-    if (auto.trigger.deviceId !== deviceId) continue;
-    if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) continue;
-    cur = await runAutomation(homeId, cur, auto);
-  }
+  const firing = rec.snap.automations.filter((auto) => {
+    if (!auto.enabled || auto.trigger.type !== "device") return false;
+    if (auto.trigger.deviceId !== deviceId) return false;
+    if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) return false;
+    return true;
+  });
+  await runPrioritized(homeId, rec.snap, firing, new Set());
 }
 
 export async function fireSceneOnServer(homeId: string, sceneId: string) {
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
-  let cur = rec.snap;
-  for (const auto of cur.automations) {
-    if (!auto.enabled || auto.trigger.type !== "scene") continue;
-    if (auto.trigger.sceneId !== sceneId) continue;
-    cur = await runAutomation(homeId, cur, auto);
-  }
+  const firing = rec.snap.automations.filter(
+    (auto) => auto.enabled && auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
+  );
+  await runPrioritized(homeId, rec.snap, firing, new Set());
 }
