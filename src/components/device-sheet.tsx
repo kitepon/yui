@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { KIND_LABEL, sourceLabel, type Device } from "@/lib/home/types";
+import { KIND_LABEL, sensorTempLabel, sourceLabel, type Device } from "@/lib/home/types";
 import { useHome } from "@/lib/home/store";
 import { DeviceControls } from "./device-controls";
 import { Button } from "./ui/button";
@@ -43,7 +43,7 @@ export function DeviceSheet({
           </Button>
         </div>
 
-        {device.extra && device.extra !== "水温" ? (
+        {device.extra && device.extra !== "水温" && device.extra !== "外気温" ? (
           <p className="mb-4 text-sm text-muted">{device.extra}</p>
         ) : null}
 
@@ -98,7 +98,7 @@ export function DeviceSheet({
 }
 
 function SensorStats({ device }: { device: Device }) {
-  const tempLabel = device.extra === "水温" ? "水温" : "気温";
+  const tempLabel = sensorTempLabel(device);
   const stats = [
     device.temperature != null ? { label: tempLabel, value: `${device.temperature.toFixed(1)}°` } : null,
     device.humidity != null ? { label: "湿度", value: `${device.humidity}%` } : null,

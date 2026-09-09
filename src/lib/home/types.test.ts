@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { completeTrigger, connectorBadge, stripConnectorFromExtra, migrateAutomation } from "./types.ts";
+import {
+  completeTrigger,
+  connectorBadge,
+  migrateAutomation,
+  sensorTempLabel,
+  stripConnectorFromExtra,
+} from "./types.ts";
+
+test("気温の別名は extra をラベルにする", () => {
+  assert.equal(sensorTempLabel({ extra: "水温" }), "水温");
+  assert.equal(sensorTempLabel({ extra: "外気温" }), "外気温");
+  assert.equal(sensorTempLabel({ extra: "直結 · 192.168.1.16" }), "気温");
+  assert.equal(sensorTempLabel(undefined), "気温");
+});
 
 test("badge is the connector, not 実機", () => {
   assert.equal(connectorBadge({ connector: "nature" }), "Nature Remo");

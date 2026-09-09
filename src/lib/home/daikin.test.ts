@@ -4,6 +4,7 @@ import {
   buildDaikinWrite,
   deviceFromDsiot,
   flattenDsiot,
+  outdoorSensorFromDsiot,
   parseDaikinAddrs,
   tempListFromRange,
   tempListFromSignedRange,
@@ -258,4 +259,19 @@ test("読み取り: 外気温は adr_0200 の e_A00D から取る", () => {
   m.set("/dgc_status/e_1003/e_A00D/p_01", { pn: "p_01", pv: "4300" });
   const device = deviceFromDsiot("リビング", "h", "m", m);
   assert.equal(device.outdoorTemp, 33.5);
+});
+
+test("読み取り: 外気温があるときだけセンサーを出す", () => {
+  const indoor = deviceFromDsiot("リビング", "192.168.1.16", "AABBCCDDEEFF", flattenDsiot(STATUS));
+  assert.equal(outdoorSensorFromDsiot(indoor, "AABBCCDDEEFF"), undefined);
+
+  const withOut = { ...indoor, outdoorTemp: 33.5 };
+  const sensor = outdoorSensorFromDsiot(withOut, "AABBCCDDEEFF");
+  assert.equal(sensor?.id, "daikin-outdoor:AABBCCDDEEFF");
+  assert.equal(sensor?.kind, "sensor");
+  assert.equal(sensor?.name, "外気温");
+  assert.equal(sensor?.room, "リビング");
+  assert.equal(sensor?.temperature, 33.5);
+  assert.equal(sensor?.extra, "外気温");
+  assert.equal(sensor?.connector, "daikin");
 });

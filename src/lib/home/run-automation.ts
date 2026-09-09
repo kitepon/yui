@@ -5,7 +5,7 @@ import { runCommand } from "./run";
 import { useHome } from "./store";
 import { sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger";
 import type { AutoAction, Automation, SensorMetric } from "./types";
-import { METRIC_LABEL, WEEKDAYS } from "./types";
+import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
 let depth = 0;
 
@@ -30,7 +30,10 @@ export function describeTrigger(auto: Automation) {
   }
   if (t.type === "sensor") {
     const device = useHome.getState().devices.find((d) => d.id === t.deviceId);
-    const metric = device?.extra === "水温" ? "水温" : METRIC_LABEL[t.metric ?? "temperature"];
+    const metric =
+      device?.extra === "水温" || device?.extra === "外気温"
+        ? sensorTempLabel(device)
+        : METRIC_LABEL[t.metric ?? "temperature"];
     if (t.op === "between") {
       const lo = Math.min(t.value ?? 0, t.valueMax ?? t.value ?? 0);
       const hi = Math.max(t.value ?? 0, t.valueMax ?? t.value ?? 0);

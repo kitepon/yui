@@ -268,6 +268,12 @@ export const METRIC_LABEL: Record<SensorMetric, string> = {
   lux: "照度",
 };
 
+/** 水温・外気温のように、気温の別名で出すセンサー。 */
+export function sensorTempLabel(device: { extra?: string } | undefined) {
+  if (device?.extra === "水温" || device?.extra === "外気温") return device.extra;
+  return METRIC_LABEL.temperature;
+}
+
 /** 画面に出している初期値。触らなくても保存する。 */
 export function completeTrigger(trigger: AutoTrigger): AutoTrigger {
   if (trigger.type === "time") {
