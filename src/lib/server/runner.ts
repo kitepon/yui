@@ -2,8 +2,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { patchAlreadyApplied, patchFromAction, reportsActuatorState } from "@/lib/home/device-patch";
-import { prioritizeAutomationActions } from "@/lib/home/automation-priority";
-import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "@/lib/home/sensor-trigger";
+import { prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
@@ -59,17 +58,8 @@ function sensorWouldRun(
   auto: Automation,
   snap: HomeSnapshot,
 ): { run: boolean; holds: boolean; key?: string } {
-  if (!auto.enabled || auto.trigger.type !== "sensor") return { run: false, holds: false };
-  const t = auto.trigger;
-  const metric = t.metric ?? "temperature";
-  const device = snap.devices.find((d) => d.id === t.deviceId);
-  const raw = device ? metricValue(device, metric) : metricValue(snap.climate, metric);
-  if (raw == null || t.value == null) return { run: false, holds: false };
-  if (sensorHoldsWhileInRange(t) && t.valueMax == null) return { run: false, holds: false };
-  const { pass, key } = sensorTriggerDecision(raw, t);
-  if (sensorHoldsWhileInRange(t)) return { run: pass, holds: true };
-  if (auto.lastFiredKey === key) return { run: false, holds: false };
-  return { run: pass, holds: false, key };
+  const d = sensorCondition(auto, snap);
+  return { run: d.match, holds: d.holds, key: d.key };
 }
 
 async function runPrioritized(

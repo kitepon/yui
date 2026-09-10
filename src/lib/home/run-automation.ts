@@ -3,8 +3,7 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchAlreadyApplied, patchFromAction, reportsActuatorState } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
-import { prioritizeAutomationActions } from "./automation-priority";
-import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger";
+import { prioritizeAutomationActions, sensorCondition } from "./automation-priority";
 import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
@@ -117,23 +116,12 @@ export function fireScheduledAutomations() {
       continue;
     }
     if (auto.trigger.type !== "sensor") continue;
-    const t = auto.trigger;
-    const metric = t.metric ?? "temperature";
-    const device = devices.find((d) => d.id === t.deviceId);
-    const raw = device ? metricValue(device, metric) : metricValue(climate, metric);
-    if (raw == null || t.value == null) continue;
-    if (sensorHoldsWhileInRange(t) && t.valueMax == null) continue;
-    const { pass, key } = sensorTriggerDecision(raw, t);
-    if (sensorHoldsWhileInRange(t)) {
-      if (pass) {
-        firing.push(auto);
-        holds.add(auto.id);
-      }
-      continue;
+    const d = sensorCondition(auto, { devices, climate });
+    if (d.key) markAutomationFired(auto.id, d.key);
+    if (d.match) {
+      firing.push(auto);
+      if (d.holds) holds.add(auto.id);
     }
-    if (auto.lastFiredKey === key) continue;
-    markAutomationFired(auto.id, key);
-    if (pass) firing.push(auto);
   }
   fireWave(firing, holds);
 }
