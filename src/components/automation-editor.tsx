@@ -21,6 +21,7 @@ import {
   METRIC_LABEL,
   WEEKDAYS,
   completeTrigger,
+  isMomentaryBot,
   isSensorSource,
   newActionId,
   sensorMetricsOf,
@@ -47,7 +48,10 @@ export function AutomationEditor({
   const sensors = useMemo(() => devices.filter(isSensorSource), [devices]);
   const rangeHold = trigger.type === "sensor" && trigger.op === "between";
   const actionDevices = useMemo(
-    () => (rangeHold ? actuators.filter(reportsActuatorState) : actuators),
+    () =>
+      rangeHold
+        ? actuators.filter((d) => reportsActuatorState(d) || isMomentaryBot(d))
+        : actuators,
     [actuators, rangeHold],
   );
 
@@ -87,10 +91,10 @@ export function AutomationEditor({
       nextTrigger.valueMax = hi;
       const blocked = actions.filter((a) => {
         const device = devices.find((d) => d.id === a.deviceId);
-        return !device || !reportsActuatorState(device);
+        return !device || (!reportsActuatorState(device) && !isMomentaryBot(device));
       });
       if (blocked.length) {
-        toast.error("範囲条件は、いまの設定を読み返せる機器だけに使えます");
+        toast.error("範囲条件は、いまの設定を読み返せる機器か、押すボットだけに使えます");
         return;
       }
     }

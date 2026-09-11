@@ -5,6 +5,7 @@ import {
   FAN_SPEED_LABEL,
   FAN_SWING_LABEL,
   HUMIDIFY_HUMIDITY_CHOICES,
+  isMomentaryBot,
 } from "./types.ts";
 
 /** DeviceCommand から機器 id を除いた、機器へ送る操作。 */
@@ -127,6 +128,7 @@ export function fillVisibleDefaults<T extends DevicePatch>(device: Device, actio
  * SwitchBot IR は `targetTemp: 26` を仮置きしているだけなので、値があることでは判定しない。
  */
 export function reportsActuatorState(device: Device): boolean {
+  if (isMomentaryBot(device)) return false;
   if (device.kind === "sensor" || device.kind === "ir" || device.kind === "other") return false;
   if (device.id.startsWith("switchbot-ir:")) return false;
   if (device.connector === "odelec") return false;
@@ -137,6 +139,16 @@ export function reportsActuatorState(device: Device): boolean {
     return device.kind === "ac" || device.kind === "light" || device.kind === "plug";
   }
   return false;
+}
+
+/**
+ * 条件を満たし続けているあいだの再送を止めるか。
+ * 押すボットは状態を持たないので、入っているあいだ毎周期押さない。
+ */
+export function skipHeldRepeat(device: Device, patch: DevicePatch): boolean {
+  if (isMomentaryBot(device)) return true;
+  if (!reportsActuatorState(device)) return true;
+  return patchAlreadyApplied(device, patch);
 }
 
 /** patch に載った項目が、いまの機器状態と同じなら true（送る必要なし）。 */

@@ -92,3 +92,38 @@ test("以上・以下は一度送ったあとも、条件を満たしている�
   assert.deepEqual(planned.get("outdoor")?.map((x) => x.deviceId), ["daikin:1"]);
   assert.deepEqual(planned.get("tank")?.map((x) => x.deviceId), []);
 });
+
+test("範囲に入った最初は送り、入っているあいだは保持する", () => {
+  const auto: Automation = {
+    id: "air",
+    name: "外気取り込み優先",
+    enabled: true,
+    trigger: {
+      type: "sensor",
+      deviceId: "daikin:1",
+      metric: "outdoorTemp",
+      op: "between",
+      value: 18,
+      valueMax: 23,
+    },
+    actions: [{ id: "x", deviceId: "bot:1", on: true }],
+  };
+  const snap = { devices: [{ id: "daikin:1", outdoorTemp: 20 }], climate: {} };
+  const enter = sensorCondition(auto, snap);
+  assert.equal(enter.match, true);
+  assert.equal(enter.holds, false);
+  assert.equal(enter.key?.endsWith(":pass"), true);
+  const stay = sensorCondition({ ...auto, lastFiredKey: enter.key }, snap);
+  assert.equal(stay.match, true);
+  assert.equal(stay.holds, true);
+  const leave = sensorCondition({ ...auto, lastFiredKey: enter.key }, {
+    devices: [{ id: "daikin:1", outdoorTemp: 28 }],
+    climate: {},
+  });
+  assert.equal(leave.match, false);
+  assert.equal(leave.holds, false);
+  assert.equal(leave.key?.endsWith(":fail"), true);
+  const reenter = sensorCondition({ ...auto, lastFiredKey: leave.key }, snap);
+  assert.equal(reenter.match, true);
+  assert.equal(reenter.holds, false);
+});

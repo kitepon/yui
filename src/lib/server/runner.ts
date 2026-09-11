@@ -1,7 +1,7 @@
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
-import { patchAlreadyApplied, patchFromAction, reportsActuatorState } from "@/lib/home/device-patch";
+import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
 import { prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
@@ -29,8 +29,7 @@ async function runAutomation(
   for (const action of auto.actions) {
     if (onlyIfDifferent) {
       const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
-      if (!device || !reportsActuatorState(device)) continue;
-      if (patchAlreadyApplied(device, patchFromAction(action))) continue;
+      if (!device || skipHeldRepeat(device, patchFromAction(action))) continue;
     }
     cur = await executeAction(homeId, cur, action);
   }

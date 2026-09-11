@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { clockInTokyo } from "./clock";
-import { describePatch, patchAlreadyApplied, patchFromAction, reportsActuatorState } from "./device-patch";
+import { describePatch, patchFromAction, skipHeldRepeat } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
 import { prioritizeAutomationActions, sensorCondition } from "./automation-priority";
@@ -56,10 +56,7 @@ async function runActions(auto: Automation, onlyIfDifferent: boolean) {
     const device = useHome.getState().devices.find((d) => d.id === action.deviceId);
     if (!device) continue;
     const patch = patchFromAction(action);
-    if (onlyIfDifferent) {
-      if (!reportsActuatorState(device)) continue;
-      if (patchAlreadyApplied(device, patch)) continue;
-    }
+    if (onlyIfDifferent && skipHeldRepeat(device, patch)) continue;
     await runCommand(device, patch);
     sent += 1;
   }

@@ -22,8 +22,8 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
 }
 
 /**
- * センサー条件をいま満たしているか。以上・以下は一度送ったあとも、
- * 満たしているあいだは機器を取り続ける（下が奪わない）。
+ * センサー条件をいま満たしているか。満たしているあいだは機器を取り続ける（下が奪わない）。
+ * 範囲に入った最初は送り、入っているあいだは保持する。出たら fail を残して、再入場でまた送る。
  */
 export function sensorCondition(auto: Automation, snap: {
   devices: Array<{
@@ -44,11 +44,10 @@ export function sensorCondition(auto: Automation, snap: {
   if (sensorHoldsWhileInRange(t) && t.valueMax == null) return { match: false, holds: false };
   const { pass, key } = sensorTriggerDecision(raw, t);
   if (!pass) {
-    if (sensorHoldsWhileInRange(t)) return { match: false, holds: false };
+    if (sensorHoldsWhileInRange(t)) return { match: false, holds: false, key };
     if (auto.lastFiredKey === key) return { match: false, holds: false };
     return { match: false, holds: false, key };
   }
-  if (sensorHoldsWhileInRange(t)) return { match: true, holds: true };
   if (auto.lastFiredKey === key) return { match: true, holds: true };
   return { match: true, holds: false, key };
 }
