@@ -88,6 +88,26 @@ test("badge is the connector, not 実機", () => {
   assert.equal(connectorBadge({ connector: "demo" }), "デモ");
 });
 
+test("migrateAutomation は連続では動かさないを残す", () => {
+  const auto = migrateAutomation({
+    id: "air",
+    name: "外気取り込み優先",
+    enabled: true,
+    skipContinuous: true,
+    trigger: { type: "sensor", deviceId: "ac", metric: "outdoorTemp", op: "between", value: 18, valueMax: 23 },
+    actions: [{ id: "a", deviceId: "bot", on: true }],
+  });
+  assert.equal(auto?.skipContinuous, true);
+  const off = migrateAutomation({
+    id: "air2",
+    name: "x",
+    enabled: true,
+    trigger: { type: "time" },
+    actions: [{ id: "a", deviceId: "p", on: true }],
+  });
+  assert.equal(off?.skipContinuous, undefined);
+});
+
 test("時刻トリガーは触っていない項目も 7:00 毎日として保存する", () => {
   assert.deepEqual(completeTrigger({ type: "time" }), {
     type: "time",

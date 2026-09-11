@@ -2,7 +2,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
-import { prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
+import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
@@ -72,8 +72,10 @@ async function runPrioritized(
   for (const auto of firing) {
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
+    const holding = holds.has(auto.id);
+    if (skipContinuousActions(auto, holding)) continue;
     cur = await runAutomation(homeId, cur, { ...auto, actions }, {
-      onlyIfDifferent: holds.has(auto.id),
+      onlyIfDifferent: holding,
     });
   }
   return cur;

@@ -21,7 +21,6 @@ import {
   METRIC_LABEL,
   WEEKDAYS,
   completeTrigger,
-  isMomentaryBot,
   isSensorSource,
   newActionId,
   sensorMetricsOf,
@@ -43,15 +42,13 @@ export function AutomationEditor({
     initial?.trigger ?? { type: "time", repeat: "daily", hour: 7, minute: 0 },
   );
   const [actions, setActions] = useState<AutoAction[]>(initial?.actions ?? []);
+  const [skipContinuous, setSkipContinuous] = useState(initial?.skipContinuous === true);
 
   const actuators = useMemo(() => devices.filter((d) => d.kind !== "sensor"), [devices]);
   const sensors = useMemo(() => devices.filter(isSensorSource), [devices]);
   const rangeHold = trigger.type === "sensor" && trigger.op === "between";
   const actionDevices = useMemo(
-    () =>
-      rangeHold
-        ? actuators.filter((d) => reportsActuatorState(d) || isMomentaryBot(d))
-        : actuators,
+    () => (rangeHold ? actuators.filter(reportsActuatorState) : actuators),
     [actuators, rangeHold],
   );
 
@@ -91,16 +88,17 @@ export function AutomationEditor({
       nextTrigger.valueMax = hi;
       const blocked = actions.filter((a) => {
         const device = devices.find((d) => d.id === a.deviceId);
-        return !device || (!reportsActuatorState(device) && !isMomentaryBot(device));
+        return !device || !reportsActuatorState(device);
       });
       if (blocked.length) {
-        toast.error("範囲条件は、いまの設定を読み返せる機器か、押すボットだけに使えます");
+        toast.error("範囲条件は、いまの設定を読み返せる機器だけに使えます");
         return;
       }
     }
     const payload = {
       name: name.trim() || "オートメーション",
       enabled: initial?.enabled ?? true,
+      skipContinuous: skipContinuous || undefined,
       trigger: nextTrigger,
       actions: actions.map((action) => {
         const deviceId = action.deviceId ?? actionDevices[0]?.id;
@@ -325,7 +323,7 @@ export function AutomationEditor({
             )}
             <p className="text-xs leading-relaxed text-faint">
               {trigger.op === "between"
-                ? `範囲内のあいだ、いまの設定と違うときだけ送ります。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`
+                ? `範囲内のあいだ、いまの設定と違うときだけ送ります。『連続では動かさない』を入れると、入っているあいだは操作しません。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`
                 : `しきい値は小数点第一位まで入れられます。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。条件を満たしてから動くまで最大${SENSOR_TICK_SECONDS}秒かかります。アプリを開いていなくても動きます。`}
             </p>
           </div>
@@ -365,6 +363,20 @@ export function AutomationEditor({
         >
           機器を足す
         </Button>
+
+        <button
+          type="button"
+          className={`mt-5 flex h-12 w-full items-center justify-between rounded-md px-3 text-left text-sm ${
+            skipContinuous ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"
+          }`}
+          onClick={() => setSkipContinuous((v) => !v)}
+        >
+          <span>連続では動かさない</span>
+          <span className="text-xs">{skipContinuous ? "入" : "切"}</span>
+        </button>
+        <p className="mt-1.5 text-xs leading-relaxed text-faint">
+          同じ条件が続いているあいだは、もう機器を操作しません。条件が外れて、もう一度入ったときだけ動かします。
+        </p>
 
         <Button className="mt-5 h-12 w-full" onClick={save}>
           保存

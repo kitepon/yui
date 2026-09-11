@@ -22,6 +22,14 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
 }
 
 /**
+ * 同じ条件が続いているあいだ、機器を操作しないか。
+ * 優先（機器を取る）はそのまま。操作だけ止める。
+ */
+export function skipContinuousActions(auto: Automation, holds: boolean) {
+  return Boolean(auto.skipContinuous && holds);
+}
+
+/**
  * センサー条件をいま満たしているか。満たしているあいだは機器を取り続ける（下が奪わない）。
  * 範囲に入った最初は送り、入っているあいだは保持する。出たら fail を残して、再入場でまた送る。
  */

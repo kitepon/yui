@@ -266,6 +266,8 @@ export interface Automation {
   trigger: AutoTrigger;
   actions: AutoAction[];
   lastFiredKey?: string;
+  /** 同じ条件が続いているあいだは、もう機器を操作しない。 */
+  skipContinuous?: boolean;
 }
 
 export const DEFAULT_ROOMS = ["リビング", "寝室", "玄関", "その他"];
@@ -398,5 +400,6 @@ export function migrateAutomation(raw: unknown): Automation | null {
     trigger,
     actions,
     lastFiredKey: typeof a.lastFiredKey === "string" ? a.lastFiredKey : undefined,
+    skipContinuous: a.skipContinuous === true ? true : undefined,
   };
 }

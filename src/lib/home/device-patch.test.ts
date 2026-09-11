@@ -127,23 +127,19 @@ test("ダイキンと Smart Life は設定を読み返せ、SwitchBot IR と学�
   );
 });
 
-test("押すボットは保持中に再送しない", () => {
-  const bot: Device = {
-    id: "switchbot:D382F7434EB5",
-    name: "換気扇オン",
+test("SwitchBot のプラグは設定を読み返せ、いまと同じなら保持中は送らない", () => {
+  const plug: Device = {
+    id: "switchbot:plug",
+    name: "プラグ",
     room: "その他",
     brand: "switchbot",
-    kind: "bot",
+    kind: "plug",
     online: true,
     source: "live",
-    nativeId: "D382F7434EB5",
+    nativeId: "AA",
     connector: "switchbot",
-    on: false,
-    botMode: "press",
+    on: true,
   };
-  assert.equal(reportsActuatorState(bot), false);
-  assert.equal(skipHeldRepeat(bot, { on: true }), true);
-  const plug: Device = { ...bot, id: "switchbot:plug", kind: "plug", botMode: undefined, on: true };
   assert.equal(reportsActuatorState(plug), true);
   assert.equal(skipHeldRepeat(plug, { on: true }), true);
   assert.equal(skipHeldRepeat(plug, { on: false }), false);

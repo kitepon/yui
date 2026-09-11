@@ -101,6 +101,7 @@ export function ScenesPage() {
                   <p className="text-base text-fg">{auto.name}</p>
                   <p className="mt-1 text-xs text-faint">
                     {describeTrigger(auto)} → {auto.actions.map(describeAction).join("、") || "アクションなし"}
+                    {auto.skipContinuous ? " · 連続では動かさない" : ""}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button

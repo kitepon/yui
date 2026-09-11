@@ -3,7 +3,7 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchFromAction, skipHeldRepeat } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
-import { prioritizeAutomationActions, sensorCondition } from "./automation-priority";
+import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority";
 import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
@@ -81,7 +81,9 @@ function fireWave(firing: Automation[], holds: Set<string>) {
   for (const auto of firing) {
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
-    void executeAutomation({ ...auto, actions }, { onlyIfDifferent: holds.has(auto.id) });
+    const holding = holds.has(auto.id);
+    if (skipContinuousActions(auto, holding)) continue;
+    void executeAutomation({ ...auto, actions }, { onlyIfDifferent: holding });
   }
 }
 
