@@ -136,12 +136,9 @@ test("連続では動かさないは、直前に動いたのが自分自身の�
     skipContinuous: true,
     trigger: { type: "sensor" },
     actions: [{ id: "x", deviceId: "bot-on", on: true }],
-    lastFiredKey: "pass-key",
-    lastExecutedKey: "pass-key",
+    lastExecutedKey: "ran",
   };
   assert.equal(skipContinuousActions(auto), true);
-  assert.equal(skipContinuousActions({ ...auto, lastFiredKey: undefined }), true);
   assert.equal(skipContinuousActions({ ...auto, lastExecutedKey: undefined }), false);
-  assert.equal(skipContinuousActions({ ...auto, lastFiredKey: "x:fail" }), false);
   assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }), false);
 });
