@@ -323,7 +323,7 @@ export function AutomationEditor({
             )}
             <p className="text-xs leading-relaxed text-faint">
               {trigger.op === "between"
-                ? `範囲内のあいだ、いまの設定と違うときだけ送ります。『連続では動かさない』は、直前に動いたのが同じオートメーションのときだけ操作しません。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`
+                ? `範囲内のあいだ、いまの設定と違うときだけ送ります。『連続では動かさない』は機器ごとで、このオートメーションが直前に動かした機器は繰り返しません。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`
                 : `しきい値は小数点第一位まで入れられます。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。条件を満たしてから動くまで最大${SENSOR_TICK_SECONDS}秒かかります。アプリを開いていなくても動きます。`}
             </p>
           </div>
@@ -375,7 +375,7 @@ export function AutomationEditor({
           <span className="text-xs">{skipContinuous ? "入" : "切"}</span>
         </button>
         <p className="mt-1.5 text-xs leading-relaxed text-faint">
-          直前に動いたのが同じオートメーションのとき、もう機器を操作しません。別のオートメーションが動いたあとは、また動かします。
+          同じ機器をこのオートメーションが直前に動かしたときは、もう操作しません。別のオートメーションがその機器を動かしたあとは、また動かします。
         </p>
 
         <Button className="mt-5 h-12 w-full" onClick={save}>

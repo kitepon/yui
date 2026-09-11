@@ -3,7 +3,7 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchFromAction, skipHeldRepeat } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
-import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority";
+import { prioritizeAutomationActions, sensorCondition, skipContinuousAction } from "./automation-priority";
 import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
@@ -51,13 +51,16 @@ export function describeAction(action: AutoAction) {
 
 async function runActions(auto: Automation, onlyIfDifferent: boolean) {
   let sent = 0;
+  const lastRanBy = useHome.getState().lastRanBy ?? {};
   for (const action of auto.actions) {
     if (!action.deviceId) continue;
+    if (skipContinuousAction(auto, action.deviceId, lastRanBy)) continue;
     const device = useHome.getState().devices.find((d) => d.id === action.deviceId);
     if (!device) continue;
     const patch = patchFromAction(action);
     if (onlyIfDifferent && skipHeldRepeat(device, patch)) continue;
     await runCommand(device, patch);
+    useHome.getState().markAutomationRanDevice(action.deviceId, auto.id);
     sent += 1;
   }
   return sent;
@@ -70,7 +73,6 @@ export async function executeAutomation(auto: Automation, opts?: { onlyIfDiffere
   try {
     const onlyIfDifferent = opts?.onlyIfDifferent === true;
     const sent = await runActions(auto, onlyIfDifferent);
-    if (sent > 0) useHome.getState().markAutomationRan(auto.id);
     if (!onlyIfDifferent || sent > 0) toast.message(auto.name);
   } finally {
     depth -= 1;
@@ -83,7 +85,6 @@ function fireWave(firing: Automation[], holds: Set<string>) {
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
     const holding = holds.has(auto.id);
-    if (skipContinuousActions(auto, useHome.getState().lastRanAutomationId)) continue;
     void executeAutomation({ ...auto, actions }, { onlyIfDifferent: holding });
   }
 }

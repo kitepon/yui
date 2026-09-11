@@ -2,7 +2,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
-import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
+import { prioritizeAutomationActions, sensorCondition, skipContinuousAction } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
@@ -26,16 +26,19 @@ async function runAutomation(
   if (!auto.enabled || !auto.actions.length) return snap;
   let cur = snap;
   const onlyIfDifferent = opts?.onlyIfDifferent === true;
+  const lastRanBy = { ...(cur.lastRanBy ?? {}) };
   let sent = false;
   for (const action of auto.actions) {
+    if (skipContinuousAction(auto, action.deviceId, lastRanBy)) continue;
     if (onlyIfDifferent) {
       const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
       if (!device || skipHeldRepeat(device, patchFromAction(action))) continue;
     }
     cur = await executeAction(homeId, cur, action);
+    if (action.deviceId) lastRanBy[action.deviceId] = auto.id;
     sent = true;
   }
-  if (sent) cur = await saveHomeRecord(homeId, { lastRanAutomationId: auto.id });
+  if (sent) cur = await saveHomeRecord(homeId, { lastRanBy });
   return cur;
 }
 
@@ -76,7 +79,6 @@ async function runPrioritized(
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
     const holding = holds.has(auto.id);
-    if (skipContinuousActions(auto, cur.lastRanAutomationId)) continue;
     cur = await runAutomation(homeId, cur, { ...auto, actions }, {
       onlyIfDifferent: holding,
     });
