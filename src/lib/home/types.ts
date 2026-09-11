@@ -52,6 +52,13 @@ export interface Device {
   lux?: number;
   position?: number;
   extra?: string;
+  /** SwitchBot Bot のモード。無いときは押すモードとして扱う。 */
+  botMode?: "press" | "switch";
+}
+
+/** 押すだけのボット。入れる／切るではなく、押す。 */
+export function isMomentaryBot(device: Pick<Device, "kind" | "botMode">) {
+  return device.kind === "bot" && device.botMode !== "switch";
 }
 
 export interface Climate {

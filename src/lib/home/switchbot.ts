@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { switchbotKindFromType } from "./ha-catalog.ts";
 import type { DevicePatch } from "./device-patch.ts";
-import type { AcMode, Device, FanSpeed } from "./types";
+import { isMomentaryBot, type AcMode, type Device, type FanSpeed } from "./types.ts";
 
 const BASE = "https://api.switch-bot.com/v1.1";
 
@@ -25,9 +25,18 @@ async function sb<T>(token: string, secret: string, path: string, init?: Request
   });
   const json = (await res.json()) as { statusCode: number; message: string; body: T };
   if (!res.ok || json.statusCode !== 100) {
-    throw new Error(`SwitchBot ${json.statusCode ?? res.status}: ${json.message || res.statusText}`);
+    throw new Error(switchbotErrorMessage(json.statusCode ?? res.status, json.message || res.statusText));
   }
   return json.body;
+}
+
+export function switchbotErrorMessage(statusCode: number, message: string) {
+  if (statusCode === 161) {
+    return "機器がオフラインです。ボットはハブ経由でないとクラウドから動かせません";
+  }
+  if (statusCode === 171) return "ハブがオフラインです";
+  if (statusCode === 160) return "その操作には対応していません";
+  return `SwitchBot ${statusCode}: ${message}`;
 }
 
 interface SbDevice {
@@ -35,6 +44,7 @@ interface SbDevice {
   deviceName: string;
   deviceType: string;
   hubDeviceId?: string;
+  enableCloudService?: boolean;
 }
 
 function roomFromName(name: string) {
@@ -68,9 +78,17 @@ function asNumber(value: unknown): number | undefined {
 /** SwitchBot の status を結の欄へ。取れない項目は触らない。 */
 export function applySwitchbotStatus(device: Device, status: Record<string, unknown>): Device {
   const next = { ...device };
+  const mode = status.deviceMode;
+  if (mode === "switchMode") next.botMode = "switch";
+  if (mode === "pressMode" || mode === "customizeMode") next.botMode = "press";
   const power = status.power;
-  if (power === "on") next.on = true;
-  if (power === "off") next.on = false;
+  if (isMomentaryBot(next)) {
+    // 押すモードの power は無視する（公式も無効と書いている）。
+    next.on = false;
+  } else {
+    if (power === "on") next.on = true;
+    if (power === "off") next.on = false;
+  }
   const temperature = asNumber(status.temperature);
   if (temperature != null) next.temperature = temperature;
   const humidity = asNumber(status.humidity);
@@ -116,6 +134,13 @@ export function switchbotAcSetAll(device: Device, cmd: DevicePatch) {
   };
 }
 
+function botNeedsHub(d: SbDevice) {
+  return (
+    mapType(d.deviceType) === "bot" &&
+    (d.enableCloudService === false || !d.hubDeviceId || d.hubDeviceId === "000000000000")
+  );
+}
+
 export function switchbotToDevices(list: SbDevice[]): Device[] {
   return list.map((d) => {
     const kind = mapType(d.deviceType);
@@ -125,12 +150,12 @@ export function switchbotToDevices(list: SbDevice[]): Device[] {
       room: roomFromName(d.deviceName),
       brand: "switchbot" as const,
       kind,
-      online: true,
+      online: !botNeedsHub(d),
       source: "live" as const,
       nativeId: d.deviceId,
       connector: "switchbot" as const,
       on: kind === "lock" ? true : false,
-      extra: d.deviceType,
+      extra: botNeedsHub(d) ? `${d.deviceType} · ハブなし` : d.deviceType,
     };
   });
 }
@@ -211,9 +236,12 @@ export async function switchbotControl(
   });
 }
 
-function switchbotBasicCommand(device: Device, cmd: DevicePatch) {
+export function switchbotBasicCommand(device: Device, cmd: DevicePatch) {
   let command = "turnOn";
   let parameter: string | number = "default";
+  if (isMomentaryBot(device)) {
+    return { command: "press", parameter: "default", commandType: "command" as const };
+  }
   if (device.kind === "curtain") {
     if (cmd.position !== undefined) {
       command = "setPosition";

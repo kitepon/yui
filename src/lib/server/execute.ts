@@ -5,7 +5,7 @@ import { odelicControl } from "@/lib/home/odelic";
 import { daikinControl } from "@/lib/home/daikin";
 import { matchesStep } from "@/lib/home/demo";
 import { patchFromAction } from "@/lib/home/device-patch";
-import type { AutoAction, Device } from "@/lib/home/types";
+import { isMomentaryBot, type AutoAction, type Device } from "@/lib/home/types";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import { loadHomeRecord, saveHomeRecord } from "./home-db";
 import { homeBelongsToLanOwner } from "./lan-owner";
@@ -24,6 +24,7 @@ export async function executeDevice(
   patch: Partial<Device>,
 ) {
   const next = { ...device, ...patch };
+  if (isMomentaryBot(next)) next.on = false;
   if (device.source === "live") {
     // LAN 直結は宛先をサーバーが持つ。持ち主以外の家に機器が残っていても、
     // 場面やオートメーション経由で他人の家へ指示が出ないようにする。

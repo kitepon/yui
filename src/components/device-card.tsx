@@ -14,6 +14,7 @@ import {
   connectorBadge,
   stripConnectorFromExtra,
   acStatusLine,
+  isMomentaryBot,
   type Device,
   type DeviceKind,
 } from "@/lib/home/types";
@@ -43,6 +44,7 @@ function statusLine(device: Device) {
     return device.position === 0 ? "閉" : `開 ${device.position ?? 0}%`;
   }
   if (device.kind === "lock") return device.on ? "施錠" : "解錠";
+  if (isMomentaryBot(device)) return "押す";
   if (device.kind === "light" && device.on) return `${device.brightness ?? 100}%`;
   return device.on ? "入" : "切";
 }
@@ -80,7 +82,9 @@ export function DeviceCard({
         className="flex flex-1 flex-col items-start text-left"
         aria-label={
           tapToggles
-            ? `${device.name}を${active ? "切る" : "入れる"}`
+            ? isMomentaryBot(device)
+              ? `${device.name}を押す`
+              : `${device.name}を${active ? "切る" : "入れる"}`
             : `${device.name}の詳細`
         }
       >
@@ -117,7 +121,15 @@ export function DeviceCard({
               active ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted",
             )}
           >
-            {device.kind === "lock" ? (device.on ? "施錠" : "解錠") : active ? "切る" : "入れる"}
+            {device.kind === "lock"
+              ? device.on
+                ? "施錠"
+                : "解錠"
+              : isMomentaryBot(device)
+                ? "押す"
+                : active
+                  ? "切る"
+                  : "入れる"}
           </button>
         ) : null}
         <button

@@ -3,6 +3,8 @@ import { test } from "node:test";
 import {
   applySwitchbotStatus,
   switchbotAcSetAll,
+  switchbotBasicCommand,
+  switchbotErrorMessage,
   switchbotIrKind,
   switchbotToDevices,
 } from "./switchbot.ts";
@@ -17,6 +19,38 @@ test("物理機器の deviceType を結の kind へ写す", () => {
   assert.equal(devices[0].kind, "bot");
   assert.equal(devices[1].kind, "other");
   assert.equal(devices[2].kind, "sensor");
+});
+
+test("ハブの無い Bot はハブなしと出し、押すモードは press を送る", () => {
+  const [bot] = switchbotToDevices([
+    {
+      deviceId: "b",
+      deviceName: "換気扇オン",
+      deviceType: "Bot",
+      enableCloudService: false,
+      hubDeviceId: "000000000000",
+    },
+  ]);
+  assert.equal(bot.extra, "Bot · ハブなし");
+  assert.equal(bot.online, false);
+  const pressed = applySwitchbotStatus(bot, { power: "on", deviceMode: "pressMode" });
+  assert.equal(pressed.botMode, "press");
+  assert.equal(pressed.on, false);
+  assert.deepEqual(switchbotBasicCommand(pressed, { on: true }), {
+    command: "press",
+    parameter: "default",
+    commandType: "command",
+  });
+  assert.deepEqual(switchbotBasicCommand(pressed, { on: false }), {
+    command: "press",
+    parameter: "default",
+    commandType: "command",
+  });
+  const switched = applySwitchbotStatus(bot, { power: "on", deviceMode: "switchMode" });
+  assert.equal(switched.botMode, "switch");
+  assert.equal(switched.on, true);
+  assert.equal(switchbotBasicCommand(switched, { on: false }).command, "turnOff");
+  assert.equal(switchbotErrorMessage(161, "device offline"), "機器がオフラインです。ボットはハブ経由でないとクラウドから動かせません");
 });
 
 test("IR は名前でなく deviceType でエアコンを見分ける", () => {

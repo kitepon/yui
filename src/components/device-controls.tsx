@@ -5,6 +5,7 @@ import {
   FAN_SWING_LABEL,
   FAN_SWINGS,
   HUMIDIFY_HUMIDITY_CHOICES,
+  isMomentaryBot,
   type Device,
 } from "@/lib/home/types";
 import {
@@ -34,10 +35,20 @@ export function DeviceControls({
       device.kind === "ir" ? (
         <Button
           className="h-14 w-full text-base"
-          variant={device.on ? "default" : "outline"}
-          onClick={() => onChange(device, { on: !device.on })}
+          variant={device.on && !isMomentaryBot(device) ? "default" : "outline"}
+          onClick={() =>
+            onChange(device, isMomentaryBot(device) ? { on: true } : { on: !device.on })
+          }
         >
-          {device.kind === "lock" ? (device.on ? "解錠する" : "施錠する") : device.on ? "切る" : "入れる"}
+          {device.kind === "lock"
+            ? device.on
+              ? "解錠する"
+              : "施錠する"
+            : isMomentaryBot(device)
+              ? "押す"
+              : device.on
+                ? "切る"
+                : "入れる"}
         </Button>
       ) : null}
 
