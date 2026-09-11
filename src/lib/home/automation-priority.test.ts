@@ -128,7 +128,7 @@ test("範囲に入った最初は送り、入っているあいだは保持す�
   assert.equal(reenter.holds, false);
 });
 
-test("連続では動かさないは、同じ条件が続いているときだけ操作を止める", () => {
+test("連続では動かさないは、直前に動いたのが同じオートメーションのときだけ止める", () => {
   const auto: Automation = {
     id: "air",
     name: "外気取り込み優先",
@@ -137,7 +137,8 @@ test("連続では動かさないは、同じ条件が続いているときだ�
     trigger: { type: "sensor" },
     actions: [{ id: "x", deviceId: "bot:1", on: true }],
   };
-  assert.equal(skipContinuousActions(auto, true), true);
-  assert.equal(skipContinuousActions(auto, false), false);
-  assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }, true), false);
+  assert.equal(skipContinuousActions(auto, "air"), true);
+  assert.equal(skipContinuousActions(auto, "tank"), false);
+  assert.equal(skipContinuousActions(auto, undefined), false);
+  assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }, "air"), false);
 });

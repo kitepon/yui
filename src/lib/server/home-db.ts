@@ -38,6 +38,7 @@ function bodyOf(snap: HomeSnapshot) {
     scenes: snap.scenes,
     automations: snap.automations.map(migrateAutomation).filter((a): a is NonNullable<typeof a> => a != null),
     lastScene: snap.lastScene,
+    lastRanAutomationId: snap.lastRanAutomationId ?? null,
     savedAt: snap.savedAt,
   };
 }

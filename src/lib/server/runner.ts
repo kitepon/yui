@@ -26,13 +26,16 @@ async function runAutomation(
   if (!auto.enabled || !auto.actions.length) return snap;
   let cur = snap;
   const onlyIfDifferent = opts?.onlyIfDifferent === true;
+  let sent = false;
   for (const action of auto.actions) {
     if (onlyIfDifferent) {
       const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
       if (!device || skipHeldRepeat(device, patchFromAction(action))) continue;
     }
     cur = await executeAction(homeId, cur, action);
+    sent = true;
   }
+  if (sent) cur = await saveHomeRecord(homeId, { lastRanAutomationId: auto.id });
   return cur;
 }
 
@@ -73,7 +76,7 @@ async function runPrioritized(
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
     const holding = holds.has(auto.id);
-    if (skipContinuousActions(auto, holding)) continue;
+    if (skipContinuousActions(auto, cur.lastRanAutomationId)) continue;
     cur = await runAutomation(homeId, cur, { ...auto, actions }, {
       onlyIfDifferent: holding,
     });

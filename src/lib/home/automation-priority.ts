@@ -22,11 +22,11 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
 }
 
 /**
- * 同じ条件が続いているあいだ、機器を操作しないか。
- * 優先（機器を取る）はそのまま。操作だけ止める。
+ * 「連続では動かさない」は、直前に実際に動いたのが同じオートメーションのときだけ止める。
+ * 条件が続いているだけでは連続ではない。別のオートメーションが動いたあとは止めるな。
  */
-export function skipContinuousActions(auto: Automation, holds: boolean) {
-  return Boolean(auto.skipContinuous && holds);
+export function skipContinuousActions(auto: Automation, lastRanAutomationId: string | null | undefined) {
+  return Boolean(auto.skipContinuous && lastRanAutomationId && lastRanAutomationId === auto.id);
 }
 
 /**
