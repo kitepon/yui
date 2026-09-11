@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+本番 image `yuihome:20260911-9c499b6`。Bluetooth 押しは `yuihome-switchbot-ble:20260911-9c499b6`。
+
 ### 変わったこと
 
 - SwitchBot の押すボットを、サーバーの Bluetooth で直接押せる

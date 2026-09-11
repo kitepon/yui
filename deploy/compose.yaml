@@ -43,6 +43,8 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    security_opt:
+      - apparmor:unconfined
     volumes:
       - /run/dbus:/run/dbus
       - /var/run/dbus:/var/run/dbus

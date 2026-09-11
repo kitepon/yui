@@ -55,12 +55,16 @@ cp "$PGLITE_DIST/pglite.data" "$PGLITE_DIST/pglite.wasm" "$PGLITE_DIST/initdb.wa
 echo "[deploy] image $IMAGE ($PLATFORM)"
 $BUILDX build --platform "$PLATFORM" --load -t "$IMAGE" "$ROOT"
 BLE_IMAGE="yuihome-switchbot-ble:$TAG"
-echo "[deploy] image $BLE_IMAGE ($PLATFORM)"
-$BUILDX build --platform "$PLATFORM" --load -t "$BLE_IMAGE" "$ROOT/services/switchbot-ble"
 
-echo "[deploy] load on $HOST"
-docker save "$IMAGE" "$BLE_IMAGE" | ssh "$HOST" docker load
+echo "[deploy] load $IMAGE on $HOST"
+docker save "$IMAGE" | ssh "$HOST" docker load
 ssh "$HOST" "docker image inspect $IMAGE >/dev/null"
+
+# BLE 口は BlueZ を使う小さな image。手元の disk を食わないようサーバーで焼く。
+echo "[deploy] image $BLE_IMAGE on $HOST"
+ssh "$HOST" "mkdir -p $REMOTE_DIR/switchbot-ble"
+scp -q "$ROOT/services/switchbot-ble/Dockerfile" "$ROOT/services/switchbot-ble/requirements.txt" "$ROOT/services/switchbot-ble/server.py" "$HOST:$REMOTE_DIR/switchbot-ble/"
+ssh "$HOST" "docker build -t $BLE_IMAGE $REMOTE_DIR/switchbot-ble"
 ssh "$HOST" "docker image inspect $BLE_IMAGE >/dev/null"
 
 echo "[deploy] compose $REMOTE_DIR/deploy"
