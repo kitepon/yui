@@ -4,6 +4,26 @@ import type { DevicePatch } from "./device-patch.ts";
 import { isMomentaryBot, type AcMode, type Device, type FanSpeed } from "./types.ts";
 
 const BASE = "https://api.switch-bot.com/v1.1";
+const BLE_NOT_CONFIGURED = "SwitchBot 直結（YUI_SWITCHBOT_BLE_URL）が未設定です。";
+
+export function switchbotBleUrl(): string {
+  return (process.env.YUI_SWITCHBOT_BLE_URL ?? "").trim().replace(/\/$/, "");
+}
+
+export function switchbotBleConfigured(): boolean {
+  return switchbotBleUrl().length > 0;
+}
+
+/** 押すボットを、サーバーの Bluetooth 直結で扱うか。クラウドへは送らない。 */
+export function switchbotUsesBle(device: Device): boolean {
+  return isMomentaryBot(device) && switchbotBleConfigured();
+}
+
+export function switchbotNativeMac(nativeId: string): string {
+  const hex = nativeId.replace(/[^0-9a-f]/gi, "");
+  if (hex.length !== 12) throw new Error(`SwitchBot の MAC が読めません（${nativeId}）`);
+  return (hex.match(/.{2}/g) ?? []).join(":").toUpperCase();
+}
 
 function headers(token: string, secret: string) {
   const t = Date.now().toString();
@@ -135,6 +155,7 @@ export function switchbotAcSetAll(device: Device, cmd: DevicePatch) {
 }
 
 function botNeedsHub(d: SbDevice) {
+  if (switchbotBleConfigured() && mapType(d.deviceType) === "bot") return false;
   return (
     mapType(d.deviceType) === "bot" &&
     (d.enableCloudService === false || !d.hubDeviceId || d.hubDeviceId === "000000000000")
@@ -155,7 +176,11 @@ export function switchbotToDevices(list: SbDevice[]): Device[] {
       nativeId: d.deviceId,
       connector: "switchbot" as const,
       on: kind === "lock" ? true : false,
-      extra: botNeedsHub(d) ? `${d.deviceType} · ハブなし` : d.deviceType,
+      extra: botNeedsHub(d)
+        ? `${d.deviceType} · ハブなし`
+        : switchbotBleConfigured() && kind === "bot"
+          ? `${d.deviceType} · 直結`
+          : d.deviceType,
     };
   });
 }
@@ -220,12 +245,38 @@ export async function switchbotSync(token: string, secret: string) {
   return devices;
 }
 
+async function switchbotBlePress(device: Device) {
+  const base = switchbotBleUrl();
+  if (!base) throw new Error(BLE_NOT_CONFIGURED);
+  const mac = switchbotNativeMac(device.nativeId);
+  const res = await fetch(`${base}/press`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mac }),
+    signal: AbortSignal.timeout(25000),
+  });
+  const text = await res.text();
+  let json: { ok?: boolean; error?: string } = {};
+  try {
+    json = JSON.parse(text) as { ok?: boolean; error?: string };
+  } catch {
+    json = { error: text.slice(0, 200) };
+  }
+  if (!res.ok || json.ok === false) {
+    throw new Error(`${device.name} を押せませんでした${json.error ? `（${json.error}）` : ""}`);
+  }
+}
+
 export async function switchbotControl(
   token: string,
   secret: string,
   device: Device,
   cmd: DevicePatch,
 ) {
+  if (switchbotUsesBle(device)) {
+    await switchbotBlePress(device);
+    return;
+  }
   const body =
     device.kind === "ac"
       ? switchbotAcSetAll(device, cmd)

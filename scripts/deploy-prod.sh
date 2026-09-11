@@ -54,10 +54,14 @@ cp "$PGLITE_DIST/pglite.data" "$PGLITE_DIST/pglite.wasm" "$PGLITE_DIST/initdb.wa
 
 echo "[deploy] image $IMAGE ($PLATFORM)"
 $BUILDX build --platform "$PLATFORM" --load -t "$IMAGE" "$ROOT"
+BLE_IMAGE="yuihome-switchbot-ble:$TAG"
+echo "[deploy] image $BLE_IMAGE ($PLATFORM)"
+$BUILDX build --platform "$PLATFORM" --load -t "$BLE_IMAGE" "$ROOT/services/switchbot-ble"
 
 echo "[deploy] load on $HOST"
-docker save "$IMAGE" | ssh "$HOST" docker load
+docker save "$IMAGE" "$BLE_IMAGE" | ssh "$HOST" docker load
 ssh "$HOST" "docker image inspect $IMAGE >/dev/null"
+ssh "$HOST" "docker image inspect $BLE_IMAGE >/dev/null"
 
 echo "[deploy] compose $REMOTE_DIR/deploy"
 ssh "$HOST" "mkdir -p $REMOTE_DIR/deploy"
@@ -65,7 +69,7 @@ ssh "$HOST" "mkdir -p $REMOTE_DIR/deploy"
 ssh "$HOST" "umask 077; if [ ! -f $REMOTE_DIR/deploy/.env ]; then printf 'BETTER_AUTH_SECRET=%s\nHOME_SECRETS_KEY=%s\n' \"\$(openssl rand -hex 32)\" \"\$(openssl rand -hex 32)\" > $REMOTE_DIR/deploy/.env; echo '[deploy] wrote new deploy/.env — BETTER_AUTH_URL などを書き足すこと'; fi"
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
-sed "s|image: yuihome:local|image: $IMAGE|" "$ROOT/deploy/compose.yaml" >"$TMP"
+sed -e "s|image: yuihome:local|image: $IMAGE|" -e "s|image: yuihome-switchbot-ble:local|image: $BLE_IMAGE|" "$ROOT/deploy/compose.yaml" >"$TMP"
 scp -q "$TMP" "$HOST:$REMOTE_DIR/deploy/compose.yaml"
 
 echo "[deploy] up"
@@ -74,4 +78,8 @@ ssh "$HOST" "docker ps --filter name=^/${NAME}$ --format '{{.Names}}\t{{.Status}
 
 echo "[deploy] probe"
 ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./.env 2>/dev/null; curl -fsS -o /dev/null -w '%{http_code}\n' --max-time 10 http://\${YUI_BIND:-127.0.0.1}:\${YUI_PORT:-18861}/"
+if ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./.env 2>/dev/null; grep -q '^COMPOSE_PROFILES=.*ble' .env"; then
+  ssh "$HOST" "curl -fsS --max-time 5 http://127.0.0.1:18862/health"
+  echo
+fi
 echo "[deploy] done $IMAGE"

@@ -1,5 +1,5 @@
 import { remoControl } from "@/lib/home/remo";
-import { switchbotControl } from "@/lib/home/switchbot";
+import { switchbotControl, switchbotUsesBle } from "@/lib/home/switchbot";
 import { tuyaControl } from "@/lib/home/tuya";
 import { odelicControl } from "@/lib/home/odelic";
 import { daikinControl } from "@/lib/home/daikin";
@@ -28,7 +28,10 @@ export async function executeDevice(
   if (device.source === "live") {
     // LAN 直結は宛先をサーバーが持つ。持ち主以外の家に機器が残っていても、
     // 場面やオートメーション経由で他人の家へ指示が出ないようにする。
-    if (LAN_CONNECTORS.has(device.connector) && !homeBelongsToLanOwner(await ownerOf(homeId))) {
+    if (
+      (LAN_CONNECTORS.has(device.connector) || switchbotUsesBle(device)) &&
+      !homeBelongsToLanOwner(await ownerOf(homeId))
+    ) {
       throw new Error(`${device.name} はこの家からは操作できません`);
     }
     if (device.connector === "nature") {
