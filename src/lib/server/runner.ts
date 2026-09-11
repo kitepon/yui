@@ -35,13 +35,7 @@ async function runAutomation(
     cur = await executeAction(homeId, cur, action);
     sent = true;
   }
-  if (sent) {
-    cur = await saveHomeRecord(homeId, {
-      automations: cur.automations.map((a) =>
-        a.id === auto.id ? { ...a, lastExecutedKey: auto.lastFiredKey || "ran" } : a,
-      ),
-    });
-  }
+  if (sent) cur = await saveHomeRecord(homeId, { lastRanAutomationId: auto.id });
   return cur;
 }
 
@@ -83,7 +77,7 @@ async function runPrioritized(
     if (!actions.length) continue;
     const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
     const holding = holds.has(auto.id);
-    if (skipContinuousActions(current)) continue;
+    if (skipContinuousActions(current, cur.lastRanAutomationId)) continue;
     cur = await runAutomation(homeId, cur, { ...current, actions }, {
       onlyIfDifferent: holding,
     });

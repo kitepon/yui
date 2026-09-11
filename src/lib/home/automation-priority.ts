@@ -21,9 +21,9 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
   return out;
 }
 
-/** 「連続では動かさない」：このオートメーションが直前に動いたら、もう動かない。 */
-export function skipContinuousActions(auto: Automation) {
-  return Boolean(auto.skipContinuous && auto.lastExecutedKey);
+/** 「連続では動かさない」：直前に動いたオートメーションが自分なら、何もしない。 */
+export function skipContinuousActions(auto: Automation, lastRanId: string | null | undefined) {
+  return Boolean(auto.skipContinuous && lastRanId && lastRanId === auto.id);
 }
 
 /**

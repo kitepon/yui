@@ -38,6 +38,7 @@ function bodyOf(snap: HomeSnapshot) {
     scenes: snap.scenes,
     automations: snap.automations.map(migrateAutomation).filter((a): a is NonNullable<typeof a> => a != null),
     lastScene: snap.lastScene,
+    lastRanAutomationId: snap.lastRanAutomationId ?? null,
     savedAt: snap.savedAt,
   };
 }
@@ -184,6 +185,7 @@ export async function replaceHome(ownerUserId: string, next: HomeSnapshot): Prom
     ...next,
     credentials: mergeIncomingCredentials(cur.snap.credentials, next.credentials),
     pairPin: cur.snap.pairPin,
+    lastRanAutomationId: next.lastRanAutomationId ?? cur.snap.lastRanAutomationId ?? null,
     automations: (next.automations ?? []).map((a) => {
       const prev = prevById.get(a.id);
       return {

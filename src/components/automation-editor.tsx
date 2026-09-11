@@ -375,7 +375,7 @@ export function AutomationEditor({
           <span className="text-xs">{skipContinuous ? "入" : "切"}</span>
         </button>
         <p className="mt-1.5 text-xs leading-relaxed text-faint">
-          直前に動いたのがこのオートメーション自身なら、機器をオンオフしません。別のオートメーションが動いたあとは、また動かします。
+          直前に動いたオートメーションが自分自身なら、何もしません。別のが動いたあとは、また動きます。
         </p>
 
         <Button className="mt-5 h-12 w-full" onClick={save}>

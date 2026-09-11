@@ -136,9 +136,9 @@ test("連続では動かさないは、直前に動いたのが自分自身の�
     skipContinuous: true,
     trigger: { type: "sensor" },
     actions: [{ id: "x", deviceId: "bot-on", on: true }],
-    lastExecutedKey: "ran",
   };
-  assert.equal(skipContinuousActions(auto), true);
-  assert.equal(skipContinuousActions({ ...auto, lastExecutedKey: undefined }), false);
-  assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }), false);
+  assert.equal(skipContinuousActions(auto, "air"), true);
+  assert.equal(skipContinuousActions(auto, "tank"), false);
+  assert.equal(skipContinuousActions(auto, undefined), false);
+  assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }, "air"), false);
 });

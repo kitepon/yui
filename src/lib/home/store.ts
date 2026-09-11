@@ -27,6 +27,7 @@ interface HomeState {
   connectors: Record<Brand, ConnectorStatus>;
   demoVisible: boolean;
   lastScene: string | null;
+  lastRanAutomationId: string | null;
   savedAt: string | null;
   rooms: string[];
   overrides: Record<string, DeviceOverride>;
@@ -64,7 +65,7 @@ interface HomeState {
   removeAutomation: (id: string) => void;
   moveAutomation: (id: string, dir: -1 | 1) => void;
   markAutomationFired: (id: string, key: string) => void;
-  markAutomationExecuted: (id: string, key: string) => void;
+  markLastRanAutomation: (id: string) => void;
 }
 
 const defaultConnectors = emptyConnectors;
@@ -92,6 +93,7 @@ export function snapshotFromState(s: {
   scenes: Scene[];
   automations: Automation[];
   lastScene: string | null;
+  lastRanAutomationId?: string | null;
   savedAt: string | null;
   pairPin?: string;
 }): HomeSnapshot {
@@ -106,6 +108,7 @@ export function snapshotFromState(s: {
     scenes: s.scenes,
     automations: s.automations,
     lastScene: s.lastScene,
+    lastRanAutomationId: s.lastRanAutomationId ?? null,
     savedAt: s.savedAt,
     pairPin: s.pairPin ?? "",
   };
@@ -132,6 +135,7 @@ export const useHome = create<HomeState>()(
       connectors: defaultConnectors(),
       demoVisible: true,
       lastScene: null,
+      lastRanAutomationId: null,
       savedAt: null,
       rooms: [...DEFAULT_ROOMS],
       overrides: {},
@@ -160,6 +164,7 @@ export const useHome = create<HomeState>()(
           scenes: snap.scenes,
           automations: snap.automations,
           lastScene: snap.lastScene,
+          lastRanAutomationId: snap.lastRanAutomationId ?? null,
           savedAt: snap.savedAt,
           pairPin: snap.pairPin,
           serverHost: host ?? get().serverHost,
@@ -393,10 +398,7 @@ export const useHome = create<HomeState>()(
               : a,
           ),
         })),
-      markAutomationExecuted: (id, key) =>
-        set((s) => ({
-          automations: s.automations.map((a) => (a.id === id ? { ...a, lastExecutedKey: key } : a)),
-        })),
+      markLastRanAutomation: (id) => set({ lastRanAutomationId: id }),
     }),
     {
       name: "yui-home",
@@ -427,6 +429,7 @@ export const useHome = create<HomeState>()(
         connectors: s.connectors,
         demoVisible: s.demoVisible,
         lastScene: s.lastScene,
+        lastRanAutomationId: s.lastRanAutomationId ?? null,
         savedAt: s.savedAt,
         rooms: s.rooms,
         overrides: s.overrides,

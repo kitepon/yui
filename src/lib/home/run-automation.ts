@@ -70,9 +70,7 @@ export async function executeAutomation(auto: Automation, opts?: { onlyIfDiffere
   try {
     const onlyIfDifferent = opts?.onlyIfDifferent === true;
     const sent = await runActions(auto, onlyIfDifferent);
-    if (sent > 0) {
-      useHome.getState().markAutomationExecuted(auto.id, auto.lastFiredKey || "ran");
-    }
+    if (sent > 0) useHome.getState().markLastRanAutomation(auto.id);
     if (!onlyIfDifferent || sent > 0) toast.message(auto.name);
   } finally {
     depth -= 1;
@@ -86,7 +84,7 @@ function fireWave(firing: Automation[], holds: Set<string>) {
     if (!actions.length) continue;
     const holding = holds.has(auto.id);
     const current = useHome.getState().automations.find((a) => a.id === auto.id) ?? auto;
-    if (skipContinuousActions(current)) continue;
+    if (skipContinuousActions(current, useHome.getState().lastRanAutomationId)) continue;
     void executeAutomation({ ...current, actions }, { onlyIfDifferent: holding });
   }
 }

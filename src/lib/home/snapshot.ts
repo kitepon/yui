@@ -23,6 +23,8 @@ export interface HomeSnapshot {
   scenes: Scene[];
   automations: Automation[];
   lastScene: string | null;
+  /** 直前に機器を動かしたオートメーション。 */
+  lastRanAutomationId?: string | null;
   savedAt: string | null;
   pairPin: string;
   host?: string;
@@ -56,6 +58,7 @@ export function emptySnapshot(): HomeSnapshot {
     scenes: SCENES,
     automations: [],
     lastScene: null,
+    lastRanAutomationId: null,
     savedAt: null,
     pairPin: "",
   };
