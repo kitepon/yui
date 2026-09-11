@@ -12,7 +12,7 @@
 
 ### 限界
 
-- Bluetooth 直結は `YUI_SWITCHBOT_BLE_URL` と `COMPOSE_PROFILES=ble` がある結だけ。ボットが電波の届くところにあること
+- Bluetooth 直結は `YUI_SWITCHBOT_BLE_URL` と `COMPOSE_PROFILES=ble` がある結だけ。ボットが電波の届くところにあること。結からは同じ compose ネットワークの `http://switchbot-ble:18862` へ届ける
 - クラウドから押すにはハブが要る。ハブ無しクラウドはオフライン
 - 外気温は室外機が返すときだけ、エアコンの「値」に出る
 

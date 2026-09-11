@@ -38,7 +38,7 @@ LAN 直結は誰にも開かない。
 
 SwitchBot の押すボットをハブ無しで動かすときは、サーバーに Bluetooth アダプタがあり、
 ボットが電波の届くところにあること。`.env` に `COMPOSE_PROFILES=ble` と
-`YUI_SWITCHBOT_BLE_URL=http://host.docker.internal:18862` を書く。
+`YUI_SWITCHBOT_BLE_URL=http://switchbot-ble:18862` を書く。
 
 ## 起動
 
