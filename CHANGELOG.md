@@ -2,7 +2,7 @@
 
 ## 2026-09-11
 
-本番 image `yuihome:20260911-9c499b6`。Bluetooth 押しは `yuihome-switchbot-ble:20260911-9c499b6`。
+本番 image `yuihome:20260911-63ced03`。Bluetooth 押しは `yuihome-switchbot-ble:20260911-63ced03`。
 
 ### 変わったこと
 
