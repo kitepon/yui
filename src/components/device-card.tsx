@@ -13,9 +13,7 @@ import { cn } from "@/lib/cn";
 import {
   connectorBadge,
   stripConnectorFromExtra,
-  AC_MODE_LABEL,
-  FAN_SPEED_LABEL,
-  FAN_SWING_LABEL,
+  acStatusLine,
   type Device,
   type DeviceKind,
 } from "@/lib/home/types";
@@ -40,15 +38,7 @@ function statusLine(device: Device) {
     ].filter(Boolean);
     return bits.join(" · ") || "計測中";
   }
-  if (device.kind === "ac") {
-    if (!device.on) return "停止";
-    const mode = device.mode ? AC_MODE_LABEL[device.mode] : "—";
-    const bits = [`${mode} ${device.targetTemp ?? "—"}°`];
-    if (device.fanSpeed) bits.push(FAN_SPEED_LABEL[device.fanSpeed]);
-    if (device.fanSwing) bits.push(FAN_SWING_LABEL[device.fanSwing]);
-    if (device.outdoorTemp != null) bits.push(`外${device.outdoorTemp}°`);
-    return bits.join(" · ");
-  }
+  if (device.kind === "ac") return acStatusLine(device);
   if (device.kind === "curtain") {
     return device.position === 0 ? "閉" : `開 ${device.position ?? 0}%`;
   }

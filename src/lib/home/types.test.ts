@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  acStatusLine,
   completeTrigger,
   connectorBadge,
   migrateAutomation,
@@ -15,6 +16,29 @@ test("気温の別名は extra をラベルにする", () => {
   assert.equal(sensorTempLabel({ extra: "水温" }), "水温");
   assert.equal(sensorTempLabel({ extra: "直結 · 192.168.1.16" }), "気温");
   assert.equal(sensorTempLabel(undefined), "気温");
+});
+
+test("エアコンカードは停止中でも室温・湿度・外気温を出す", () => {
+  const ac: Device = {
+    id: "daikin:m",
+    name: "ダイキンエアコン",
+    room: "リビング",
+    brand: "daikin",
+    kind: "ac",
+    online: true,
+    source: "live",
+    nativeId: "h",
+    connector: "daikin",
+    on: false,
+    mode: "cool",
+    targetTemp: 26,
+    temperature: 23,
+    humidity: 70,
+    outdoorTemp: 20.5,
+  };
+  assert.equal(acStatusLine(ac), "停止 · 室温23° · 70% · 外20.5°");
+  assert.equal(acStatusLine({ ...ac, on: true, fanSpeed: "auto", fanSwing: "off" }), "冷房 26° · 自動 · 固定 · 室温23° · 70% · 外20.5°");
+  assert.equal(acStatusLine({ ...ac, temperature: undefined, humidity: undefined, outdoorTemp: undefined }), "停止");
 });
 
 test("ダイキンの外気温はエアコンが持つ値だけ出す", () => {

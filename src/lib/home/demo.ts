@@ -37,6 +37,9 @@ export const DEMO_DEVICES: Device[] = [
     mode: "cool",
     fanSpeed: "auto",
     fanSwing: "off",
+    temperature: 26,
+    humidity: 48,
+    outdoorTemp: 31.5,
     extra: "Alexa経由が本線。Remoのエアコン登録が最短",
   },
   {
@@ -105,6 +108,9 @@ export const DEMO_DEVICES: Device[] = [
     targetTemp: 27,
     mode: "dry",
     fanSwing: "off",
+    temperature: 27,
+    humidity: 62,
+    outdoorTemp: 31.5,
   },
   {
     id: "demo-bed-bot",

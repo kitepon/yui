@@ -193,6 +193,21 @@ export const FAN_SWING_LABEL: Record<FanSwing, string> = {
   both: "両方",
 };
 
+/** エアコンカード1行。室温・湿度・外気温は運転中も停止中も、値が返った項目だけ出す。 */
+export function acStatusLine(device: Device): string {
+  const bits = device.on
+    ? [
+        `${device.mode ? AC_MODE_LABEL[device.mode] : "—"} ${device.targetTemp ?? "—"}°`,
+        ...(device.fanSpeed ? [FAN_SPEED_LABEL[device.fanSpeed]] : []),
+        ...(device.fanSwing ? [FAN_SWING_LABEL[device.fanSwing]] : []),
+      ]
+    : ["停止"];
+  if (device.temperature != null) bits.push(`室温${device.temperature}°`);
+  if (device.humidity != null) bits.push(`${device.humidity}%`);
+  if (device.outdoorTemp != null) bits.push(`外${device.outdoorTemp}°`);
+  return bits.join(" · ");
+}
+
 export const KIND_LABEL: Record<DeviceKind, string> = {
   light: "照明",
   ac: "エアコン",
