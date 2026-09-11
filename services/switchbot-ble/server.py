@@ -12,7 +12,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from bleak import BleakClient, BleakScanner
 
-CHAR = "cba20002-224d-11e6-9fb8-0002a5d5c51b"
+WRITE_CHAR = "cba20002-224d-11e6-9fb8-0002a5d5c51b"
+READ_CHAR = "cba20003-224d-11e6-9fb8-0002a5d5c51b"
 PRESS = bytes.fromhex("570100")
 MAC_RE = re.compile(r"[^0-9A-Fa-f]")
 
@@ -30,7 +31,25 @@ async def press(mac: str) -> None:
     if device is None:
         raise RuntimeError(f"{address} が見つかりません。ボットがサーバーの近くにあるか確認してください")
     async with BleakClient(device, timeout=20) as client:
-        await client.write_gatt_char(CHAR, PRESS, response=True)
+        loop = asyncio.get_running_loop()
+        done: asyncio.Future[bytes] = loop.create_future()
+
+        def on_notify(_sender: object, data: bytearray) -> None:
+            if not done.done():
+                done.set_result(bytes(data))
+
+        await client.start_notify(READ_CHAR, on_notify)
+        await client.write_gatt_char(WRITE_CHAR, PRESS, response=False)
+        try:
+            result = await asyncio.wait_for(asyncio.shield(done), timeout=5)
+        except TimeoutError as exc:
+            raise RuntimeError("ボットが応答しませんでした") from exc
+        if result == b"\x07":
+            raise RuntimeError("ボットにパスワードが必要です")
+        if result == b"\t":
+            raise RuntimeError("ボットのパスワードが違います")
+        if not result or result[0] not in (1, 5):
+            raise RuntimeError(f"ボットが拒否しました（{result.hex()}）")
 
 
 press_lock = threading.Lock()
