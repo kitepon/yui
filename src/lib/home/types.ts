@@ -266,7 +266,9 @@ export interface Automation {
   trigger: AutoTrigger;
   actions: AutoAction[];
   lastFiredKey?: string;
-  /** 同じ条件が続いているあいだは、もう機器を操作しない。 */
+  /** このオートメーションが、直前に実際に機器を動かしたときの条件キー。 */
+  lastExecutedKey?: string;
+  /** 直前に動いたのが自分自身なら、機器をオンオフしない。 */
   skipContinuous?: boolean;
 }
 
@@ -400,6 +402,7 @@ export function migrateAutomation(raw: unknown): Automation | null {
     trigger,
     actions,
     lastFiredKey: typeof a.lastFiredKey === "string" ? a.lastFiredKey : undefined,
+    lastExecutedKey: typeof a.lastExecutedKey === "string" ? a.lastExecutedKey : undefined,
     skipContinuous: a.skipContinuous === true ? true : undefined,
   };
 }

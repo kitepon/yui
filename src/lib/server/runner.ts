@@ -2,7 +2,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
-import { prioritizeAutomationActions, sensorCondition, skipContinuousAction } from "@/lib/home/automation-priority";
+import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
@@ -26,19 +26,20 @@ async function runAutomation(
   if (!auto.enabled || !auto.actions.length) return snap;
   let cur = snap;
   const onlyIfDifferent = opts?.onlyIfDifferent === true;
-  const lastRanBy = { ...(cur.lastRanBy ?? {}) };
   let sent = false;
   for (const action of auto.actions) {
-    if (skipContinuousAction(auto, action.deviceId, lastRanBy)) continue;
     if (onlyIfDifferent) {
       const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
       if (!device || skipHeldRepeat(device, patchFromAction(action))) continue;
     }
     cur = await executeAction(homeId, cur, action);
-    if (action.deviceId) lastRanBy[action.deviceId] = auto.id;
     sent = true;
   }
-  if (sent) cur = await saveHomeRecord(homeId, { lastRanBy });
+  if (sent && auto.lastFiredKey) {
+    cur = await saveHomeRecord(homeId, {
+      automations: cur.automations.map((a) => (a.id === auto.id ? { ...a, lastExecutedKey: auto.lastFiredKey } : a)),
+    });
+  }
   return cur;
 }
 
@@ -78,8 +79,10 @@ async function runPrioritized(
   for (const auto of firing) {
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
+    const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
     const holding = holds.has(auto.id);
-    cur = await runAutomation(homeId, cur, { ...auto, actions }, {
+    if (skipContinuousActions(current)) continue;
+    cur = await runAutomation(homeId, cur, { ...current, actions }, {
       onlyIfDifferent: holding,
     });
   }
@@ -112,7 +115,16 @@ async function tickMatching(homeId: string, snap: HomeSnapshot) {
   let cur = snap;
   if (keys.size) {
     cur = await saveHomeRecord(homeId, {
-      automations: cur.automations.map((a) => (keys.has(a.id) ? { ...a, lastFiredKey: keys.get(a.id) } : a)),
+      automations: cur.automations.map((a) => {
+        if (!keys.has(a.id)) return a;
+        const key = keys.get(a.id);
+        const fail = (key ?? "").endsWith(":fail");
+        return {
+          ...a,
+          lastFiredKey: key,
+          lastExecutedKey: fail ? undefined : a.lastExecutedKey,
+        };
+      }),
     });
   }
   return runPrioritized(homeId, cur, firing, holds);

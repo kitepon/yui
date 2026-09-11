@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { prioritizeAutomationActions, sensorCondition, skipContinuousAction } from "./automation-priority.ts";
+import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority.ts";
 import type { AutoAction, Automation } from "./types.ts";
 
 function auto(id: string, deviceIds: string[]): Automation {
@@ -128,7 +128,7 @@ test("範囲に入った最初は送り、入っているあいだは保持す�
   assert.equal(reenter.holds, false);
 });
 
-test("連続では動かさないは、その機器を直前に動かしたのが同じオートメーションのときだけ止める", () => {
+test("連続では動かさないは、直前に動いたのが自分自身のときだけ止める", () => {
   const auto: Automation = {
     id: "air",
     name: "外気取り込み優先",
@@ -136,10 +136,11 @@ test("連続では動かさないは、その機器を直前に動かしたの�
     skipContinuous: true,
     trigger: { type: "sensor" },
     actions: [{ id: "x", deviceId: "bot-on", on: true }],
+    lastFiredKey: "pass-key",
+    lastExecutedKey: "pass-key",
   };
-  assert.equal(skipContinuousAction(auto, "bot-on", { "bot-on": "air" }), true);
-  assert.equal(skipContinuousAction(auto, "bot-on", { "bot-on": "tank" }), false);
-  assert.equal(skipContinuousAction(auto, "bot-on", { "bot-off": "mid" }), false);
-  assert.equal(skipContinuousAction(auto, "bot-on", {}), false);
-  assert.equal(skipContinuousAction({ ...auto, skipContinuous: undefined }, "bot-on", { "bot-on": "air" }), false);
+  assert.equal(skipContinuousActions(auto), true);
+  assert.equal(skipContinuousActions({ ...auto, lastExecutedKey: undefined }), false);
+  assert.equal(skipContinuousActions({ ...auto, lastExecutedKey: "other" }), false);
+  assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }), false);
 });

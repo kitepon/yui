@@ -23,8 +23,6 @@ export interface HomeSnapshot {
   scenes: Scene[];
   automations: Automation[];
   lastScene: string | null;
-  /** 機器ごとに、直前に動かしたオートメーション。連続判定の正本。 */
-  lastRanBy?: Record<string, string> | null;
   savedAt: string | null;
   pairPin: string;
   host?: string;
@@ -58,7 +56,6 @@ export function emptySnapshot(): HomeSnapshot {
     scenes: SCENES,
     automations: [],
     lastScene: null,
-    lastRanBy: {},
     savedAt: null,
     pairPin: "",
   };

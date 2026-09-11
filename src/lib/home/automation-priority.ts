@@ -22,16 +22,16 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
 }
 
 /**
- * 「連続では動かさない」は機器ごと。直前にその機器を動かしたのが同じオートメーションなら止める。
- * 家全体の直前1件ではない。別機器を別オートメーションが動かしても、この機器の連続は外れない。
+ * 直前に機器を動かしたのが自分自身なら、オンオフしない。
+ * 条件キーが同じ＝同じ発動の続き。別オートメーションが動いても、自分の直前は変わらない。
  */
-export function skipContinuousAction(
-  auto: Automation,
-  deviceId: string | undefined,
-  lastRanBy: Record<string, string> | null | undefined,
-) {
-  if (!auto.skipContinuous || !deviceId) return false;
-  return lastRanBy?.[deviceId] === auto.id;
+export function skipContinuousActions(auto: Automation) {
+  return Boolean(
+    auto.skipContinuous &&
+      auto.lastExecutedKey &&
+      auto.lastFiredKey &&
+      auto.lastExecutedKey === auto.lastFiredKey,
+  );
 }
 
 /**
