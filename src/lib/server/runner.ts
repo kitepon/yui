@@ -2,6 +2,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
+import { isMomentaryBot } from "@/lib/home/types";
 import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
@@ -28,8 +29,9 @@ async function runAutomation(
   const onlyIfDifferent = opts?.onlyIfDifferent === true;
   let sent = false;
   for (const action of auto.actions) {
+    const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
+    if (auto.skipContinuous && auto.lastExecutedKey && device && isMomentaryBot(device)) continue;
     if (onlyIfDifferent) {
-      const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
       if (!device || skipHeldRepeat(device, patchFromAction(action))) continue;
     }
     cur = await executeAction(homeId, cur, action);

@@ -23,15 +23,12 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
 
 /**
  * 直前に機器を動かしたのが自分自身なら、オンオフしない。
- * 条件キーが同じ＝同じ発動の続き。別オートメーションが動いても、自分の直前は変わらない。
+ * lastExecutedKey がある＝このオートメーションはもう動かした。条件が fail になるまで止める。
  */
 export function skipContinuousActions(auto: Automation) {
-  return Boolean(
-    auto.skipContinuous &&
-      auto.lastExecutedKey &&
-      auto.lastFiredKey &&
-      auto.lastExecutedKey === auto.lastFiredKey,
-  );
+  if (!auto.skipContinuous || !auto.lastExecutedKey) return false;
+  if (auto.lastFiredKey?.endsWith(":fail")) return false;
+  return true;
 }
 
 /**

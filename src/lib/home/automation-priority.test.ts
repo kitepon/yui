@@ -140,7 +140,8 @@ test("連続では動かさないは、直前に動いたのが自分自身の�
     lastExecutedKey: "pass-key",
   };
   assert.equal(skipContinuousActions(auto), true);
+  assert.equal(skipContinuousActions({ ...auto, lastFiredKey: undefined }), true);
   assert.equal(skipContinuousActions({ ...auto, lastExecutedKey: undefined }), false);
-  assert.equal(skipContinuousActions({ ...auto, lastExecutedKey: "other" }), false);
+  assert.equal(skipContinuousActions({ ...auto, lastFiredKey: "x:fail" }), false);
   assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }), false);
 });

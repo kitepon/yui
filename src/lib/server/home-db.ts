@@ -179,10 +179,19 @@ export async function saveHome(ownerUserId: string, patch: Partial<HomeSnapshot>
 
 export async function replaceHome(ownerUserId: string, next: HomeSnapshot): Promise<HomeSnapshot> {
   const cur = await ensureHome(ownerUserId);
+  const prevById = new Map(cur.snap.automations.map((a) => [a.id, a]));
   const snap: HomeSnapshot = {
     ...next,
     credentials: mergeIncomingCredentials(cur.snap.credentials, next.credentials),
     pairPin: cur.snap.pairPin,
+    automations: (next.automations ?? []).map((a) => {
+      const prev = prevById.get(a.id);
+      return {
+        ...a,
+        lastFiredKey: a.lastFiredKey ?? prev?.lastFiredKey,
+        lastExecutedKey: a.lastExecutedKey ?? prev?.lastExecutedKey,
+      };
+    }),
     savedAt: new Date().toISOString(),
   };
   const saved = withOverrides(snap);

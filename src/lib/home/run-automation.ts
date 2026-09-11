@@ -5,7 +5,7 @@ import { runCommand } from "./run";
 import { useHome } from "./store";
 import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority";
 import type { AutoAction, Automation } from "./types";
-import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
+import { METRIC_LABEL, WEEKDAYS, isMomentaryBot, sensorTempLabel } from "./types";
 
 let depth = 0;
 
@@ -56,6 +56,7 @@ async function runActions(auto: Automation, onlyIfDifferent: boolean) {
     const device = useHome.getState().devices.find((d) => d.id === action.deviceId);
     if (!device) continue;
     const patch = patchFromAction(action);
+    if (auto.skipContinuous && auto.lastExecutedKey && isMomentaryBot(device)) continue;
     if (onlyIfDifferent && skipHeldRepeat(device, patch)) continue;
     await runCommand(device, patch);
     sent += 1;
