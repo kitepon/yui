@@ -10,10 +10,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import * as Slider from "@radix-ui/react-slider";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/lib/auth/gates";
 import { pullAnalysis } from "@/lib/home/control-client";
 import { ON_METRIC } from "@/lib/home/analysis-series";
+import {
+  HOUR_MS,
+  MINUTE_MS,
+  clampWindow,
+  collectValues,
+  minSpanSteps,
+  paddedDomain,
+  yScale,
+} from "@/lib/home/analysis-view";
 import { cn } from "@/lib/cn";
 
 export const Route = createFileRoute("/analysis")({
@@ -113,12 +123,88 @@ function paramOrder(series: AnalysisData["series"]) {
   });
 }
 
-function formatTick(t: number, range: RangeKey) {
+function formatTick(t: number, spanMs: number) {
   return new Date(t).toLocaleString(
     "ja-JP",
-    range === "24h"
+    spanMs <= 6 * HOUR_MS
       ? { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }
-      : { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit" },
+      : spanMs <= 48 * HOUR_MS
+        ? { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit" }
+        : { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" },
+  );
+}
+
+function formatTimeCaption(from: number, to: number) {
+  const a = new Date(from);
+  const b = new Date(to);
+  const dayOpt = { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" } as const;
+  const sameDay = a.toLocaleDateString("ja-JP", dayOpt) === b.toLocaleDateString("ja-JP", dayOpt);
+  const opt = sameDay
+    ? ({ timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" } as const)
+    : ({ timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" } as const);
+  return `${a.toLocaleString("ja-JP", opt)} – ${b.toLocaleString("ja-JP", opt)}`;
+}
+
+function formatYCaption(lo: number, hi: number, digits: number) {
+  return `${lo.toFixed(digits)} – ${hi.toFixed(digits)}`;
+}
+
+function DualRange({
+  label,
+  caption,
+  min,
+  max,
+  start,
+  end,
+  step,
+  minSpan,
+  onChange,
+}: {
+  label: string;
+  caption: string;
+  min: number;
+  max: number;
+  start: number;
+  end: number;
+  step: number;
+  minSpan: number;
+  onChange: (start: number, end: number) => void;
+}) {
+  if (!(max > min)) return null;
+  const [a, b] = clampWindow(min, max, start, end, minSpan);
+  return (
+    <div className="mt-3 px-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[11px] tracking-wide text-faint">{label}</p>
+        <p className="text-xs text-muted tabular-nums">{caption}</p>
+      </div>
+      <Slider.Root
+        className="relative mt-1 flex h-11 w-full touch-none items-center"
+        min={min}
+        max={max}
+        step={step}
+        minStepsBetweenThumbs={minSpanSteps(max - min, step, minSpan)}
+        value={[a, b]}
+        onValueChange={(next) => {
+          const lo = next[0];
+          const hi = next[1];
+          if (lo == null || hi == null) return;
+          onChange(...clampWindow(min, max, lo, hi, minSpan));
+        }}
+      >
+        <Slider.Track className="relative h-1.5 grow rounded-full bg-border">
+          <Slider.Range className="absolute h-full rounded-full bg-primary" />
+        </Slider.Track>
+        <Slider.Thumb
+          className="block size-6 rounded-full border-2 border-primary bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          aria-label={`${label} 下限`}
+        />
+        <Slider.Thumb
+          className="block size-6 rounded-full border-2 border-primary bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          aria-label={`${label} 上限`}
+        />
+      </Slider.Root>
+    </div>
   );
 }
 
@@ -154,6 +240,9 @@ export function AnalysisPage() {
   const [seriesIds, setSeriesIds] = useState<string[] | null>(stored?.series ?? null);
   const [autoIds, setAutoIds] = useState<string[]>(stored?.automations ?? []);
   const [deviceIds, setDeviceIds] = useState<string[]>(stored?.devices ?? []);
+  const [xView, setXView] = useState<[number, number] | null>(null);
+  const [yLeft, setYLeft] = useState<[number, number] | null>(null);
+  const [yRight, setYRight] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     let gone = false;
@@ -163,6 +252,9 @@ export function AnalysisPage() {
       .then((next) => {
         if (gone) return;
         setData(next);
+        setXView(null);
+        setYLeft(null);
+        setYRight(null);
         setSeriesIds((cur) => {
           const available = new Set(next.series.filter((s) => s.unit !== "on").map((s) => s.id));
           const kept = (cur ?? []).filter((id) => available.has(id));
@@ -210,9 +302,33 @@ export function AnalysisPage() {
 
   const leftSeries = selectedParams.filter((s) => s.unit === "celsius");
   const rightSeries = selectedParams.filter((s) => s.unit === "percent" || s.unit === "lux");
-  const overlayEvents = (data?.events ?? []).filter(
-    (ev) => ev.automationId && autoIds.includes(ev.automationId) && (ev.outcome === "sent" || ev.outcome === "failed"),
-  );
+  const leftValues = collectValues(chartRows, leftSeries.map((s) => s.id));
+  const rightValues = collectValues(chartRows, rightSeries.map((s) => s.id));
+  const leftExtent = paddedDomain(leftValues);
+  const rightExtent = paddedDomain(rightValues);
+  const xSpan: [number, number] = fromMs < toMs ? [fromMs, toMs] : [0, 1];
+  const xDomain = xView ? clampWindow(xSpan[0], xSpan[1], xView[0], xView[1], HOUR_MS) : xSpan;
+  const xSpanMs = xDomain[1] - xDomain[0];
+  const leftScale = yScale("celsius");
+  const rightUnits = [...new Set(rightSeries.map((s) => s.unit))];
+  const rightScale =
+    rightUnits.length === 1 && rightUnits[0] === "percent"
+      ? yScale("percent")
+      : rightUnits.length === 1 && rightUnits[0] === "lux"
+        ? yScale("lux")
+        : yScale("lux");
+  const yLeftDomain = yLeft
+    ? clampWindow(leftExtent[0], leftExtent[1], yLeft[0], yLeft[1], leftScale.minSpan)
+    : leftExtent;
+  const yRightDomain = yRight
+    ? clampWindow(rightExtent[0], rightExtent[1], yRight[0], yRight[1], rightScale.minSpan)
+    : rightExtent;
+  const overlayEvents = (data?.events ?? []).filter((ev) => {
+    if (!ev.automationId || !autoIds.includes(ev.automationId)) return false;
+    if (ev.outcome !== "sent" && ev.outcome !== "failed") return false;
+    const t = Date.parse(ev.ts);
+    return t >= xDomain[0] && t <= xDomain[1];
+  });
 
   return (
     <AppShell>
@@ -285,90 +401,142 @@ export function AnalysisPage() {
             まだ記録がありません。オートメーションが有効な家は、サーバーが1分ごとにセンサーを残します。
           </p>
         ) : (
-          <div className="h-56 text-fg">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartRows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="currentColor" strokeOpacity={0.12} />
-                <XAxis
-                  dataKey="t"
-                  type="number"
-                  domain={[fromMs, toMs]}
-                  tickFormatter={(t) => formatTick(Number(t), range)}
-                  tick={{ fill: "currentColor", fontSize: 11 }}
-                />
-                {leftSeries.length ? (
-                  <YAxis
-                    yAxisId="left"
+          <div className="text-fg">
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartRows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="currentColor" strokeOpacity={0.12} />
+                  <XAxis
+                    dataKey="t"
+                    type="number"
+                    domain={xDomain}
+                    allowDataOverflow
+                    tickFormatter={(t) => formatTick(Number(t), xSpanMs)}
                     tick={{ fill: "currentColor", fontSize: 11 }}
-                    width={36}
                   />
-                ) : null}
-                {selectedOn.length ? <YAxis yAxisId="on" domain={[0, 1]} hide /> : null}
-                {rightSeries.length ? (
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    tick={{ fill: "currentColor", fontSize: 11 }}
-                    width={36}
+                  {leftSeries.length ? (
+                    <YAxis
+                      yAxisId="left"
+                      domain={leftValues.length ? yLeftDomain : undefined}
+                      allowDataOverflow
+                      tickFormatter={(v) => Number(v).toFixed(leftScale.digits)}
+                      tick={{ fill: "currentColor", fontSize: 11 }}
+                      width={42}
+                    />
+                  ) : null}
+                  {selectedOn.length ? <YAxis yAxisId="on" domain={[0, 1]} hide /> : null}
+                  {rightSeries.length ? (
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      domain={rightValues.length ? yRightDomain : undefined}
+                      allowDataOverflow
+                      tickFormatter={(v) => Number(v).toFixed(rightScale.digits)}
+                      tick={{ fill: "currentColor", fontSize: 11 }}
+                      width={42}
+                    />
+                  ) : null}
+                  <Tooltip
+                    labelFormatter={(t) => formatTick(Number(t), xSpanMs)}
+                    contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
                   />
-                ) : null}
-                <Tooltip
-                  labelFormatter={(t) => formatTick(Number(t), range)}
-                  contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-                />
-                {leftSeries.map((s, i) => (
-                  <Line
-                    key={s.id}
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey={s.id}
-                    name={s.label}
-                    stroke={COLORS[i % COLORS.length]}
-                    dot={false}
-                    connectNulls
-                    strokeWidth={2}
-                  />
-                ))}
-                {rightSeries.map((s, i) => (
-                  <Line
-                    key={s.id}
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey={s.id}
-                    name={s.label}
-                    stroke={COLORS[(i + 3) % COLORS.length]}
-                    dot={false}
-                    connectNulls
-                    strokeWidth={2}
-                    strokeDasharray={s.unit === "lux" ? "4 3" : undefined}
-                  />
-                ))}
-                {selectedOn.map((s, i) => (
-                  <Line
-                    key={s.id}
-                    yAxisId="on"
-                    type="stepAfter"
-                    dataKey={s.id}
-                    name={s.label}
-                    stroke={COLORS[(i + 5) % COLORS.length]}
-                    dot={false}
-                    connectNulls
-                    strokeWidth={1.5}
-                    strokeOpacity={0.7}
-                  />
-                ))}
-                {overlayEvents.map((ev) => (
-                  <ReferenceLine
-                    key={ev.id}
-                    yAxisId={leftSeries.length ? "left" : selectedOn.length ? "on" : "right"}
-                    x={Date.parse(ev.ts)}
-                    stroke={ev.outcome === "failed" ? "var(--color-danger)" : "var(--color-primary)"}
-                    strokeDasharray={ev.outcome === "sent" ? undefined : "3 3"}
-                    strokeOpacity={0.65}
-                  />
-                ))}
-              </ComposedChart>
-            </ResponsiveContainer>
+                  {leftSeries.map((s, i) => (
+                    <Line
+                      key={s.id}
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey={s.id}
+                      name={s.label}
+                      stroke={COLORS[i % COLORS.length]}
+                      dot={false}
+                      connectNulls
+                      strokeWidth={2}
+                    />
+                  ))}
+                  {rightSeries.map((s, i) => (
+                    <Line
+                      key={s.id}
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey={s.id}
+                      name={s.label}
+                      stroke={COLORS[(i + 3) % COLORS.length]}
+                      dot={false}
+                      connectNulls
+                      strokeWidth={2}
+                      strokeDasharray={s.unit === "lux" ? "4 3" : undefined}
+                    />
+                  ))}
+                  {selectedOn.map((s, i) => (
+                    <Line
+                      key={s.id}
+                      yAxisId="on"
+                      type="stepAfter"
+                      dataKey={s.id}
+                      name={s.label}
+                      stroke={COLORS[(i + 5) % COLORS.length]}
+                      dot={false}
+                      connectNulls
+                      strokeWidth={1.5}
+                      strokeOpacity={0.7}
+                    />
+                  ))}
+                  {overlayEvents.map((ev) => (
+                    <ReferenceLine
+                      key={ev.id}
+                      yAxisId={leftSeries.length ? "left" : selectedOn.length ? "on" : "right"}
+                      x={Date.parse(ev.ts)}
+                      stroke={ev.outcome === "failed" ? "var(--color-danger)" : "var(--color-primary)"}
+                      strokeDasharray={ev.outcome === "sent" ? undefined : "3 3"}
+                      strokeOpacity={0.65}
+                    />
+                  ))}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <DualRange
+              label="時間"
+              caption={formatTimeCaption(xDomain[0], xDomain[1])}
+              min={xSpan[0]}
+              max={xSpan[1]}
+              start={xDomain[0]}
+              end={xDomain[1]}
+              step={MINUTE_MS}
+              minSpan={HOUR_MS}
+              onChange={(start, end) => setXView([start, end])}
+            />
+            {leftValues.length ? (
+              <DualRange
+                label="温度"
+                caption={`${formatYCaption(yLeftDomain[0], yLeftDomain[1], leftScale.digits)} ℃`}
+                min={leftExtent[0]}
+                max={leftExtent[1]}
+                start={yLeftDomain[0]}
+                end={yLeftDomain[1]}
+                step={leftScale.step}
+                minSpan={leftScale.minSpan}
+                onChange={(start, end) => setYLeft([start, end])}
+              />
+            ) : null}
+            {rightValues.length ? (
+              <DualRange
+                label={
+                  rightUnits.length === 1 && rightUnits[0] === "percent"
+                    ? "湿度"
+                    : rightUnits.length === 1 && rightUnits[0] === "lux"
+                      ? "照度"
+                      : "湿度・照度"
+                }
+                caption={formatYCaption(yRightDomain[0], yRightDomain[1], rightScale.digits)}
+                min={rightExtent[0]}
+                max={rightExtent[1]}
+                start={yRightDomain[0]}
+                end={yRightDomain[1]}
+                step={rightScale.step}
+                minSpan={rightScale.minSpan}
+                onChange={(start, end) => setYRight([start, end])}
+              />
+            ) : null}
           </div>
         )}
       </div>
