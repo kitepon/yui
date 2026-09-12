@@ -70,14 +70,17 @@ async function runPrioritized(
   firing: Automation[],
   holds: Set<string>,
 ) {
-  const planned = prioritizeAutomationActions(firing);
   let cur = snap;
-  for (const auto of firing) {
+  const runnable = firing.filter((auto) => {
+    const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
+    return !skipContinuousActions(current, cur.lastRanAutomationId);
+  });
+  const planned = prioritizeAutomationActions(runnable);
+  for (const auto of runnable) {
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
     const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
     const holding = holds.has(auto.id);
-    if (skipContinuousActions(current, cur.lastRanAutomationId)) continue;
     cur = await runAutomation(homeId, cur, { ...current, actions }, {
       onlyIfDifferent: holding,
     });

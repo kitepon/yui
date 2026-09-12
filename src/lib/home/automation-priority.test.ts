@@ -128,6 +128,36 @@ test("範囲に入った最初は送り、入っているあいだは保持す�
   assert.equal(reenter.holds, false);
 });
 
+test("連続では動かさないオートメーションは機器を取らない", () => {
+  const hot: Automation = {
+    id: "hot",
+    name: "水槽水温高温域",
+    enabled: true,
+    skipContinuous: true,
+    trigger: { type: "sensor" },
+    actions: [
+      { id: "a", deviceId: "ac" },
+      { id: "b", deviceId: "fan-off" },
+    ],
+  };
+  const mid: Automation = {
+    id: "mid",
+    name: "水槽水温中温域",
+    enabled: true,
+    skipContinuous: true,
+    trigger: { type: "sensor" },
+    actions: [
+      { id: "c", deviceId: "ac" },
+      { id: "d", deviceId: "fan-off" },
+    ],
+  };
+  assert.equal(skipContinuousActions(hot, "hot"), true);
+  const runnable = [hot, mid].filter((a) => !skipContinuousActions(a, "hot"));
+  const planned = prioritizeAutomationActions(runnable);
+  assert.equal(planned.has("hot"), false);
+  assert.deepEqual(planned.get("mid")?.map((x) => x.deviceId), ["ac", "fan-off"]);
+});
+
 test("連続では動かさないは、直前に動いたのが自分自身のときだけ止める", () => {
   const auto: Automation = {
     id: "air",

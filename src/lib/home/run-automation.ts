@@ -78,13 +78,17 @@ export async function executeAutomation(auto: Automation, opts?: { onlyIfDiffere
 }
 
 function fireWave(firing: Automation[], holds: Set<string>) {
-  const planned = prioritizeAutomationActions(firing);
-  for (const auto of firing) {
+  const lastRan = useHome.getState().lastRanAutomationId;
+  const runnable = firing.filter((auto) => {
+    const current = useHome.getState().automations.find((a) => a.id === auto.id) ?? auto;
+    return !skipContinuousActions(current, lastRan);
+  });
+  const planned = prioritizeAutomationActions(runnable);
+  for (const auto of runnable) {
     const actions = planned.get(auto.id) ?? [];
     if (!actions.length) continue;
     const holding = holds.has(auto.id);
     const current = useHome.getState().automations.find((a) => a.id === auto.id) ?? auto;
-    if (skipContinuousActions(current, useHome.getState().lastRanAutomationId)) continue;
     void executeAutomation({ ...current, actions }, { onlyIfDifferent: holding });
   }
 }
