@@ -83,7 +83,7 @@ ssh "$HOST" "docker ps --filter name=^/${NAME}$ --format '{{.Names}}\t{{.Status}
 echo "[deploy] probe"
 ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./.env 2>/dev/null; curl -fsS -o /dev/null -w '%{http_code}\n' --max-time 10 http://\${YUI_BIND:-127.0.0.1}:\${YUI_PORT:-18861}/"
 if ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./.env 2>/dev/null; grep -q '^COMPOSE_PROFILES=.*ble' .env"; then
-  ssh "$HOST" "curl -fsS --max-time 5 http://127.0.0.1:18862/health"
-  echo
+  # BLE のポートはホストへ公開しない。結が設定された接続先へ届くことを確かめる。
+  ssh "$HOST" "docker exec $NAME node --input-type=module -e 'const res = await fetch(new URL(\"/health\", process.env.YUI_SWITCHBOT_BLE_URL), { signal: AbortSignal.timeout(5000) }); if (!res.ok) throw new Error(\"Bluetooth 確認失敗: HTTP \" + res.status); console.log(await res.text());'"
 fi
 echo "[deploy] done $IMAGE"
