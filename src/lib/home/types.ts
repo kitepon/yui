@@ -270,6 +270,8 @@ export interface Automation {
   lastExecutedKey?: string;
   /** 直前に動いたのが自分自身なら、機器をオンオフしない。 */
   skipContinuous?: boolean;
+  /** 条件が成立したら、一覧で下にあるオートメーションの判定を打ち切る。 */
+  stopOnMatch?: boolean;
 }
 
 export const DEFAULT_ROOMS = ["リビング", "寝室", "玄関", "その他"];
@@ -404,5 +406,6 @@ export function migrateAutomation(raw: unknown): Automation | null {
     lastFiredKey: typeof a.lastFiredKey === "string" ? a.lastFiredKey : undefined,
     lastExecutedKey: typeof a.lastExecutedKey === "string" ? a.lastExecutedKey : undefined,
     skipContinuous: a.skipContinuous === true ? true : undefined,
+    stopOnMatch: a.stopOnMatch === true ? true : undefined,
   };
 }

@@ -43,6 +43,7 @@ export function AutomationEditor({
   );
   const [actions, setActions] = useState<AutoAction[]>(initial?.actions ?? []);
   const [skipContinuous, setSkipContinuous] = useState(initial?.skipContinuous === true);
+  const [stopOnMatch, setStopOnMatch] = useState(initial?.stopOnMatch === true);
 
   const actuators = useMemo(() => devices.filter((d) => d.kind !== "sensor"), [devices]);
   const sensors = useMemo(() => devices.filter(isSensorSource), [devices]);
@@ -99,6 +100,7 @@ export function AutomationEditor({
       name: name.trim() || "オートメーション",
       enabled: initial?.enabled ?? true,
       skipContinuous: skipContinuous || undefined,
+      stopOnMatch: stopOnMatch || undefined,
       trigger: nextTrigger,
       actions: actions.map((action) => {
         const deviceId = action.deviceId ?? actionDevices[0]?.id;
@@ -376,6 +378,21 @@ export function AutomationEditor({
         </button>
         <p className="mt-1.5 text-xs leading-relaxed text-faint">
           直前に動いたオートメーションが自分自身なら、何もしません。別のが動いたあとは、また動きます。
+        </p>
+
+        <button
+          type="button"
+          aria-pressed={stopOnMatch}
+          className={`mt-5 flex min-h-12 w-full items-center justify-between gap-3 rounded-md px-3 py-3 text-left text-sm ${
+            stopOnMatch ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"
+          }`}
+          onClick={() => setStopOnMatch((v) => !v)}
+        >
+          <span>条件成立で下の判定を打ち切る</span>
+          <span className="shrink-0 text-xs">{stopOnMatch ? "入" : "切"}</span>
+        </button>
+        <p className="mt-1.5 text-xs leading-relaxed text-faint">
+          条件が成立している間は、一覧で下にあるオートメーションを判定・実行しません。「連続では動かさない」で操作を省く回も打ち切ります。
         </p>
 
         <Button className="mt-5 h-12 w-full" onClick={save}>

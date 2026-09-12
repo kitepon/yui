@@ -3,7 +3,7 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchFromAction, skipHeldRepeat } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
-import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority";
+import { collectMatchingAutomations, prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority";
 import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
@@ -97,37 +97,31 @@ export function fireScheduledAutomations() {
   const now = clockInTokyo();
   const nowMs = Date.now();
   const { automations, devices, climate, markAutomationFired } = useHome.getState();
-  const firing: Automation[] = [];
   const holds = new Set<string>();
-  for (const auto of automations) {
-    if (!auto.enabled || !auto.actions.length) continue;
+  const firing = collectMatchingAutomations(automations, (auto) => {
     if (auto.trigger.type === "time") {
       const t = auto.trigger;
       const repeat = t.repeat ?? "daily";
       if (repeat === "interval") {
         const ms = Math.max(1, t.everyHours ?? 1) * 60 * 60 * 1000;
         const last = Number(auto.lastFiredKey ?? 0);
-        if (last && nowMs - last < ms) continue;
+        if (last && nowMs - last < ms) return false;
         markAutomationFired(auto.id, String(nowMs));
-        firing.push(auto);
-        continue;
+        return true;
       }
-      if ((t.hour ?? 0) !== now.hour || (t.minute ?? 0) !== now.minute) continue;
-      if (repeat === "weekly" && !(t.days ?? []).includes(now.weekday)) continue;
+      if ((t.hour ?? 0) !== now.hour || (t.minute ?? 0) !== now.minute) return false;
+      if (repeat === "weekly" && !(t.days ?? []).includes(now.weekday)) return false;
       const key = `${now.dayKey}-${now.hour}-${now.minute}`;
-      if (auto.lastFiredKey === key) continue;
+      if (auto.lastFiredKey === key) return false;
       markAutomationFired(auto.id, key);
-      firing.push(auto);
-      continue;
+      return true;
     }
-    if (auto.trigger.type !== "sensor") continue;
+    if (auto.trigger.type !== "sensor") return false;
     const d = sensorCondition(auto, { devices, climate });
     if (d.key) markAutomationFired(auto.id, d.key);
-    if (d.match) {
-      firing.push(auto);
-      if (d.holds) holds.add(auto.id);
-    }
-  }
+    if (d.match && d.holds) holds.add(auto.id);
+    return d.match;
+  });
   fireWave(firing, holds);
 }
 
@@ -138,8 +132,8 @@ export function fireTimeAutomations() {
 export function fireDeviceAutomations(deviceId: string, on?: boolean) {
   if (on === undefined) return;
   const { automations } = useHome.getState();
-  const firing = automations.filter((auto) => {
-    if (!auto.enabled || auto.trigger.type !== "device") return false;
+  const firing = collectMatchingAutomations(automations, (auto) => {
+    if (auto.trigger.type !== "device") return false;
     if (auto.trigger.deviceId !== deviceId) return false;
     if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) return false;
     return true;
@@ -150,8 +144,9 @@ export function fireDeviceAutomations(deviceId: string, on?: boolean) {
 export function fireSceneAutomations(sceneId: string) {
   const { automations } = useHome.getState();
   fireWave(
-    automations.filter(
-      (auto) => auto.enabled && auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
+    collectMatchingAutomations(
+      automations,
+      (auto) => auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
     ),
     new Set(),
   );

@@ -3,7 +3,7 @@ import type { Automation } from "@/lib/home/types";
 import type { AnalysisSource } from "@/lib/home/analysis-series";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
-import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
+import { collectMatchingAutomations, prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
@@ -155,24 +155,19 @@ async function runPrioritized(
 async function tickMatching(homeId: string, snap: HomeSnapshot) {
   const now = clockInTokyo();
   const nowMs = Date.now();
-  const firing: Automation[] = [];
   const holds = new Set<string>();
   const keys = new Map<string, string>();
-  for (const auto of snap.automations) {
-    if (!auto.enabled || !auto.actions.length) continue;
+  const firing = collectMatchingAutomations(snap.automations, (auto) => {
     if (auto.trigger.type === "time") {
       const d = timeWouldRun(auto, now, nowMs);
       if (d.key) keys.set(auto.id, d.key);
-      if (d.run) firing.push(auto);
-      continue;
+      return d.run;
     }
     if (auto.trigger.type === "sensor") {
       const d = sensorWouldRun(auto, snap);
       if (d.key) keys.set(auto.id, d.key);
-      if (d.run) {
-        firing.push(auto);
-        if (d.holds) holds.add(auto.id);
-      } else if (d.key?.endsWith(":fail") && auto.lastFiredKey?.endsWith(":pass")) {
+      if (d.run && d.holds) holds.add(auto.id);
+      if (d.key?.endsWith(":fail") && auto.lastFiredKey?.endsWith(":pass")) {
         recordEvent({
           homeId,
           waveId: newWaveId(),
@@ -182,8 +177,10 @@ async function tickMatching(homeId: string, snap: HomeSnapshot) {
           outcome: "left",
         });
       }
+      return d.run;
     }
-  }
+    return false;
+  });
   let cur = snap;
   if (keys.size) {
     cur = await saveHomeRecord(homeId, {
@@ -322,8 +319,8 @@ export async function fireDeviceOnServer(
   if (on === undefined) return;
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
-  const firing = rec.snap.automations.filter((auto) => {
-    if (!auto.enabled || auto.trigger.type !== "device") return false;
+  const firing = collectMatchingAutomations(rec.snap.automations, (auto) => {
+    if (auto.trigger.type !== "device") return false;
     if (auto.trigger.deviceId !== deviceId) return false;
     if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) return false;
     return true;
@@ -338,8 +335,9 @@ export async function fireSceneOnServer(
 ) {
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
-  const firing = rec.snap.automations.filter(
-    (auto) => auto.enabled && auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
+  const firing = collectMatchingAutomations(
+    rec.snap.automations,
+    (auto) => auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
   );
   await runPrioritized(homeId, rec.snap, firing, new Set(), source);
 }

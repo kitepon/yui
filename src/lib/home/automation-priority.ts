@@ -2,6 +2,23 @@ import type { AutoAction, Automation, AutoTrigger } from "./types.ts";
 import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger.ts";
 
 /**
+ * 条件成立を上から集め、打ち切り設定のある行で判定を終える。
+ * 連続実行や再送の省略は、この判定が終わってから適用する。
+ */
+export function collectMatchingAutomations(
+  automations: Automation[],
+  matches: (auto: Automation) => boolean,
+): Automation[] {
+  const firing: Automation[] = [];
+  for (const auto of automations) {
+    if (!auto.enabled || !auto.actions.length || !matches(auto)) continue;
+    firing.push(auto);
+    if (auto.stopOnMatch) break;
+  }
+  return firing;
+}
+
+/**
  * 一覧の上が同じ機器を取る。下は残った機器だけ動かす。
  * `firing` は条件を満たしたオートメーションを、欄の並びのまま渡す。
  */

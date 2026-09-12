@@ -117,6 +117,23 @@ test("時刻トリガーは触っていない項目も 7:00 毎日として保�
   });
 });
 
+test("打ち切り設定は保存・再読込で残り、未設定や切は従来通りにする", () => {
+  const raw = {
+    id: "stop",
+    name: "打ち切り",
+    enabled: true,
+    trigger: { type: "sensor", deviceId: "s", metric: "temperature", op: "lte", value: 24 },
+    actions: [{ id: "a", deviceId: "ac", on: false }],
+    stopOnMatch: true,
+  };
+  const saved = migrateAutomation(raw);
+  assert.equal(saved?.stopOnMatch, true);
+  assert.equal(migrateAutomation(JSON.parse(JSON.stringify(saved)))?.stopOnMatch, true);
+  for (const value of [undefined, false, "true", 1]) {
+    assert.equal(migrateAutomation({ ...raw, stopOnMatch: value })?.stopOnMatch, undefined);
+  }
+});
+
 test("センサーの条件と閾値は画面の初期値を残す", () => {
   const t = completeTrigger({ type: "sensor", deviceId: "s1" });
   assert.equal(t.metric, "temperature");
