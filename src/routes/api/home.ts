@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth/server";
 import { clientHome, loadHome, replaceHome, saveHome } from "@/lib/server/home-db";
 import { executeDevice, executeScene } from "@/lib/server/execute";
 import { fireDeviceOnServer, fireSceneOnServer, startControlRunner } from "@/lib/server/runner";
+import { newWaveId } from "@/lib/server/analysis";
 import { billingConfigured, loadEntitlement, paywall } from "@/lib/server/billing";
 
 startControlRunner();
@@ -210,8 +211,8 @@ export const Route = createFileRoute("/api/home")({
           const device = snap.devices.find((d) => d.id === deviceId);
           if (!device) return Response.json({ error: "機器が見つかりません" }, { status: 404 });
           try {
-            await executeDevice(homeId, snap, device, patch);
-            if (patch.on !== undefined) await fireDeviceOnServer(homeId, device.id, patch.on);
+            await executeDevice(homeId, snap, device, patch, { source: "control", waveId: newWaveId() });
+            if (patch.on !== undefined) await fireDeviceOnServer(homeId, device.id, patch.on, "control");
             const latest = await loadHome(userId);
             return Response.json(clientHome(latest.snap, request.headers.get("host"), who.lanOwner));
           } catch (err) {
@@ -225,14 +226,14 @@ export const Route = createFileRoute("/api/home")({
         if (op === "scene") {
           const sceneId = String(body.sceneId ?? "");
           try {
-            await executeScene(homeId, snap, sceneId);
+            await executeScene(homeId, snap, sceneId, "scene");
           } catch (err) {
             return Response.json(
               { error: err instanceof Error ? err.message : "場面がありません" },
               { status: 404 },
             );
           }
-          await fireSceneOnServer(homeId, sceneId);
+          await fireSceneOnServer(homeId, sceneId, "scene");
           const latest = await loadHome(userId);
           return Response.json(clientHome(latest.snap, request.headers.get("host"), who.lanOwner));
         }

@@ -4,6 +4,7 @@ import { userIdForAlexaAccess } from "./alexa-oauth";
 import { executeDevice, executeScene } from "./execute";
 import { loadHome } from "./home-db";
 import { fireSceneOnServer } from "./runner";
+import { newWaveId } from "./analysis";
 
 type AlexaCustomRequest = {
   request?: {
@@ -57,16 +58,17 @@ export async function handleAlexaCustom(req: AlexaCustomRequest) {
   const cmd = interpretVoice(query, snap.devices, snap.scenes);
   if (cmd.type === "none") return speech(cmd.speech, false);
   if (cmd.type === "scene") {
-    await executeScene(homeId, snap, cmd.sceneId);
-    await fireSceneOnServer(homeId, cmd.sceneId);
+    await executeScene(homeId, snap, cmd.sceneId, "alexa");
+    await fireSceneOnServer(homeId, cmd.sceneId, "alexa");
     return speech(cmd.speech);
   }
+  const waveId = newWaveId();
   let cur = snap;
   for (const patch of cmd.patches) {
     const device = cur.devices.find((d) => d.id === patch.id);
     if (!device) continue;
     try {
-      cur = await executeDevice(homeId, cur, device, { on: patch.on });
+      cur = await executeDevice(homeId, cur, device, { on: patch.on }, { source: "alexa", waveId });
     } catch {
       /* continue */
     }

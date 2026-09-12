@@ -70,6 +70,43 @@ export async function serverScene(sceneId: string) {
   return call("scene", { sceneId });
 }
 
+export async function pullAnalysis(from: string, to: string) {
+  const res = await fetch(`${getControlUrl()}/api/analysis?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+    credentials: "include",
+  });
+  const json = (await res.json()) as {
+    error?: string;
+    from: string;
+    to: string;
+    series: Array<{
+      id: string;
+      deviceId: string;
+      metric: string;
+      label: string;
+      unit: "celsius" | "percent" | "lux" | "on";
+      points: Array<{ ts: string; value: number }>;
+    }>;
+    automations: Array<{ id: string; name: string }>;
+    devices: Array<{ id: string; name: string }>;
+    events: Array<{
+      id: string;
+      ts: string;
+      waveId: string;
+      source: string;
+      automationId: string | null;
+      automationName: string | null;
+      deviceId: string | null;
+      deviceName: string | null;
+      outcome: string;
+      reason: string | null;
+      detail: string | null;
+    }>;
+  };
+  if (res.status === 401) throw new Error("ログインが必要です");
+  if (!res.ok) throw new Error(json.error || `サーバーエラー ${res.status}`);
+  return json;
+}
+
 export async function saveCredentials(fields: Partial<Credentials>) {
   return call("credentials", { credentials: fields });
 }

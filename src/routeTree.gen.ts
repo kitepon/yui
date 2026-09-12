@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalysisRouteImport } from './routes/analysis'
 import { Route as LegalRouteImport } from './routes/legal'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -17,6 +18,7 @@ import { Route as RoomsRouteImport } from './routes/rooms'
 import { Route as ScenesRouteImport } from './routes/scenes'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiAnalysisRouteImport } from './routes/api/analysis'
 import { Route as ApiHomeRouteImport } from './routes/api/home'
 import { Route as HelpRemoRouteImport } from './routes/help/remo'
 import { Route as HelpSwitchbotRouteImport } from './routes/help/switchbot'
@@ -32,6 +34,11 @@ import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhoo
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalysisRoute = AnalysisRouteImport.update({
+  id: '/analysis',
+  path: '/analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LegalRoute = LegalRouteImport.update({
@@ -67,6 +74,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAnalysisRoute = ApiAnalysisRouteImport.update({
+  id: '/api/analysis',
+  path: '/api/analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHomeRoute = ApiHomeRouteImport.update({
@@ -127,6 +139,7 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analysis': typeof AnalysisRoute
   '/legal': typeof LegalRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -134,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
@@ -148,6 +162,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analysis': typeof AnalysisRoute
   '/legal': typeof LegalRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -155,6 +170,7 @@ export interface FileRoutesByTo {
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
@@ -170,6 +186,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analysis': typeof AnalysisRoute
   '/legal': typeof LegalRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -177,6 +194,7 @@ export interface FileRoutesById {
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
@@ -193,6 +211,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/analysis'
     | '/legal'
     | '/login'
     | '/privacy'
@@ -200,6 +219,7 @@ export interface FileRouteTypes {
     | '/scenes'
     | '/settings'
     | '/terms'
+    | '/api/analysis'
     | '/api/home'
     | '/help/remo'
     | '/help/switchbot'
@@ -214,6 +234,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/analysis'
     | '/legal'
     | '/login'
     | '/privacy'
@@ -221,6 +242,7 @@ export interface FileRouteTypes {
     | '/scenes'
     | '/settings'
     | '/terms'
+    | '/api/analysis'
     | '/api/home'
     | '/help/remo'
     | '/help/switchbot'
@@ -235,6 +257,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/analysis'
     | '/legal'
     | '/login'
     | '/privacy'
@@ -242,6 +265,7 @@ export interface FileRouteTypes {
     | '/scenes'
     | '/settings'
     | '/terms'
+    | '/api/analysis'
     | '/api/home'
     | '/help/remo'
     | '/help/switchbot'
@@ -257,6 +281,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalysisRoute: typeof AnalysisRoute
   LegalRoute: typeof LegalRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -264,6 +289,7 @@ export interface RootRouteChildren {
   ScenesRoute: typeof ScenesRoute
   SettingsRoute: typeof SettingsRoute
   TermsRoute: typeof TermsRoute
+  ApiAnalysisRoute: typeof ApiAnalysisRoute
   ApiHomeRoute: typeof ApiHomeRoute
   HelpRemoRoute: typeof HelpRemoRoute
   HelpSwitchbotRoute: typeof HelpSwitchbotRoute
@@ -284,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analysis': {
+      id: '/analysis'
+      path: '/analysis'
+      fullPath: '/analysis'
+      preLoaderRoute: typeof AnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/legal': {
@@ -333,6 +366,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/analysis': {
+      id: '/api/analysis'
+      path: '/api/analysis'
+      fullPath: '/api/analysis'
+      preLoaderRoute: typeof ApiAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/home': {
@@ -417,6 +457,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalysisRoute: AnalysisRoute,
   LegalRoute: LegalRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
@@ -424,6 +465,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScenesRoute: ScenesRoute,
   SettingsRoute: SettingsRoute,
   TermsRoute: TermsRoute,
+  ApiAnalysisRoute: ApiAnalysisRoute,
   ApiHomeRoute: ApiHomeRoute,
   HelpRemoRoute: HelpRemoRoute,
   HelpSwitchbotRoute: HelpSwitchbotRoute,

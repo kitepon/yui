@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Layers3, MapPin, PlugZap } from "lucide-react";
+import { Home, Layers3, LineChart, MapPin, PlugZap } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { KiteponMark } from "@/components/kitepon-mark";
@@ -8,6 +8,7 @@ const NAV = [
   { to: "/", label: "家", icon: Home },
   { to: "/scenes", label: "場面", icon: Layers3 },
   { to: "/rooms", label: "場所", icon: MapPin },
+  { to: "/analysis", label: "分析", icon: LineChart },
   { to: "/settings", label: "接続", icon: PlugZap },
 ] as const;
 
@@ -31,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         >
           <KiteponMark />
-          <ul className="grid grid-cols-4 px-1">
+          <ul className="grid grid-cols-5 px-1">
             {NAV.map((item) => {
               const active = pathname === item.to;
               const Icon = item.icon;

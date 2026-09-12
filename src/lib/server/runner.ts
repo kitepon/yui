@@ -1,11 +1,13 @@
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { Automation } from "@/lib/home/types";
+import type { AnalysisSource } from "@/lib/home/analysis-series";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
 import { prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
+import { heldSkipReason } from "@/lib/home/analysis-series";
 import { homeBelongsToLanOwner } from "./lan-owner";
 import { listAutomationHomeIds, loadHomeRecord, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
@@ -13,6 +15,7 @@ import { startBackupRunner } from "./home-backup";
 import { billingConfigured, loadEntitlement } from "./billing";
 import { clockInTokyo } from "@/lib/home/clock";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
+import { newWaveId, pruneAnalysis, recordEvent, recordHomeSamples } from "./analysis";
 
 let started = false;
 let ticking = false;
@@ -21,18 +24,38 @@ async function runAutomation(
   homeId: string,
   snap: HomeSnapshot,
   auto: Automation,
-  opts?: { onlyIfDifferent?: boolean },
+  opts: { onlyIfDifferent?: boolean; source: AnalysisSource; waveId: string },
 ) {
   if (!auto.enabled || !auto.actions.length) return snap;
   let cur = snap;
-  const onlyIfDifferent = opts?.onlyIfDifferent === true;
+  const onlyIfDifferent = opts.onlyIfDifferent === true;
   let sent = false;
+  const log = {
+    source: opts.source,
+    waveId: opts.waveId,
+    automationId: auto.id,
+    automationName: auto.name,
+  };
   for (const action of auto.actions) {
     if (onlyIfDifferent) {
       const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
-      if (!device || skipHeldRepeat(device, patchFromAction(action))) continue;
+      if (!device) continue;
+      if (skipHeldRepeat(device, patchFromAction(action))) {
+        recordEvent({
+          homeId,
+          waveId: opts.waveId,
+          source: opts.source,
+          automationId: auto.id,
+          automationName: auto.name,
+          deviceId: device.id,
+          deviceName: device.name,
+          outcome: "skipped",
+          reason: heldSkipReason(device),
+        });
+        continue;
+      }
     }
-    cur = await executeAction(homeId, cur, action);
+    cur = await executeAction(homeId, cur, action, log);
     sent = true;
   }
   if (sent) cur = await saveHomeRecord(homeId, { lastRanAutomationId: auto.id });
@@ -69,20 +92,61 @@ async function runPrioritized(
   snap: HomeSnapshot,
   firing: Automation[],
   holds: Set<string>,
+  source: AnalysisSource,
 ) {
+  const waveId = newWaveId();
   let cur = snap;
+  const lastRan = cur.lastRanAutomationId;
+  for (const auto of firing) {
+    const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
+    if (!skipContinuousActions(current, lastRan)) continue;
+    for (const action of current.actions) {
+      const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
+      recordEvent({
+        homeId,
+        waveId,
+        source,
+        automationId: current.id,
+        automationName: current.name,
+        deviceId: device?.id ?? action.deviceId,
+        deviceName: device?.name,
+        outcome: "skipped",
+        reason: "skip_continuous",
+      });
+    }
+  }
   const runnable = firing.filter((auto) => {
     const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
-    return !skipContinuousActions(current, cur.lastRanAutomationId);
+    return !skipContinuousActions(current, lastRan);
   });
   const planned = prioritizeAutomationActions(runnable);
   for (const auto of runnable) {
-    const actions = planned.get(auto.id) ?? [];
-    if (!actions.length) continue;
     const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
+    const actions = planned.get(auto.id) ?? [];
+    const kept = new Set(actions.map((a) => a.deviceId).filter(Boolean));
+    for (const action of current.actions) {
+      if (!action.deviceId || kept.has(action.deviceId)) continue;
+      const device = cur.devices.find((d) => d.id === action.deviceId);
+      const owner = runnable.find((a) => (planned.get(a.id) ?? []).some((x) => x.deviceId === action.deviceId));
+      recordEvent({
+        homeId,
+        waveId,
+        source,
+        automationId: current.id,
+        automationName: current.name,
+        deviceId: action.deviceId,
+        deviceName: device?.name,
+        outcome: "skipped",
+        reason: "claimed_by",
+        detail: owner ? JSON.stringify({ by: owner.id, name: owner.name }) : undefined,
+      });
+    }
+    if (!actions.length) continue;
     const holding = holds.has(auto.id);
     cur = await runAutomation(homeId, cur, { ...current, actions }, {
       onlyIfDifferent: holding,
+      source,
+      waveId,
     });
   }
   return cur;
@@ -108,6 +172,15 @@ async function tickMatching(homeId: string, snap: HomeSnapshot) {
       if (d.run) {
         firing.push(auto);
         if (d.holds) holds.add(auto.id);
+      } else if (d.key?.endsWith(":fail") && auto.lastFiredKey?.endsWith(":pass")) {
+        recordEvent({
+          homeId,
+          waveId: newWaveId(),
+          source: "tick",
+          automationId: auto.id,
+          automationName: auto.name,
+          outcome: "left",
+        });
       }
     }
   }
@@ -126,7 +199,7 @@ async function tickMatching(homeId: string, snap: HomeSnapshot) {
       }),
     });
   }
-  return runPrioritized(homeId, cur, firing, holds);
+  return runPrioritized(homeId, cur, firing, holds, "tick");
 }
 
 async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
@@ -204,7 +277,9 @@ export async function tickHome(homeId: string) {
   if (!rec) return;
   let snap = rec.snap;
   snap = await refreshSensorReadings(homeId, snap);
+  recordHomeSamples(homeId, snap);
   await tickMatching(homeId, snap);
+  pruneAnalysis(homeId);
 }
 
 /** Cloudflare Cron も同じ関数を呼ぶ。 */
@@ -238,7 +313,12 @@ export function startControlRunner() {
   startBackupRunner();
 }
 
-export async function fireDeviceOnServer(homeId: string, deviceId: string, on?: boolean) {
+export async function fireDeviceOnServer(
+  homeId: string,
+  deviceId: string,
+  on?: boolean,
+  source: AnalysisSource = "control",
+) {
   if (on === undefined) return;
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
@@ -248,14 +328,18 @@ export async function fireDeviceOnServer(homeId: string, deviceId: string, on?: 
     if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) return false;
     return true;
   });
-  await runPrioritized(homeId, rec.snap, firing, new Set());
+  await runPrioritized(homeId, rec.snap, firing, new Set(), source);
 }
 
-export async function fireSceneOnServer(homeId: string, sceneId: string) {
+export async function fireSceneOnServer(
+  homeId: string,
+  sceneId: string,
+  source: AnalysisSource = "scene",
+) {
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
   const firing = rec.snap.automations.filter(
     (auto) => auto.enabled && auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
   );
-  await runPrioritized(homeId, rec.snap, firing, new Set());
+  await runPrioritized(homeId, rec.snap, firing, new Set(), source);
 }

@@ -17,6 +17,7 @@ import { userIdForAlexaAccess } from "./alexa-oauth";
 import { executeDevice, executeScene } from "./execute";
 import { loadHome } from "./home-db";
 import { fireDeviceOnServer, fireSceneOnServer } from "./runner";
+import { newWaveId } from "./analysis";
 
 export async function handleAlexaEvent(event: AlexaEvent) {
   if (!event?.directive?.header) {
@@ -56,8 +57,8 @@ export async function handleAlexaEvent(event: AlexaEvent) {
       return alexaError(event.directive, "INVALID_DIRECTIVE", "場面です");
     }
     if (intent.type === "scene") {
-      await executeScene(homeId, snap, sceneIdFromEndpoint(endpointId));
-      await fireSceneOnServer(homeId, sceneIdFromEndpoint(endpointId));
+      await executeScene(homeId, snap, sceneIdFromEndpoint(endpointId), "alexa");
+      await fireSceneOnServer(homeId, sceneIdFromEndpoint(endpointId), "alexa");
       return alexaOk(event.directive, {
         namespace: "Alexa.SceneController",
         name: "ActivationStarted",
@@ -80,9 +81,9 @@ export async function handleAlexaEvent(event: AlexaEvent) {
   if ("error" in patch) return alexaError(event.directive, "INVALID_DIRECTIVE", patch.error);
 
   try {
-    const next = await executeDevice(homeId, snap, device, patch);
+    const next = await executeDevice(homeId, snap, device, patch, { source: "alexa", waveId: newWaveId() });
     // 指で押したときと同じにする。機器トリガーのオートメーションは入口で差を付けない。
-    if (patch.on !== undefined) await fireDeviceOnServer(homeId, device.id, patch.on);
+    if (patch.on !== undefined) await fireDeviceOnServer(homeId, device.id, patch.on, "alexa");
     const updated = next.devices.find((d) => d.id === device.id) ?? { ...device, ...patch };
     return alexaOk(event.directive, { context: { properties: propertyContext(updated) } });
   } catch (err) {
