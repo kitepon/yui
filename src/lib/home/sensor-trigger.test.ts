@@ -63,8 +63,16 @@ test("範囲内なら pass、外なら fail", () => {
   assert.equal(sensorTriggerDecision(23.9, band).pass, false);
   assert.equal(sensorTriggerDecision(24, band).pass, true);
   assert.equal(sensorTriggerDecision(25.2, band).pass, true);
-  assert.equal(sensorTriggerDecision(26.5, band).pass, true);
+  assert.equal(sensorTriggerDecision(26.5, band).pass, false);
+  assert.equal(sensorTriggerDecision(26.4, band).pass, true);
   assert.equal(sensorTriggerDecision(26.6, band).pass, false);
+});
+
+test("隣り合う範囲は上限の値で重ならない", () => {
+  const mid: AutoTrigger = { ...band, value: 25, valueMax: 25.5 };
+  const hot: AutoTrigger = { ...band, value: 25.5, valueMax: 26 };
+  assert.equal(sensorTriggerDecision(25.5, mid).pass, false);
+  assert.equal(sensorTriggerDecision(25.5, hot).pass, true);
 });
 
 test("下限と上限が逆でも範囲として扱う", () => {

@@ -36,7 +36,8 @@ export function sensorTriggerDecision(raw: number, trigger: AutoTrigger): { pass
   if (op === "between") {
     const min = Math.min(lo ?? 0, hi ?? lo ?? 0);
     const max = Math.max(lo ?? 0, hi ?? lo ?? 0);
-    pass = raw >= min && raw <= max;
+    // 上限は含めない。25〜25.5 と 25.5〜26 が同じ 25.5 で二重に当たらない。
+    pass = raw >= min && raw < max;
   } else if (op === "lte") {
     pass = raw <= (lo ?? 0);
   } else {
