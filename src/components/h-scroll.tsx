@@ -15,6 +15,7 @@ export function HScroll({ children, className }: { children: ReactNode; classNam
 
     const down = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
+      if (e.target instanceof Element && e.target.closest("a, button, input, select, textarea, label")) return;
       pid = e.pointerId;
       x0 = e.clientX;
       left0 = el.scrollLeft;

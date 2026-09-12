@@ -191,6 +191,10 @@ html[data-period="night"] {
     touch-action: pan-x;
   }
 
+  .scroll-x > :is(a, button) {
+    touch-action: manipulation;
+  }
+
   .period-room {
     transition: filter 0.45s ease;
   }

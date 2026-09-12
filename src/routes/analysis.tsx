@@ -11,7 +11,6 @@ import {
   YAxis,
 } from "recharts";
 import { AppShell } from "@/components/app-shell";
-import { HScroll } from "@/components/h-scroll";
 import { RequireAuth } from "@/lib/auth/gates";
 import { pullAnalysis } from "@/lib/home/control-client";
 import { ON_METRIC } from "@/lib/home/analysis-series";
@@ -50,9 +49,13 @@ function windowOf(range: RangeKey) {
   return { from: new Date(now - ms).toISOString(), to: new Date(now).toISOString() };
 }
 
+function matchesPreferred(label: string, key: string) {
+  return label === key || label.endsWith(` ${key}`);
+}
+
 function defaultSeriesIds(series: AnalysisData["series"]) {
   const prefer = PREFERRED.flatMap((label) =>
-    series.filter((s) => s.unit !== "on" && (s.label === label || s.label.endsWith(label))).map((s) => s.id),
+    series.filter((s) => s.unit !== "on" && matchesPreferred(s.label, label)).map((s) => s.id),
   );
   if (prefer.length) return [...new Set(prefer)];
   return series.filter((s) => s.unit !== "on").slice(0, 4).map((s) => s.id);
@@ -82,7 +85,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       type="button"
       onClick={onClick}
       className={cn(
-        "h-9 shrink-0 rounded-full border px-3 text-sm",
+        "h-9 shrink-0 cursor-pointer rounded-full border px-3 text-sm",
         active ? "border-primary bg-primary text-primary-fg" : "border-border bg-surface text-fg",
       )}
     >
@@ -93,6 +96,21 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 function toggleId(ids: string[], id: string) {
   return ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+}
+
+function ChipRow({ children }: { children: ReactNode }) {
+  return <div className="mt-2 flex flex-wrap gap-2">{children}</div>;
+}
+
+function paramOrder(series: AnalysisData["series"]) {
+  return [...series].sort((a, b) => {
+    const ra = PREFERRED.findIndex((k) => matchesPreferred(a.label, k));
+    const rb = PREFERRED.findIndex((k) => matchesPreferred(b.label, k));
+    const na = ra < 0 ? PREFERRED.length : ra;
+    const nb = rb < 0 ? PREFERRED.length : rb;
+    if (na !== nb) return na - nb;
+    return a.label.localeCompare(b.label, "ja");
+  });
 }
 
 function formatTick(t: number, range: RangeKey) {
@@ -169,7 +187,7 @@ export function AnalysisPage() {
     );
   }, [range, seriesIds, autoIds, deviceIds]);
 
-  const paramSeries = (data?.series ?? []).filter((s) => s.unit !== "on");
+  const paramSeries = paramOrder((data?.series ?? []).filter((s) => s.unit !== "on"));
   const onSeries = (data?.series ?? []).filter((s) => s.metric === ON_METRIC);
   const selectedParams = paramSeries.filter((s) => seriesIds?.includes(s.id));
   const selectedOn = onSeries.filter((s) => deviceIds.includes(s.deviceId));
@@ -205,47 +223,58 @@ export function AnalysisPage() {
       </header>
 
       <div className="mt-5 px-4">
-        <HScroll className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(["24h", "7d", "14d"] as const).map((key) => (
             <Chip key={key} active={range === key} onClick={() => setRange(key)}>
               {key === "24h" ? "24時間" : key === "7d" ? "7日" : "14日"}
             </Chip>
           ))}
-        </HScroll>
+        </div>
       </div>
 
       <section className="mt-6 px-4">
         <p className="text-[11px] tracking-wide text-faint">パラメータ</p>
-        <HScroll className="mt-2 flex gap-2">
-          {paramSeries.length === 0 ? (
-            <p className="text-sm text-muted">まだ数値がありません。</p>
-          ) : (
-            paramSeries.map((s) => (
+        {paramSeries.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">まだ数値がありません。</p>
+        ) : (
+          <ChipRow>
+            {paramSeries.map((s) => (
               <Chip key={s.id} active={seriesIds?.includes(s.id) === true} onClick={() => setSeriesIds((cur) => toggleId(cur ?? [], s.id))}>
                 {s.label}
               </Chip>
-            ))
-          )}
-        </HScroll>
+            ))}
+          </ChipRow>
+        )}
       </section>
 
       <section className="mt-5 px-4">
-        <p className="text-[11px] tracking-wide text-faint">重ねる</p>
-        <HScroll className="mt-2 flex gap-2">
-          {(data?.automations ?? []).map((auto) => (
-            <Chip key={auto.id} active={autoIds.includes(auto.id)} onClick={() => setAutoIds((cur) => toggleId(cur, auto.id))}>
-              {auto.name}
-            </Chip>
-          ))}
-          {(data?.devices ?? []).map((device) => (
-            <Chip key={device.id} active={deviceIds.includes(device.id)} onClick={() => setDeviceIds((cur) => toggleId(cur, device.id))}>
-              {device.name}
-            </Chip>
-          ))}
-          {!data?.automations.length && !data?.devices.length ? (
-            <p className="text-sm text-muted">重ねる対象は、記録が付いてから出ます。</p>
-          ) : null}
-        </HScroll>
+        <p className="text-[11px] tracking-wide text-faint">オートメーション</p>
+        {(data?.automations ?? []).length === 0 ? (
+          <p className="mt-2 text-sm text-muted">まだありません。</p>
+        ) : (
+          <ChipRow>
+            {(data?.automations ?? []).map((auto) => (
+              <Chip key={auto.id} active={autoIds.includes(auto.id)} onClick={() => setAutoIds((cur) => toggleId(cur, auto.id))}>
+                {auto.name}
+              </Chip>
+            ))}
+          </ChipRow>
+        )}
+      </section>
+
+      <section className="mt-5 px-4">
+        <p className="text-[11px] tracking-wide text-faint">機器の入切</p>
+        {(data?.devices ?? []).length === 0 ? (
+          <p className="mt-2 text-sm text-muted">まだありません。</p>
+        ) : (
+          <ChipRow>
+            {(data?.devices ?? []).map((device) => (
+              <Chip key={device.id} active={deviceIds.includes(device.id)} onClick={() => setDeviceIds((cur) => toggleId(cur, device.id))}>
+                {device.name}
+              </Chip>
+            ))}
+          </ChipRow>
+        )}
       </section>
 
       <div className="mt-5 px-2">
