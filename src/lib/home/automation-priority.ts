@@ -21,6 +21,7 @@ export function collectMatchingAutomations(
 /**
  * 一覧の上が同じ機器を取る。下は残った機器だけ動かす。
  * `firing` は条件を満たしたオートメーションを、欄の並びのまま渡す。
+ * 再送を省く行も含めて優先権を確定し、その後に送信を省く。
  */
 export function prioritizeAutomationActions(firing: Automation[]): Map<string, AutoAction[]> {
   const claimed = new Set<string>();
@@ -38,7 +39,7 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
   return out;
 }
 
-/** 「連続では動かさない」：直前に動いたオートメーションが自分なら、何もしない。 */
+/** 「連続では動かさない」：直前に動いたのが自分なら再送を省く。機器の優先権は保持する。 */
 export function skipContinuousActions(auto: Automation, lastRanId: string | null | undefined) {
   return Boolean(auto.skipContinuous && lastRanId && lastRanId === auto.id);
 }

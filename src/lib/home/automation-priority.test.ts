@@ -225,7 +225,7 @@ test("範囲に入った最初は送り、入っているあいだは保持す�
   assert.equal(reenter.holds, false);
 });
 
-test("連続では動かさないオートメーションは機器を取らない", () => {
+test("連続実行を省いても条件成立中のオートメーションは機器を取る", () => {
   const hot: Automation = {
     id: "hot",
     name: "水槽水温高温域",
@@ -249,10 +249,9 @@ test("連続では動かさないオートメーションは機器を取らな�
     ],
   };
   assert.equal(skipContinuousActions(hot, "hot"), true);
-  const runnable = [hot, mid].filter((a) => !skipContinuousActions(a, "hot"));
-  const planned = prioritizeAutomationActions(runnable);
-  assert.equal(planned.has("hot"), false);
-  assert.deepEqual(planned.get("mid")?.map((x) => x.deviceId), ["ac", "fan-off"]);
+  const planned = prioritizeAutomationActions([hot, mid]);
+  assert.deepEqual(planned.get("hot")?.map((x) => x.deviceId), ["ac", "fan-off"]);
+  assert.deepEqual(planned.get("mid"), []);
 });
 
 test("連続では動かさないは、直前に動いたのが自分自身のときだけ止める", () => {

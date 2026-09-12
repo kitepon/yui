@@ -97,37 +97,15 @@ async function runPrioritized(
   const waveId = newWaveId();
   let cur = snap;
   const lastRan = cur.lastRanAutomationId;
+  const planned = prioritizeAutomationActions(firing);
   for (const auto of firing) {
-    const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
-    if (!skipContinuousActions(current, lastRan)) continue;
-    for (const action of current.actions) {
-      const device = action.deviceId ? cur.devices.find((d) => d.id === action.deviceId) : undefined;
-      recordEvent({
-        homeId,
-        waveId,
-        source,
-        automationId: current.id,
-        automationName: current.name,
-        deviceId: device?.id ?? action.deviceId,
-        deviceName: device?.name,
-        outcome: "skipped",
-        reason: "skip_continuous",
-      });
-    }
-  }
-  const runnable = firing.filter((auto) => {
-    const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
-    return !skipContinuousActions(current, lastRan);
-  });
-  const planned = prioritizeAutomationActions(runnable);
-  for (const auto of runnable) {
     const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
     const actions = planned.get(auto.id) ?? [];
     const kept = new Set(actions.map((a) => a.deviceId).filter(Boolean));
     for (const action of current.actions) {
       if (!action.deviceId || kept.has(action.deviceId)) continue;
       const device = cur.devices.find((d) => d.id === action.deviceId);
-      const owner = runnable.find((a) => (planned.get(a.id) ?? []).some((x) => x.deviceId === action.deviceId));
+      const owner = firing.find((a) => (planned.get(a.id) ?? []).some((x) => x.deviceId === action.deviceId));
       recordEvent({
         homeId,
         waveId,
@@ -142,6 +120,23 @@ async function runPrioritized(
       });
     }
     if (!actions.length) continue;
+    if (skipContinuousActions(current, lastRan)) {
+      for (const action of actions) {
+        const device = cur.devices.find((d) => d.id === action.deviceId);
+        recordEvent({
+          homeId,
+          waveId,
+          source,
+          automationId: current.id,
+          automationName: current.name,
+          deviceId: action.deviceId,
+          deviceName: device?.name,
+          outcome: "skipped",
+          reason: "skip_continuous",
+        });
+      }
+      continue;
+    }
     const holding = holds.has(auto.id);
     cur = await runAutomation(homeId, cur, { ...current, actions }, {
       onlyIfDifferent: holding,
