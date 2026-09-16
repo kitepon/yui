@@ -3,7 +3,7 @@ import { clockInTokyo } from "./clock";
 import { describePatch, patchFromAction, skipHeldRepeat } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
-import { collectMatchingAutomations, prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority";
+import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition } from "./automation-priority";
 import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
@@ -46,7 +46,9 @@ export function describeTrigger(auto: Automation) {
 
 export function describeAction(action: AutoAction) {
   const device = useHome.getState().devices.find((d) => d.id === action.deviceId);
-  return [device?.name ?? "機器", ...describePatch(action)].join(" ");
+  return [device?.name ?? "機器", ...describePatch(action), action.skipContinuous ? "連続では動かさない" : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 async function runActions(auto: Automation, onlyIfDifferent: boolean) {
@@ -85,8 +87,9 @@ function fireWave(firing: Automation[], holds: Set<string>) {
     if (!actions.length) continue;
     const holding = holds.has(auto.id);
     const current = useHome.getState().automations.find((a) => a.id === auto.id) ?? auto;
-    if (skipContinuousActions(current, lastRan)) continue;
-    void executeAutomation({ ...current, actions }, { onlyIfDifferent: holding });
+    const split = partitionContinuousActions(current.id, actions, lastRan);
+    if (!split.run.length) continue;
+    void executeAutomation({ ...current, actions: split.run }, { onlyIfDifferent: holding });
   }
 }
 

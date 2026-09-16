@@ -39,9 +39,36 @@ export function prioritizeAutomationActions(firing: Automation[]): Map<string, A
   return out;
 }
 
-/** 「連続では動かさない」：直前に動いたのが自分なら再送を省く。機器の優先権は保持する。 */
-export function skipContinuousActions(auto: Automation, lastRanId: string | null | undefined) {
-  return Boolean(auto.skipContinuous && lastRanId && lastRanId === auto.id);
+/** 「連続では動かさない」：直前に動いたのが自分なら、この操作の再送を省く。機器の優先権は保持する。 */
+export function skipContinuousAction(
+  action: Pick<AutoAction, "skipContinuous">,
+  autoId: string,
+  lastRanId: string | null | undefined,
+) {
+  return Boolean(action.skipContinuous && lastRanId && lastRanId === autoId);
+}
+
+export function partitionContinuousActions(
+  autoId: string,
+  actions: AutoAction[],
+  lastRanId: string | null | undefined,
+) {
+  const run: AutoAction[] = [];
+  const skipped: AutoAction[] = [];
+  for (const action of actions) {
+    if (skipContinuousAction(action, autoId, lastRanId)) skipped.push(action);
+    else run.push(action);
+  }
+  return { run, skipped };
+}
+
+/** 残った操作がすべて連続省略なら、この波では送らない。 */
+export function skipContinuousActions(
+  auto: Pick<Automation, "id" | "actions">,
+  lastRanId: string | null | undefined,
+  actions: AutoAction[] = auto.actions,
+) {
+  return actions.length > 0 && actions.every((action) => skipContinuousAction(action, auto.id, lastRanId));
 }
 
 /**

@@ -89,15 +89,13 @@ function reset() {
         id: "outdoor",
         name: "外気取り込み優先",
         enabled: true,
-        skipContinuous: true,
         trigger: { type: "sensor", deviceId: "ac", metric: "outdoorTemp", op: "lte", value: 24 },
-        actions: [{ id: "off", deviceId: "ac", on: false }],
+        actions: [{ id: "off", deviceId: "ac", on: false, skipContinuous: true }],
       },
       {
         id: "tank",
         name: "水槽水温中温域",
         enabled: true,
-        skipContinuous: true,
         trigger: {
           type: "sensor",
           deviceId: "water",
@@ -106,7 +104,7 @@ function reset() {
           value: 25,
           valueMax: 25.5,
         },
-        actions: [{ id: "on", deviceId: "ac", on: true }],
+        actions: [{ id: "on", deviceId: "ac", on: true, skipContinuous: true }],
       },
     ],
   };

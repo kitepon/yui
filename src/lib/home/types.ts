@@ -257,6 +257,8 @@ export interface AutoTrigger {
 export interface AutoAction extends Omit<DeviceCommand, "id"> {
   id: string;
   deviceId?: string;
+  /** 直前に動いたオートメーションが自分自身なら、この機器は動かさない。 */
+  skipContinuous?: boolean;
 }
 
 export interface Automation {
@@ -268,8 +270,6 @@ export interface Automation {
   lastFiredKey?: string;
   /** このオートメーションが、直前に実際に機器を動かしたときの条件キー。 */
   lastExecutedKey?: string;
-  /** 直前に動いたのが自分自身なら、機器をオンオフしない。 */
-  skipContinuous?: boolean;
   /** 条件が成立したら、一覧で下にあるオートメーションの判定を打ち切る。 */
   stopOnMatch?: boolean;
 }
@@ -396,6 +396,7 @@ export function migrateAutomation(raw: unknown): Automation | null {
       fanSwing: x.fanSwing,
       mode: x.mode,
       position: x.position,
+      skipContinuous: x.skipContinuous === true || a.skipContinuous === true ? true : undefined,
     }));
   return {
     id: String(a.id),
@@ -405,7 +406,6 @@ export function migrateAutomation(raw: unknown): Automation | null {
     actions,
     lastFiredKey: typeof a.lastFiredKey === "string" ? a.lastFiredKey : undefined,
     lastExecutedKey: typeof a.lastExecutedKey === "string" ? a.lastExecutedKey : undefined,
-    skipContinuous: a.skipContinuous === true ? true : undefined,
     stopOnMatch: a.stopOnMatch === true ? true : undefined,
   };
 }

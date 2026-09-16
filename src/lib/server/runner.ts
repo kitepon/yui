@@ -3,7 +3,7 @@ import type { Automation } from "@/lib/home/types";
 import type { AnalysisSource } from "@/lib/home/analysis-series";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
-import { collectMatchingAutomations, prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "@/lib/home/automation-priority";
+import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
@@ -120,25 +120,24 @@ async function runPrioritized(
       });
     }
     if (!actions.length) continue;
-    if (skipContinuousActions(current, lastRan)) {
-      for (const action of actions) {
-        const device = cur.devices.find((d) => d.id === action.deviceId);
-        recordEvent({
-          homeId,
-          waveId,
-          source,
-          automationId: current.id,
-          automationName: current.name,
-          deviceId: action.deviceId,
-          deviceName: device?.name,
-          outcome: "skipped",
-          reason: "skip_continuous",
-        });
-      }
-      continue;
+    const split = partitionContinuousActions(current.id, actions, lastRan);
+    for (const action of split.skipped) {
+      const device = cur.devices.find((d) => d.id === action.deviceId);
+      recordEvent({
+        homeId,
+        waveId,
+        source,
+        automationId: current.id,
+        automationName: current.name,
+        deviceId: action.deviceId,
+        deviceName: device?.name,
+        outcome: "skipped",
+        reason: "skip_continuous",
+      });
     }
+    if (!split.run.length) continue;
     const holding = holds.has(auto.id);
-    cur = await runAutomation(homeId, cur, { ...current, actions }, {
+    cur = await runAutomation(homeId, cur, { ...current, actions: split.run }, {
       onlyIfDifferent: holding,
       source,
       waveId,

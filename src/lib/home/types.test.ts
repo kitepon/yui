@@ -88,7 +88,7 @@ test("badge is the connector, not 実機", () => {
   assert.equal(connectorBadge({ connector: "demo" }), "デモ");
 });
 
-test("migrateAutomation は連続では動かさないを残す", () => {
+test("migrateAutomation は連続では動かさないを各機器へ移す", () => {
   const auto = migrateAutomation({
     id: "air",
     name: "外気取り込み優先",
@@ -97,7 +97,19 @@ test("migrateAutomation は連続では動かさないを残す", () => {
     trigger: { type: "sensor", deviceId: "ac", metric: "outdoorTemp", op: "between", value: 18, valueMax: 23 },
     actions: [{ id: "a", deviceId: "bot", on: true }],
   });
-  assert.equal(auto?.skipContinuous, true);
+  assert.equal(auto?.actions[0]?.skipContinuous, true);
+  const mixed = migrateAutomation({
+    id: "tank",
+    name: "水温深刻",
+    enabled: true,
+    trigger: { type: "sensor" },
+    actions: [
+      { id: "ac", deviceId: "ac", on: true },
+      { id: "fan", deviceId: "bot", on: true, skipContinuous: true },
+    ],
+  });
+  assert.equal(mixed?.actions[0]?.skipContinuous, undefined);
+  assert.equal(mixed?.actions[1]?.skipContinuous, true);
   const off = migrateAutomation({
     id: "air2",
     name: "x",
@@ -105,7 +117,7 @@ test("migrateAutomation は連続では動かさないを残す", () => {
     trigger: { type: "time" },
     actions: [{ id: "a", deviceId: "p", on: true }],
   });
-  assert.equal(off?.skipContinuous, undefined);
+  assert.equal(off?.actions[0]?.skipContinuous, undefined);
 });
 
 test("時刻トリガーは触っていない項目も 7:00 毎日として保存する", () => {

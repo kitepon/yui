@@ -42,7 +42,6 @@ export function AutomationEditor({
     initial?.trigger ?? { type: "time", repeat: "daily", hour: 7, minute: 0 },
   );
   const [actions, setActions] = useState<AutoAction[]>(initial?.actions ?? []);
-  const [skipContinuous, setSkipContinuous] = useState(initial?.skipContinuous === true);
   const [stopOnMatch, setStopOnMatch] = useState(initial?.stopOnMatch === true);
 
   const actuators = useMemo(() => devices.filter((d) => d.kind !== "sensor"), [devices]);
@@ -99,7 +98,6 @@ export function AutomationEditor({
     const payload = {
       name: name.trim() || "オートメーション",
       enabled: initial?.enabled ?? true,
-      skipContinuous: skipContinuous || undefined,
       stopOnMatch: stopOnMatch || undefined,
       trigger: nextTrigger,
       actions: actions.map((action) => {
@@ -325,7 +323,7 @@ export function AutomationEditor({
             )}
             <p className="text-xs leading-relaxed text-faint">
               {trigger.op === "between"
-                ? `範囲内のあいだ、いまの設定と違うときだけ送ります。『連続では動かさない』は、直前に動いたのが自分自身のときオンオフしません。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`
+                ? `範囲内のあいだ、いまの設定と違うときだけ送ります。機器ごとの『連続では動かさない』は、直前に動いたのが自分自身のときその機器をオンオフしません。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`
                 : `しきい値は小数点第一位まで入れられます。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。条件を満たしてから動くまで最大${SENSOR_TICK_SECONDS}秒かかります。アプリを開いていなくても動きます。`}
             </p>
           </div>
@@ -368,20 +366,6 @@ export function AutomationEditor({
 
         <button
           type="button"
-          className={`mt-5 flex h-12 w-full items-center justify-between rounded-md px-3 text-left text-sm ${
-            skipContinuous ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"
-          }`}
-          onClick={() => setSkipContinuous((v) => !v)}
-        >
-          <span>連続では動かさない</span>
-          <span className="text-xs">{skipContinuous ? "入" : "切"}</span>
-        </button>
-        <p className="mt-1.5 text-xs leading-relaxed text-faint">
-          直前に動いたオートメーションが自分自身なら、何もしません。別のが動いたあとは、また動きます。
-        </p>
-
-        <button
-          type="button"
           aria-pressed={stopOnMatch}
           className={`mt-5 flex min-h-12 w-full items-center justify-between gap-3 rounded-md px-3 py-3 text-left text-sm ${
             stopOnMatch ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"
@@ -392,7 +376,7 @@ export function AutomationEditor({
           <span className="shrink-0 text-xs">{stopOnMatch ? "入" : "切"}</span>
         </button>
         <p className="mt-1.5 text-xs leading-relaxed text-faint">
-          条件が成立している間は、一覧で下にあるオートメーションを判定・実行しません。「連続では動かさない」で操作を省く回も打ち切ります。
+          条件が成立している間は、一覧で下にあるオートメーションを判定・実行しません。機器ごとに「連続では動かさない」で操作を省く回も打ち切ります。
         </p>
 
         <Button className="mt-5 h-12 w-full" onClick={save}>
@@ -433,8 +417,13 @@ function ActionFields({
           const nextDevice = devices.find((d) => d.id === deviceId);
           onChange(
             nextDevice
-              ? fillVisibleDefaults(nextDevice, { id: action.id, deviceId, on: true })
-              : { id: action.id, deviceId, on: true },
+              ? fillVisibleDefaults(nextDevice, {
+                  id: action.id,
+                  deviceId,
+                  on: true,
+                  skipContinuous: action.skipContinuous,
+                })
+              : { id: action.id, deviceId, on: true, skipContinuous: action.skipContinuous },
           );
         }}
         options={devices.map((d) => ({ id: d.id, label: `${d.room} ${d.name}` }))}
@@ -449,6 +438,20 @@ function ActionFields({
           />
         </div>
       ) : null}
+      <button
+        type="button"
+        aria-pressed={action.skipContinuous === true}
+        className={`mt-3 flex h-11 w-full items-center justify-between rounded-md px-3 text-left text-sm ${
+          action.skipContinuous ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"
+        }`}
+        onClick={() => onChange({ ...action, skipContinuous: action.skipContinuous ? undefined : true })}
+      >
+        <span>連続では動かさない</span>
+        <span className="text-xs">{action.skipContinuous ? "入" : "切"}</span>
+      </button>
+      <p className="mt-1.5 text-xs leading-relaxed text-faint">
+        直前に動いたオートメーションが自分自身なら、この機器は動かしません。別のが動いたあとは、また動きます。
+      </p>
     </div>
   );
 }

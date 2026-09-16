@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { collectMatchingAutomations, prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority.ts";
+import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority.ts";
 import type { AutoAction, Automation } from "./types.ts";
 
 function auto(id: string, deviceIds: string[]): Automation {
@@ -54,14 +54,17 @@ test("無効・アクションなし・条件不成立の打ち切り設定は�
 test("条件成立が続く間は、連続実行を省く回も下へ切り替わらない", () => {
   const upper: Automation = {
     ...auto("外気", ["エアコン"]),
-    skipContinuous: true,
     stopOnMatch: true,
     trigger: { type: "sensor", deviceId: "外気温", metric: "temperature", op: "lte", value: 24 },
+    actions: [{ id: "a", deviceId: "エアコン", skipContinuous: true }],
   };
   const lower: Automation = {
     ...auto("水温", ["エアコン", "換気扇"]),
-    skipContinuous: true,
     trigger: { type: "sensor", deviceId: "水温計", metric: "temperature", op: "between", value: 25, valueMax: 26 },
+    actions: [
+      { id: "b", deviceId: "エアコン", skipContinuous: true },
+      { id: "c", deviceId: "換気扇", skipContinuous: true },
+    ],
   };
   const snap = { devices: [{ id: "外気温", temperature: 22 }, { id: "水温計", temperature: 25.5 }], climate: {} };
   let lastRan: string | undefined;
@@ -76,8 +79,9 @@ test("条件成立が続く間は、連続実行を省く回も下へ切り替�
     });
     assert.deepEqual(checked, ["外気"]);
     assert.equal(lower.lastFiredKey, undefined);
-    const runnable = firing.filter((a) => !skipContinuousActions(a, lastRan));
-    for (const a of runnable) {
+    for (const a of firing) {
+      const split = partitionContinuousActions(a.id, a.actions, lastRan);
+      if (!split.run.length) continue;
       sent.push(a.id);
       lastRan = a.id;
     }
@@ -230,22 +234,20 @@ test("連続実行を省いても条件成立中のオートメーションは�
     id: "hot",
     name: "水槽水温高温域",
     enabled: true,
-    skipContinuous: true,
     trigger: { type: "sensor" },
     actions: [
-      { id: "a", deviceId: "ac" },
-      { id: "b", deviceId: "fan-off" },
+      { id: "a", deviceId: "ac", skipContinuous: true },
+      { id: "b", deviceId: "fan-off", skipContinuous: true },
     ],
   };
   const mid: Automation = {
     id: "mid",
     name: "水槽水温中温域",
     enabled: true,
-    skipContinuous: true,
     trigger: { type: "sensor" },
     actions: [
-      { id: "c", deviceId: "ac" },
-      { id: "d", deviceId: "fan-off" },
+      { id: "c", deviceId: "ac", skipContinuous: true },
+      { id: "d", deviceId: "fan-off", skipContinuous: true },
     ],
   };
   assert.equal(skipContinuousActions(hot, "hot"), true);
@@ -259,12 +261,30 @@ test("連続では動かさないは、直前に動いたのが自分自身の�
     id: "air",
     name: "外気取り込み優先",
     enabled: true,
-    skipContinuous: true,
     trigger: { type: "sensor" },
-    actions: [{ id: "x", deviceId: "bot-on", on: true }],
+    actions: [{ id: "x", deviceId: "bot-on", on: true, skipContinuous: true }],
   };
   assert.equal(skipContinuousActions(auto, "air"), true);
   assert.equal(skipContinuousActions(auto, "tank"), false);
   assert.equal(skipContinuousActions(auto, undefined), false);
-  assert.equal(skipContinuousActions({ ...auto, skipContinuous: undefined }, "air"), false);
+  assert.equal(skipContinuousActions({ ...auto, actions: [{ id: "x", deviceId: "bot-on", on: true }] }, "air"), false);
+});
+
+test("連続では動かさないは機器ごとに省き、他の機器は送る", () => {
+  const auto: Automation = {
+    id: "severe",
+    name: "水槽水温深刻",
+    enabled: true,
+    trigger: { type: "sensor" },
+    actions: [
+      { id: "ac", deviceId: "ac", on: true },
+      { id: "fan", deviceId: "fan-off", on: true, skipContinuous: true },
+    ],
+  };
+  const first = partitionContinuousActions(auto.id, auto.actions, undefined);
+  assert.deepEqual(first.run.map((a) => a.deviceId), ["ac", "fan-off"]);
+  const again = partitionContinuousActions(auto.id, auto.actions, "severe");
+  assert.deepEqual(again.run.map((a) => a.deviceId), ["ac"]);
+  assert.deepEqual(again.skipped.map((a) => a.deviceId), ["fan-off"]);
+  assert.equal(skipContinuousActions(auto, "severe"), false);
 });
