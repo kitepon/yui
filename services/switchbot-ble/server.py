@@ -8,14 +8,16 @@ import json
 import os
 import re
 import threading
+from collections.abc import Coroutine
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-
-from bleak import BleakClient, BleakScanner
+from typing import Any, TypeVar
 
 WRITE_CHAR = "cba20002-224d-11e6-9fb8-0002a5d5c51b"
 READ_CHAR = "cba20003-224d-11e6-9fb8-0002a5d5c51b"
 PRESS = bytes.fromhex("570100")
 MAC_RE = re.compile(r"[^0-9A-Fa-f]")
+
+T = TypeVar("T")
 
 
 def normalize_mac(raw: str) -> str:
@@ -25,7 +27,46 @@ def normalize_mac(raw: str) -> str:
     return ":".join(hex_id[i : i + 2] for i in range(0, 12, 2)).upper()
 
 
+class BleLoop:
+    """プロセスで一つのイベントループ。押すたびに asyncio.run すると
+    BlueZ の D-Bus 接続がループごとに増え、UID 0 の上限 256 で死ぬ。"""
+
+    def __init__(self) -> None:
+        self.loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._run, name="ble-loop", daemon=True)
+        self._ready = threading.Event()
+
+    def _run(self) -> None:
+        asyncio.set_event_loop(self.loop)
+        self._ready.set()
+        self.loop.run_forever()
+
+    def start(self) -> None:
+        self._thread.start()
+        if not self._ready.wait(timeout=5):
+            raise RuntimeError("BLE ループが起きませんでした")
+
+    def alive(self) -> bool:
+        return self._thread.is_alive() and self.loop.is_running()
+
+    def run(self, coro: Coroutine[Any, Any, T]) -> T:
+        if not self.alive():
+            coro.close()
+            raise RuntimeError("BLE ループが止まっています")
+        fut = asyncio.run_coroutine_threadsafe(coro, self.loop)
+        return fut.result()
+
+    def stop(self) -> None:
+        if self.loop.is_running():
+            self.loop.call_soon_threadsafe(self.loop.stop)
+        self._thread.join(timeout=5)
+        if not self.loop.is_closed():
+            self.loop.close()
+
+
 async def press(mac: str) -> None:
+    from bleak import BleakClient, BleakScanner
+
     address = normalize_mac(mac)
     device = await BleakScanner.find_device_by_address(address, timeout=20)
     if device is None:
@@ -52,7 +93,15 @@ async def press(mac: str) -> None:
             raise RuntimeError(f"ボットが拒否しました（{result.hex()}）")
 
 
+ble_loop: BleLoop | None = None
 press_lock = threading.Lock()
+
+
+def run_press(mac: str) -> None:
+    if ble_loop is None:
+        raise RuntimeError("BLE ループが未起動です")
+    with press_lock:
+        ble_loop.run(press(mac))
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -81,8 +130,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             payload = json.loads(self.rfile.read(length).decode() or "{}")
             mac = str(payload.get("mac") or "")
-            with press_lock:
-                asyncio.run(press(mac))
+            run_press(mac)
         except Exception as exc:
             self._send(502, {"ok": False, "error": str(exc)})
             return
@@ -90,6 +138,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    global ble_loop
+    ble_loop = BleLoop()
+    ble_loop.start()
     bind = os.environ.get("SWITCHBOT_BLE_BIND", "127.0.0.1")
     port = int(os.environ.get("SWITCHBOT_BLE_PORT", "18862"))
     server = ThreadingHTTPServer((bind, port), Handler)

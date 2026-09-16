@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-17
+
+### 変わったこと
+
+- SwitchBot の Bluetooth 押しは、プロセスで一つのイベントループを使い、押すたびに D-Bus 接続を増やさない
+
+### 限界
+
+- ボットがサーバーの近くにあること、ホストの bluetoothd が動いていることはこれまでどおり
+
 ## 2026-09-12
 
 本番 image `yuihome:20260912-7116d41`。Bluetooth 押しは `yuihome-switchbot-ble:20260912-7116d41`。
