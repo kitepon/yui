@@ -20,6 +20,11 @@ MAC_RE = re.compile(r"[^0-9A-Fa-f]")
 T = TypeVar("T")
 
 
+def error_text(exc: BaseException) -> str:
+    text = str(exc).strip()
+    return text if text else type(exc).__name__
+
+
 def normalize_mac(raw: str) -> str:
     hex_id = MAC_RE.sub("", raw)
     if len(hex_id) != 12:
@@ -71,7 +76,10 @@ async def press(mac: str) -> None:
     device = await BleakScanner.find_device_by_address(address, timeout=20)
     if device is None:
         raise RuntimeError(f"{address} が見つかりません。ボットがサーバーの近くにあるか確認してください")
-    async with BleakClient(device, timeout=20) as client:
+    client = BleakClient(device, timeout=20)
+    await client.connect()
+    result: bytes | None = None
+    try:
         loop = asyncio.get_running_loop()
         done: asyncio.Future[bytes] = loop.create_future()
 
@@ -85,12 +93,18 @@ async def press(mac: str) -> None:
             result = await asyncio.wait_for(asyncio.shield(done), timeout=5)
         except TimeoutError as exc:
             raise RuntimeError("ボットが応答しませんでした") from exc
-        if result == b"\x07":
-            raise RuntimeError("ボットにパスワードが必要です")
-        if result == b"\t":
-            raise RuntimeError("ボットのパスワードが違います")
-        if not result or result[0] not in (1, 5):
-            raise RuntimeError(f"ボットが拒否しました（{result.hex()}）")
+    finally:
+        try:
+            await client.disconnect()
+        except Exception:
+            if result is None:
+                raise
+    if result == b"\x07":
+        raise RuntimeError("ボットにパスワードが必要です")
+    if result == b"\t":
+        raise RuntimeError("ボットのパスワードが違います")
+    if not result or result[0] not in (1, 5):
+        raise RuntimeError(f"ボットが拒否しました（{result.hex()}）")
 
 
 ble_loop: BleLoop | None = None
@@ -132,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
             mac = str(payload.get("mac") or "")
             run_press(mac)
         except Exception as exc:
-            self._send(502, {"ok": False, "error": str(exc)})
+            self._send(502, {"ok": False, "error": error_text(exc)})
             return
         self._send(200, {"ok": True})
 

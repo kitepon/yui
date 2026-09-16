@@ -15,6 +15,14 @@ from unittest.mock import patch
 import server
 
 
+class ErrorTextTest(unittest.TestCase):
+    def test_empty_eof_uses_type_name(self) -> None:
+        self.assertEqual(server.error_text(EOFError()), "EOFError")
+
+    def test_keeps_message(self) -> None:
+        self.assertEqual(server.error_text(RuntimeError("ボットが応答しませんでした")), "ボットが応答しませんでした")
+
+
 class NormalizeMacTest(unittest.TestCase):
     def test_colon_and_bare(self) -> None:
         self.assertEqual(server.normalize_mac("d382f7434eb5"), "D3:82:F7:43:4E:B5")
