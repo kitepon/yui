@@ -2,7 +2,7 @@
 
 ## 2026-09-17
 
-本番 Bluetooth 押し `yuihome-switchbot-ble:20260917-f4bcdac`。結本体 image は据え置き。
+本番 image `yuihome:20260917-9968945`。Bluetooth 押し `yuihome-switchbot-ble:20260917-9968945`。
 
 ### 変わったこと
 
