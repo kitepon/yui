@@ -2,6 +2,8 @@
 
 ## 2026-09-17
 
+本番 Bluetooth 押し `yuihome-switchbot-ble:20260917-f4bcdac`。結本体 image は据え置き。
+
 ### 変わったこと
 
 - SwitchBot の Bluetooth 押しは、プロセスで一つのイベントループを使い、押すたびに D-Bus 接続を増やさない
