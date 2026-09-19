@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.0 — 2026-09-19
+
+v0.1.0 以降、2026-09-17 の本番 image `yuihome:20260917-9968945` までの公開 snapshot。中身は下の日付の記録のとおり。`v0.x` の間は database schema、設定、self-hosted upgrade の長期互換をまだ保証しない。
+
 ## 2026-09-17
 
 本番 image `yuihome:20260917-9968945`。Bluetooth 押し `yuihome-switchbot-ble:20260917-9968945`。
