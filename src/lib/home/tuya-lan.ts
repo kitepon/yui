@@ -13,20 +13,26 @@ import type { Device, TuyaLocalDevice } from "./types.ts";
  * dp 対応（`credentials.tuyaLocal`）を持つ機器は、以後クラウドを通さず、Smart Life アプリの
  * ローカル操作と同じプロトコル（TCP 6668、version 3.3、AES-128-ECB）で読み書きする。
  *
- * 機器の居場所は、機器自身が LAN へ 5 秒ごとに送る名乗り（UDP 6667、共通鍵で暗号化）を
- * 結が聞いて覚える。宛先を人が書くことはない。Docker では 6667/udp をホストへ公開する。
+ * 機器の居場所は、機器自身が LAN へ 5 秒ごとに送る名乗り（3.1 は UDP 6666 に平文、
+ * 3.3 以降は UDP 6667 に共通鍵で暗号化）を結が聞いて覚える。宛先を人が書くことはない。
+ * Docker では 6666/udp と 6667/udp をホストへ公開する。
  *
- * 結が読み書きできるのは version 3.3 だけ。3.4 / 3.5 は握手が違うため LAN を使わず、
- * その機器はクラウドに残す（画面にはその版を出す）。
+ * 結が読み書きできるのは version 3.1 と 3.3。3.1 は読み取りが平文で、操作だけ鍵で暗号化して
+ * md5 の署名を付ける。3.4 / 3.5 は握手が違うため LAN を使わず、その機器はクラウドに残す
+ * （画面にはその版を出す）。
  *
- * 実機 SNT957W-TDE（CBU、category wsdcg）で読み取りを確定させた。
+ * 実機 SNT957W-TDE（CBU、wsdcg、3.3）で読み取りを、3.1 のコンセント（cz）で読み取りと操作を確定させた。
  */
 
 const PORT = 6668;
-const DISCOVERY_PORT = 6667;
+const DISCOVERY_PORTS = [6666, 6667] as const;
 const TIMEOUT_MS = 5000;
-/** 名乗りが途切れてからこの時間は居場所を信じる。機器は 5 秒ごとに名乗る。 */
-const SEEN_TTL_MS = 5 * 60 * 1000;
+/**
+ * 名乗りが途切れてからこの時間は居場所を信じる。3.3 は 5 秒ごとに名乗るが、3.1 の古い機器は
+ * Smart Life アプリが LAN 接続を握っている間は名乗りを止める（実測で数分の空白）。
+ * IP が変わっていれば読み書きが typed error になって画面に出るので、長めに信じてよい。
+ */
+const SEEN_TTL_MS = 30 * 60 * 1000;
 const PREFIX = 0x000055aa;
 const SUFFIX = 0x0000aa55;
 const CMD_CONTROL = 0x07;
@@ -34,12 +40,15 @@ const CMD_DP_QUERY = 0x0a;
 const VERSION_HEADER_33 = Buffer.concat([Buffer.from("3.3"), Buffer.alloc(12)]);
 /** UDP の名乗りは全機器共通のこの鍵で暗号化されている（tuya-convert が明らかにした値）。 */
 const UDP_KEY = createHash("md5").update("yGAdlopoPVldABfn").digest();
-const SUPPORTED_VERSION = "3.3";
+const SUPPORTED_VERSIONS = new Set(["3.1", "3.3"]);
+
+export type TuyaLanVersion = "3.1" | "3.3";
 
 export type TuyaLanTarget = {
   deviceId: string;
   host: string;
   localKey: string;
+  version: TuyaLanVersion;
   /** 実機は常に 6668。テストで擬似機器を立てるときだけ変える。 */
   port?: number;
 };
@@ -66,27 +75,41 @@ export function buildFrame(seq: number, cmd: number, payload: Buffer): Buffer {
   return Buffer.concat([head, payload, tail]);
 }
 
-/** 3.3 の DP_QUERY。version header は付かず、本文だけ暗号化する。 */
+/** DP_QUERY。3.1 は平文、3.3 は本文だけ暗号化（version header は付かない）。 */
 export function buildDpQuery(target: TuyaLanTarget, seq = 1, now = Date.now()): Buffer {
-  const body = JSON.stringify({
-    gwId: target.deviceId,
-    devId: target.deviceId,
-    uid: target.deviceId,
-    t: String(Math.floor(now / 1000)),
-  });
-  return buildFrame(seq, CMD_DP_QUERY, encryptPayload(target.localKey, Buffer.from(body, "utf8")));
+  const body = Buffer.from(
+    JSON.stringify({
+      gwId: target.deviceId,
+      devId: target.deviceId,
+      uid: target.deviceId,
+      t: String(Math.floor(now / 1000)),
+    }),
+    "utf8",
+  );
+  return buildFrame(seq, CMD_DP_QUERY, target.version === "3.1" ? body : encryptPayload(target.localKey, body));
 }
 
-/** 3.3 の CONTROL。暗号化した本文の前に "3.3"+12byte の header が付く。 */
+/**
+ * CONTROL。3.3 は暗号化した本文の前に "3.3"+12byte の header。
+ * 3.1 は base64 の暗号文に "3.1" と md5 署名（hex の 8..24 文字目）を前置する。
+ */
 export function buildControl(target: TuyaLanTarget, dps: Record<string, unknown>, seq = 1, now = Date.now()): Buffer {
-  const body = JSON.stringify({
-    devId: target.deviceId,
-    uid: target.deviceId,
-    t: String(Math.floor(now / 1000)),
-    dps,
-  });
-  const payload = Buffer.concat([VERSION_HEADER_33, encryptPayload(target.localKey, Buffer.from(body, "utf8"))]);
-  return buildFrame(seq, CMD_CONTROL, payload);
+  const body = Buffer.from(
+    JSON.stringify({
+      devId: target.deviceId,
+      uid: target.deviceId,
+      t: String(Math.floor(now / 1000)),
+      dps,
+    }),
+    "utf8",
+  );
+  const encrypted = encryptPayload(target.localKey, body);
+  if (target.version === "3.1") {
+    const data = encrypted.toString("base64");
+    const md5 = createHash("md5").update(`data=${data}||lpv=3.1||${target.localKey}`).digest("hex");
+    return buildFrame(seq, CMD_CONTROL, Buffer.from(`3.1${md5.slice(8, 24)}${data}`, "utf8"));
+  }
+  return buildFrame(seq, CMD_CONTROL, Buffer.concat([VERSION_HEADER_33, encrypted]));
 }
 
 export type TuyaLanFrame = { seq: number; cmd: number; retcode: number; data: Buffer };
@@ -113,13 +136,17 @@ function stripVersionHeader(data: Buffer) {
   return data.subarray(0, 3).toString("latin1") === "3.3" ? data.subarray(15) : data;
 }
 
-/** 応答本文を dps に読む。3.3 は "3.3"+12byte の header 付きで返ることがある。 */
+/** 応答本文を dps に読む。3.1 は平文。3.3 は "3.3"+12byte の header 付きで返ることがある。 */
 export function decodeDps(localKey: string, data: Buffer): Record<string, unknown> {
   let text: string;
-  try {
-    text = decryptPayload(localKey, stripVersionHeader(data)).toString("utf8");
-  } catch {
-    throw new Error("Smart Life 直結: 応答を復号できません。Local Key が変わった（再ペアリング）なら接続タブで同期してください");
+  if (data.subarray(0, 1).toString("latin1") === "{") {
+    text = data.toString("utf8");
+  } else {
+    try {
+      text = decryptPayload(localKey, stripVersionHeader(data)).toString("utf8");
+    } catch {
+      throw new Error("Smart Life 直結: 応答を復号できません。Local Key が変わった（再ペアリング）なら接続タブで同期してください");
+    }
   }
   let json: { dps?: Record<string, unknown> };
   try {
@@ -187,15 +214,19 @@ export type TuyaLanSeen = { host: string; version: string; seenAt: number; port?
 
 export type TuyaLanAnnouncement = { gwId: string; ip: string; version: string };
 
-/** 名乗りの datagram を読む。55aa フレームの本文（retcode の後）が共通鍵で暗号化されている。 */
+/** 名乗りの datagram を読む。55aa フレームの本文（retcode の後）。3.1 は平文、3.3 以降は共通鍵で暗号化。 */
 export function decodeAnnouncement(datagram: Buffer): TuyaLanAnnouncement {
   const frame = parseFrame(datagram);
   if (!frame) throw new Error("Smart Life 直結: 名乗りが短すぎます");
   let text: string;
-  try {
-    text = decryptPayload(UDP_KEY, frame.data).toString("utf8");
-  } catch {
-    throw new Error("Smart Life 直結: 名乗りを復号できません");
+  if (frame.data.subarray(0, 1).toString("latin1") === "{") {
+    text = frame.data.toString("utf8");
+  } else {
+    try {
+      text = decryptPayload(UDP_KEY, frame.data).toString("utf8");
+    } catch {
+      throw new Error("Smart Life 直結: 名乗りを復号できません");
+    }
   }
   const json = JSON.parse(text) as { gwId?: string; ip?: string; version?: string };
   if (!json.gwId || !json.ip || !json.version) throw new Error("Smart Life 直結: 名乗りに gwId / ip / version がありません");
@@ -203,42 +234,46 @@ export function decodeAnnouncement(datagram: Buffer): TuyaLanAnnouncement {
 }
 
 const seen = new Map<string, TuyaLanSeen>();
-let discoverySocket: Socket | undefined;
-let discoveryError: string | undefined;
+let discoverySockets: Socket[] = [];
+const discoveryErrors = new Map<number, string>();
 
 /** 探索の状態。画面へ出す。 */
 export function tuyaLanDiscoveryStatus(): { listening: boolean; error?: string; seen: number } {
-  return { listening: Boolean(discoverySocket) && !discoveryError, error: discoveryError, seen: seen.size };
+  const error = [...discoveryErrors.values()].join(" / ") || undefined;
+  return { listening: discoverySockets.length > 0 && !error, error, seen: seen.size };
 }
 
 /**
  * 名乗りを聞き始める。プロセスで一つ。bind に失敗したら理由を残して止まる（別の
- * プロセスが 6667 を握っている等）。読めない datagram は数えるだけで捨てる。
+ * プロセスがポートを握っている等）。読めない datagram は捨てる。
  */
 export function startTuyaLanDiscovery(): void {
-  if (discoverySocket) return;
-  const socket = createSocket({ type: "udp4", reuseAddr: true });
-  socket.on("message", (msg) => {
-    try {
-      const a = decodeAnnouncement(msg);
-      seen.set(a.gwId, { host: a.ip, version: a.version, seenAt: Date.now() });
-    } catch {
-      /* Tuya 以外の datagram も同じポートへ来うる。読めないものは相手にしない。 */
-    }
+  if (discoverySockets.length) return;
+  discoverySockets = DISCOVERY_PORTS.map((port) => {
+    const socket = createSocket({ type: "udp4", reuseAddr: true });
+    socket.on("message", (msg) => {
+      try {
+        const a = decodeAnnouncement(msg);
+        seen.set(a.gwId, { host: a.ip, version: a.version, seenAt: Date.now() });
+      } catch {
+        /* Tuya 以外の datagram も同じポートへ来うる。読めないものは相手にしない。 */
+      }
+    });
+    socket.on("error", (err) => {
+      discoveryErrors.set(port, `LAN の探索が動いていません（UDP ${port}: ${err.message}）`);
+      console.error("[yui] smartlife lan discovery", port, err.message);
+    });
+    socket.bind(port, () => {
+      discoveryErrors.delete(port);
+    });
+    return socket;
   });
-  socket.on("error", (err) => {
-    discoveryError = `LAN の探索が動いていません（UDP ${DISCOVERY_PORT}: ${err.message}）`;
-    console.error("[yui] smartlife lan discovery", err.message);
-  });
-  socket.bind(DISCOVERY_PORT, () => {
-    discoveryError = undefined;
-  });
-  discoverySocket = socket;
 }
 
 export function stopTuyaLanDiscovery(): void {
-  discoverySocket?.close();
-  discoverySocket = undefined;
+  for (const s of discoverySockets) s.close();
+  discoverySockets = [];
+  discoveryErrors.clear();
   seen.clear();
 }
 
@@ -255,7 +290,7 @@ export function lookupTuyaLan(deviceId: string, now = Date.now()): TuyaLanSeen |
 
 /* ---------- 結の機器との接続 ---------- */
 
-/** LAN で読み書きできる機器か。鍵と dp 対応があり、名乗りを聞いており、版が 3.3 のとき。 */
+/** LAN で読み書きできる機器か。鍵と dp 対応があり、名乗りを聞いており、版が 3.1 か 3.3 のとき。 */
 export function tuyaLanTargetOf(
   device: Pick<Device, "connector" | "nativeId">,
   local: Record<string, TuyaLocalDevice> | undefined,
@@ -263,15 +298,22 @@ export function tuyaLanTargetOf(
   if (device.connector !== "smartlife") return undefined;
   const entry = local?.[device.nativeId];
   const where = lookupTuyaLan(device.nativeId);
-  if (!entry || !where || where.version !== SUPPORTED_VERSION) return undefined;
-  return { deviceId: device.nativeId, host: where.host, port: where.port, localKey: entry.localKey, dps: entry.dps };
+  if (!entry || !where || !SUPPORTED_VERSIONS.has(where.version)) return undefined;
+  return {
+    deviceId: device.nativeId,
+    host: where.host,
+    port: where.port,
+    localKey: entry.localKey,
+    version: where.version as TuyaLanVersion,
+    dps: entry.dps,
+  };
 }
 
 /** 名乗りは聞こえるが結が扱えない版の機器。画面に版を出すために使う。 */
 function unsupportedLanOf(device: Pick<Device, "connector" | "nativeId">) {
   if (device.connector !== "smartlife") return undefined;
   const where = lookupTuyaLan(device.nativeId);
-  return where && where.version !== SUPPORTED_VERSION ? where : undefined;
+  return where && !SUPPORTED_VERSIONS.has(where.version) ? where : undefined;
 }
 
 /** dps（番号 → 値）を Tuya クラウドと同じ status（コード → 値）の並びにする。対応の無い番号は捨てる。 */
@@ -324,18 +366,18 @@ export async function tuyaLanRefreshSensors(
         return;
       }
       if (device.kind !== "sensor") {
-        device.lan = { host: target.host, version: SUPPORTED_VERSION, readAt: device.lan?.readAt, error: device.lan?.error };
+        device.lan = { host: target.host, version: target.version, readAt: device.lan?.readAt, error: device.lan?.error };
         return;
       }
       try {
         const dps = await queryDps(target);
         applyTuyaStatus(device, statusFromDps(dps, target.dps));
         device.online = true;
-        device.lan = { host: target.host, version: SUPPORTED_VERSION, readAt: new Date().toISOString() };
+        device.lan = { host: target.host, version: target.version, readAt: new Date().toISOString() };
         read.add(device.id);
       } catch (err) {
         const e = err instanceof Error ? err : new Error(String(err));
-        device.lan = { host: target.host, version: SUPPORTED_VERSION, readAt: device.lan?.readAt, error: e.message };
+        device.lan = { host: target.host, version: target.version, readAt: device.lan?.readAt, error: e.message };
         errors.push(e);
       }
     }),

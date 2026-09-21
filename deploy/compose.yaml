@@ -29,8 +29,9 @@ services:
       # 直接インターネットへ晒さない。リバースプロキシ（Caddy 等）の後ろに置く。
       # 別のアドレスで受けるなら .env の YUI_BIND に書く。
       - "${YUI_BIND:-127.0.0.1}:${YUI_PORT:-18861}:8080"
-      # Smart Life 機器が LAN へ送る名乗り（UDP 6667）を結が聞くための口。
-      # docker-proxy がホストの 0.0.0.0:6667 で受けて容器へ渡す。ホストの firewall で LAN からの UDP 6667 を許可する。
+      # Smart Life 機器が LAN へ送る名乗り（3.1 は UDP 6666、3.3 以降は UDP 6667）を結が聞くための口。
+      # docker-proxy がホストの 0.0.0.0 で受けて容器へ渡す。ホストの firewall で LAN からの UDP 6666/6667 を許可する。
+      - "6666:6666/udp"
       - "6667:6667/udp"
     networks:
       - yui

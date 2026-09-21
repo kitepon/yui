@@ -22,7 +22,7 @@ import type { Device } from "./types.ts";
 
 const KEY = "0123456789abcdef";
 const ID = "eb7096a6a56761b155qppj";
-const TARGET = { deviceId: ID, host: "192.168.1.54", localKey: KEY };
+const TARGET = { deviceId: ID, host: "192.168.1.54", localKey: KEY, version: "3.3" as const };
 const UDP_KEY = createHash("md5").update("yGAdlopoPVldABfn").digest();
 const WSDCG_DPS = { "1": "va_temperature", "2": "va_humidity", "9": "temp_unit_convert" };
 
@@ -104,12 +104,14 @@ test("名乗りを聞いた 3.3 の機器で鍵があるものだけ LAN の宛�
   const local = { [ID]: { localKey: KEY, dps: WSDCG_DPS } };
   assert.equal(tuyaLanTargetOf(sensor(), local), undefined);
   noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.3" });
-  assert.deepEqual(tuyaLanTargetOf(sensor(), local), { deviceId: ID, host: "192.168.1.54", port: undefined, localKey: KEY, dps: WSDCG_DPS });
+  assert.deepEqual(tuyaLanTargetOf(sensor(), local), { deviceId: ID, host: "192.168.1.54", port: undefined, localKey: KEY, version: "3.3", dps: WSDCG_DPS });
   assert.equal(tuyaLanTargetOf(sensor(), {}), undefined);
   assert.equal(tuyaLanTargetOf({ connector: "switchbot", nativeId: ID }, local), undefined);
   noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.4" });
   assert.equal(tuyaLanTargetOf(sensor(), local), undefined, "3.4 は LAN で扱わない");
-  noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.3" }, Date.now() - 10 * 60 * 1000);
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.1" });
+  assert.equal(tuyaLanTargetOf(sensor(), local)?.version, "3.1");
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.3" }, Date.now() - 31 * 60 * 1000);
   assert.equal(lookupTuyaLan(ID), undefined);
 });
 
@@ -177,4 +179,80 @@ test("LAN の操作は機器の dp を読んでから、結の操作をその dp
   assert.ok(target);
   await tuyaLanControl(target, { ...plug, on: true }, { on: true });
   assert.deepEqual(dev.received, [{ "1": true }]);
+});
+
+/* ---------- 3.1（実機: 0220… のコンセント、cz） ---------- */
+
+const PLUG = "02200216ecfabc8794dd";
+const PLUG_KEY = "fedcba9876543210";
+
+test("3.1 の名乗りは UDP 6666 に平文で来る", () => {
+  const announce = { ip: "192.168.1.8", gwId: PLUG, active: 2, ability: 0, mode: 0, encrypt: true, productKey: "ahg3J1WYWKKAWA1L", version: "3.1" };
+  const datagram = buildFrame(0, 0x13, Buffer.concat([Buffer.alloc(4), Buffer.from(JSON.stringify(announce))]));
+  assert.deepEqual(decodeAnnouncement(datagram), { gwId: PLUG, ip: "192.168.1.8", version: "3.1" });
+});
+
+test("3.1 の DP_QUERY は平文、応答も平文で読む", () => {
+  const target = { deviceId: PLUG, host: "192.168.1.8", localKey: PLUG_KEY, version: "3.1" as const };
+  const frame = buildDpQuery(target, 3, 1_700_000_000_000);
+  const parsed = parseFrame(frame);
+  assert.ok(parsed);
+  const body = frame.subarray(16, frame.length - 8);
+  assert.equal(JSON.parse(body.toString()).devId, PLUG);
+  assert.deepEqual(decodeDps(PLUG_KEY, Buffer.from(JSON.stringify({ devId: PLUG, dps: { "1": true, "2": 0 } }))), { "1": true, "2": 0 });
+});
+
+test("3.1 の CONTROL は \"3.1\" + md5 署名 16 文字 + base64 暗号文", () => {
+  const target = { deviceId: PLUG, host: "192.168.1.8", localKey: PLUG_KEY, version: "3.1" as const };
+  const frame = buildControl(target, { "1": false }, 4, 1_700_000_000_000);
+  const body = frame.subarray(16, frame.length - 8).toString();
+  assert.equal(body.slice(0, 3), "3.1");
+  const sig = body.slice(3, 19);
+  const data = body.slice(19);
+  const md5 = createHash("md5").update(`data=${data}||lpv=3.1||${PLUG_KEY}`).digest("hex");
+  assert.equal(sig, md5.slice(8, 24));
+  const json = JSON.parse(decryptPayload(PLUG_KEY, Buffer.from(data, "base64")).toString());
+  assert.deepEqual(json.dps, { "1": false });
+});
+
+/** 3.1 の擬似コンセント。DP_QUERY に平文で答え、CONTROL は署名を検証してから dps を控える。 */
+function fakePlug31(dps: Record<string, unknown>) {
+  const received: Record<string, unknown>[] = [];
+  const server: Server = createServer((socket) => {
+    socket.on("data", (buf) => {
+      const frame = parseFrame(buf);
+      if (!frame) return;
+      if (frame.cmd === 0x0a) {
+        socket.write(buildFrame(frame.seq, 0x0a, Buffer.concat([Buffer.alloc(4), Buffer.from(JSON.stringify({ devId: PLUG, dps }))])));
+      } else if (frame.cmd === 0x07) {
+        // 送信フレームには retcode が無いので、parseFrame の data は本文の 5 文字目から。
+        const body = buf.subarray(16, buf.length - 8).toString();
+        const data = body.slice(19);
+        const md5 = createHash("md5").update(`data=${data}||lpv=3.1||${PLUG_KEY}`).digest("hex");
+        if (body.slice(0, 3) !== "3.1" || body.slice(3, 19) !== md5.slice(8, 24)) {
+          socket.write(buildFrame(frame.seq, 0x07, Buffer.from([0, 0, 0, 1])));
+          return;
+        }
+        received.push((JSON.parse(decryptPayload(PLUG_KEY, Buffer.from(data, "base64")).toString()) as { dps: Record<string, unknown> }).dps);
+        socket.write(buildFrame(frame.seq, 0x07, Buffer.alloc(4)));
+      }
+    });
+  });
+  return new Promise<{ port: number; received: Record<string, unknown>[]; close: () => void }>((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      resolve({ port: (server.address() as { port: number }).port, received, close: () => server.close() });
+    });
+  });
+}
+
+test("3.1 のコンセントは LAN で読んで、署名付きで操作を送れる", async () => {
+  const dev = await fakePlug31({ "1": true, "2": 0 });
+  servers.push(dev.close);
+  noteTuyaLanAnnouncement({ gwId: PLUG, ip: "127.0.0.1", version: "3.1", port: dev.port });
+  const plug = sensor({ id: `smartlife:${PLUG}`, nativeId: PLUG, kind: "plug", name: "90cm水槽の水流", extra: "cz", on: true });
+  const target = tuyaLanTargetOf(plug, { [PLUG]: { localKey: PLUG_KEY, dps: { "1": "switch_1", "2": "countdown_1" } } });
+  assert.ok(target);
+  assert.equal(target.version, "3.1");
+  await tuyaLanControl(target, { ...plug, on: false }, { on: false });
+  assert.deepEqual(dev.received, [{ "1": false }]);
 });
