@@ -256,3 +256,22 @@ test("3.1 のコンセントは LAN で読んで、署名付きで操作を送�
   await tuyaLanControl(target, { ...plug, on: false }, { on: false });
   assert.deepEqual(dev.received, [{ "1": false }]);
 });
+
+test("コンセントも毎回 LAN で読み、入／切を実値にして前回の失敗理由を消す", async () => {
+  const dev = await fakePlug31({ "1": false, "2": 0 });
+  servers.push(dev.close);
+  noteTuyaLanAnnouncement({ gwId: PLUG, ip: "127.0.0.1", version: "3.1", port: dev.port });
+  const plug = sensor({
+    id: `smartlife:${PLUG}`,
+    nativeId: PLUG,
+    kind: "plug",
+    name: "90cm水槽の水流",
+    on: true,
+    lan: { host: "127.0.0.1", version: "3.1", error: "鍵がありません。接続タブで Smart Life を同期すると受け取ります" },
+  });
+  const res = await tuyaLanRefreshSensors([plug], { [PLUG]: { localKey: PLUG_KEY, dps: { "1": "switch_1", "2": "countdown_1" } } });
+  assert.deepEqual(res.errors, []);
+  assert.equal(plug.on, false);
+  assert.equal(plug.lan?.error, undefined);
+  assert.ok(plug.lan?.readAt);
+});

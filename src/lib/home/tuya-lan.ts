@@ -337,7 +337,8 @@ function dpsFromCommands(commands: Array<{ code: string; value: unknown }>, map:
 }
 
 /**
- * 家の Smart Life センサーのうち LAN で読める機器を読み直し、`lan` に結果を残す。
+ * 家の Smart Life 機器のうち LAN で読める機器を読み直し、`lan` に結果を残す。
+ * センサーは温度・湿度、スイッチ類は入／切を LAN の実値で更新する。
  * 読めた機器は返り値に含める（呼ぶ側はその機器をクラウドで読み直さない）。
  */
 export async function tuyaLanRefreshSensors(
@@ -365,13 +366,11 @@ export async function tuyaLanRefreshSensors(
         }
         return;
       }
-      if (device.kind !== "sensor") {
-        device.lan = { host: target.host, version: target.version, readAt: device.lan?.readAt, error: device.lan?.error };
-        return;
-      }
       try {
-        const dps = await queryDps(target);
-        applyTuyaStatus(device, statusFromDps(dps, target.dps));
+        const status = statusFromDps(await queryDps(target), target.dps);
+        applyTuyaStatus(device, status);
+        const sw = status.find((s) => typeof s.value === "boolean" && /^switch/.test(s.code));
+        if (sw) device.on = sw.value as boolean;
         device.online = true;
         device.lan = { host: target.host, version: target.version, readAt: new Date().toISOString() };
         read.add(device.id);
