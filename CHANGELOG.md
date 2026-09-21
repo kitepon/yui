@@ -2,17 +2,20 @@
 
 ## 2026-09-21
 
-本番 image `yuihome:20260921-5370474`。Bluetooth 押し `yuihome-switchbot-ble:20260921-5370474`。
+本番 image `yuihome:20260921-419ccb0`。Bluetooth 押し `yuihome-switchbot-ble:20260921-419ccb0`。
 
 ### 変わったこと
 
-- Smart Life のセンサーを LAN 直結（Tuya ローカル 3.3、読み取りのみ）で読める。`YUI_TUYA_LAN_DEVICES`（`deviceId=IP:LocalKey`）を書くと、センサー更新でクラウドの後に LAN の値を当てる。IoT Core の試用枠が尽きても温度が止まらない
+- Smart Life（Tuya）の機器を、同期のあとはクラウドを通さず LAN で読み書きする。同期で機器ごとの鍵と dp 対応を受け取って暗号化保存し、機器の LAN 上の居場所は機器自身の名乗り（UDP 6667）を結が聞いて覚える。人が宛先や鍵を書く設定は無い
+- 同じ LAN にいる 3.3 の機器はセンサー更新も操作も LAN で行い、クラウドへ問い合わせない。IoT Core の試用枠を毎分消費しない
+- 機器カードに「LAN」の印、接続タブの Smart Life カードに機器ごとの経路・最終読取・失敗理由を出す。古い値が静かに残らない
+- `compose.yaml` が 6667/udp を公開する。ホストの firewall で LAN からの UDP 6667 を通す
 
 ### 限界
 
-- 対象は接続タブの Smart Life 同期で家に入っているセンサーだけ。操作は LAN で送らない
-- version 3.3 の機器だけ。3.4 / 3.5 は応答を復号できずエラーになる
-- Local Key の取得は利用者が行う（Tuya IoT Platform か Smart Life の QR ログイン）
+- Tuya IoT Platform の登録（Access ID / Secret / UID）は初回同期のために要る。鍵は Tuya のサーバーにしかなく、結が受け取る口はこれだけ
+- LAN で読み書きできるのは Tuya ローカル version 3.3 の機器だけ。3.4 / 3.5 と LAN に居ない機器はクラウドのまま
+- 名乗りが届かない環境（別 VLAN・firewall）では LAN は使われず、接続タブに「LAN に見つかりません」と出る
 
 ## v0.2.0 — 2026-09-19
 
