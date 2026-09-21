@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-21
+
+本番 image `yuihome:20260921-5370474`。Bluetooth 押し `yuihome-switchbot-ble:20260921-5370474`。
+
+### 変わったこと
+
+- Smart Life のセンサーを LAN 直結（Tuya ローカル 3.3、読み取りのみ）で読める。`YUI_TUYA_LAN_DEVICES`（`deviceId=IP:LocalKey`）を書くと、センサー更新でクラウドの後に LAN の値を当てる。IoT Core の試用枠が尽きても温度が止まらない
+
+### 限界
+
+- 対象は接続タブの Smart Life 同期で家に入っているセンサーだけ。操作は LAN で送らない
+- version 3.3 の機器だけ。3.4 / 3.5 は応答を復号できずエラーになる
+- Local Key の取得は利用者が行う（Tuya IoT Platform か Smart Life の QR ログイン）
+
 ## v0.2.0 — 2026-09-19
 
 v0.1.0 以降、2026-09-17 の本番 image `yuihome:20260917-9968945` までの公開 snapshot。中身は下の日付の記録のとおり。`v0.x` の間は database schema、設定、self-hosted upgrade の長期互換をまだ保証しない。
