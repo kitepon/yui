@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import type { TuyaLocalDevice } from "@/lib/home/types";
 
 export type SecretFields = {
   natureToken: string;
@@ -8,6 +9,7 @@ export type SecretFields = {
   tuyaSecret: string;
   tuyaUid: string;
   tuyaRegion: string;
+  tuyaLocal: Record<string, TuyaLocalDevice>;
 };
 
 const EMPTY: SecretFields = {
@@ -18,9 +20,11 @@ const EMPTY: SecretFields = {
   tuyaSecret: "",
   tuyaUid: "",
   tuyaRegion: "",
+  tuyaLocal: {},
 };
 
-const KEYS = Object.keys(EMPTY) as (keyof SecretFields)[];
+type StringKey = Exclude<keyof SecretFields, "tuyaLocal">;
+const KEYS = (Object.keys(EMPTY) as (keyof SecretFields)[]).filter((k): k is StringKey => k !== "tuyaLocal");
 
 export function secretsKeyFromEnv(raw = process.env.HOME_SECRETS_KEY): Buffer {
   const value = raw?.trim();
@@ -54,23 +58,36 @@ export function decryptJson<T>(key: Buffer, packed: string): T {
   return JSON.parse(pt.toString("utf8")) as T;
 }
 
+/** 保存済みの行に無い項目（後から増えた tuyaLocal など）を埋める。 */
+export function normalizeCredentials(stored: Partial<SecretFields> | undefined): SecretFields {
+  return { ...EMPTY, ...stored, tuyaLocal: stored?.tuyaLocal ?? {} };
+}
+
+/**
+ * 文字列の項目は空でなければ上書きする。`tuyaLocal` は同期だけが書く server 側の値で、
+ * クライアントは常に空を送るので、1 件以上あるときだけ差し替える。
+ */
 export function mergeIncomingCredentials(stored: SecretFields, incoming: Partial<SecretFields>): SecretFields {
-  const next = { ...stored };
+  const next = normalizeCredentials(stored);
   for (const key of KEYS) {
     const value = incoming[key]?.trim() ?? "";
     if (value) next[key] = value;
+  }
+  if (incoming.tuyaLocal && Object.keys(incoming.tuyaLocal).length > 0) {
+    next.tuyaLocal = incoming.tuyaLocal;
   }
   return next;
 }
 
 export function credentialFlags(credentials: SecretFields): Record<keyof SecretFields, boolean> {
-  const flags = { ...EMPTY } as unknown as Record<keyof SecretFields, boolean>;
+  const flags = {} as Record<keyof SecretFields, boolean>;
   for (const key of KEYS) {
     flags[key] =
       key === "tuyaRegion"
         ? Boolean(credentials.tuyaAccessId || credentials.tuyaUid)
         : Boolean(credentials[key]);
   }
+  flags.tuyaLocal = Object.keys(credentials.tuyaLocal ?? {}).length > 0;
   return flags;
 }
 

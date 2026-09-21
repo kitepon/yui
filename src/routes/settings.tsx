@@ -10,6 +10,8 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { saveCredentials, serverSync } from "@/lib/home/control-client";
 import { BILLING } from "@/lib/billing-plan";
 import { useHome } from "@/lib/home/store";
+import type { HomeSnapshot } from "@/lib/home/snapshot";
+import type { Device } from "@/lib/home/types";
 import { useHomeHydrated } from "@/lib/home/use-hydrated";
 
 export const Route = createFileRoute("/settings")({
@@ -32,6 +34,8 @@ export function SettingsPage() {
   const credentialFlags = useHome((s) => s.credentialFlags);
   const odelicBridge = useHome((s) => s.odelicBridge);
   const daikinDirect = useHome((s) => s.daikinDirect);
+  const tuyaLan = useHome((s) => s.tuyaLan);
+  const devices = useHome((s) => s.devices);
   const applySnapshot = useHome((s) => s.applySnapshot);
   const [busy, setBusy] = useState<string | null>(null);
   const [billing, setBilling] = useState<{
@@ -301,7 +305,7 @@ export function SettingsPage() {
         <ConnectorCard
           title="Smart Life / Tuya"
           badge="直結"
-          desc="iot.tuya.com のプロジェクトから Access ID / Secret を、連携した Smart Life ユーザーから UID を取ります。"
+          desc="iot.tuya.com のプロジェクトから Access ID / Secret を、連携した Smart Life ユーザーから UID を取ります。同期で機器ごとの鍵を受け取り、以後は結と同じ LAN にいる機器をクラウドを通さず直接読み書きします。"
           helpTo="/help/tuya"
           connected={connectors.smartlife.connected}
           deviceCount={connectors.smartlife.deviceCount}
@@ -348,6 +352,11 @@ export function SettingsPage() {
               <option value="cn">China</option>
             </select>
           </label>
+          <SmartLifeLanStatus
+            devices={devices.filter((d) => d.connector === "smartlife" && d.source === "live")}
+            hasKeys={Boolean(credentialFlags?.tuyaLocal)}
+            discovery={tuyaLan}
+          />
         </ConnectorCard>
 
         <section className="rounded-lg border border-border bg-surface p-4">
@@ -382,5 +391,57 @@ export function SettingsPage() {
         </Button>
       </div>
     </AppShell>
+  );
+}
+
+function timeLabel(iso: string) {
+  return new Date(iso).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * Smart Life 機器ごとの LAN 直結の状態。同期済みの機器を全部並べ、
+ * LAN で読めているか、クラウドに残っているか、失敗しているかを 1 行ずつ出す。
+ */
+function SmartLifeLanStatus({
+  devices,
+  hasKeys,
+  discovery,
+}: {
+  devices: Device[];
+  hasKeys: boolean;
+  discovery: HomeSnapshot["tuyaLan"] | null;
+}) {
+  if (!devices.length) return null;
+  const viaLan = devices.filter((d) => d.lan && !d.lan.error).length;
+  return (
+    <div className="mt-4 rounded-md border border-border bg-bg p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted">LAN 直結</p>
+        <p className="text-xs text-muted">
+          {viaLan}/{devices.length}台
+        </p>
+      </div>
+      {discovery?.error ? <p className="mt-2 text-sm text-danger">{discovery.error}</p> : null}
+      {!hasKeys ? (
+        <p className="mt-2 text-sm text-muted">機器の鍵をまだ受け取っていません。「同期する」を押すと受け取ります。</p>
+      ) : null}
+      <ul className="mt-2 space-y-1.5">
+        {devices.map((d) => (
+          <li key={d.id} className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="truncate text-fg">{d.name}</span>
+            {d.lan?.error ? (
+              <span className="shrink-0 text-right text-danger">{d.lan.error}</span>
+            ) : d.lan ? (
+              <span className="shrink-0 text-ok">
+                LAN {d.lan.host}
+                {d.lan.readAt ? ` · ${timeLabel(d.lan.readAt)}` : ""}
+              </span>
+            ) : (
+              <span className="shrink-0 text-muted">クラウド（LAN に見つかりません）</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

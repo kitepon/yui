@@ -139,7 +139,7 @@ export const Route = createFileRoute("/api/home")({
               ];
               const saved = await saveHome(userId, {
                 devices,
-                credentials: { ...snap.credentials, tuyaRegion: res.region },
+                credentials: { ...snap.credentials, tuyaRegion: res.region, tuyaLocal: res.local },
                 connectors: {
                   ...snap.connectors,
                   smartlife: {

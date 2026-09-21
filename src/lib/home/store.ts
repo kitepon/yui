@@ -38,6 +38,8 @@ interface HomeState {
   credentialFlags: Record<keyof Credentials, boolean> | null;
   odelicBridge: boolean;
   daikinDirect: boolean;
+  /** Smart Life の LAN 探索の状態。サーバーから受けたときだけ入る。 */
+  tuyaLan: HomeSnapshot["tuyaLan"] | null;
   serverHost: string | null;
   applySnapshot: (snap: HomeSnapshot, host?: string | null) => void;
   setCredentials: (patch: Partial<Credentials>) => void;
@@ -146,10 +148,12 @@ export const useHome = create<HomeState>()(
       credentialFlags: null,
       odelicBridge: false,
       daikinDirect: false,
+      tuyaLan: null,
       serverHost: null,
       applySnapshot: (snap, host) =>
         set({
-          credentials: Object.values(snap.credentials).some((v) => v.trim())
+          tuyaLan: snap.tuyaLan ?? get().tuyaLan,
+          credentials: Object.values(snap.credentials).some((v) => typeof v === "string" && v.trim())
             ? snap.credentials
             : get().credentials,
           credentialFlags: snap.credentialFlags ?? get().credentialFlags,

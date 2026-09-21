@@ -5,6 +5,7 @@ import {
   decryptJson,
   encryptJson,
   mergeIncomingCredentials,
+  normalizeCredentials,
   publicCredentials,
   secretsKeyFromEnv,
 } from "./home-secrets.ts";
@@ -35,4 +36,18 @@ test("public credentials are empty and flags mark saved secrets", () => {
   assert.equal(credentialFlags(stored).switchbotToken, true);
   assert.equal(credentialFlags(stored).natureToken, false);
   assert.equal(credentialFlags({ ...empty, tuyaRegion: "us" }).tuyaRegion, false);
+});
+
+test("tuyaLocal は同期が 1 件以上渡したときだけ差し替わり、クライアントの空は無視する。古い行には空で埋まる", () => {
+  const local = { eb70: { localKey: "0123456789abcdef", dps: { "1": "va_temperature" } } };
+  const stored = mergeIncomingCredentials(empty, { tuyaAccessId: "id", tuyaLocal: local });
+  assert.deepEqual(stored.tuyaLocal, local);
+  const afterClient = mergeIncomingCredentials(stored, { ...publicCredentials(), tuyaSecret: "s" });
+  assert.deepEqual(afterClient.tuyaLocal, local);
+  assert.equal(afterClient.tuyaSecret, "s");
+  const legacy = normalizeCredentials({ natureToken: "n" });
+  assert.deepEqual(legacy.tuyaLocal, {});
+  assert.equal(credentialFlags(stored).tuyaLocal, true);
+  assert.equal(credentialFlags(empty).tuyaLocal, false);
+  assert.deepEqual(publicCredentials().tuyaLocal, {}, "鍵はクライアントへ出さない");
 });

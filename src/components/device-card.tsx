@@ -105,6 +105,17 @@ export function DeviceCard({
           >
             {connectorBadge(device)}
           </span>
+          {device.lan ? (
+            <span
+              className={cn(
+                "rounded-sm px-1.5 py-0.5 text-[10px] tracking-wide",
+                device.lan.error ? "bg-danger/15 text-danger" : "bg-ok/15 text-ok",
+              )}
+              title={device.lan.error ?? `LAN 直結 ${device.lan.host}`}
+            >
+              LAN
+            </span>
+          ) : null}
         </span>
         <span className={cn("mt-1.5 text-[15px] font-medium leading-tight", active ? "text-fg" : "text-muted")}>
           {device.name}

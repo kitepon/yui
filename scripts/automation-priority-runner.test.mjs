@@ -14,6 +14,10 @@ const fixtureUrl = `data:text/javascript,${encodeURIComponent(`
   export const recordEvent = (event) => state.events.push(event);
   export const recordHomeSamples = () => {};
   export const pruneAnalysis = () => {};
+  export const startTuyaLanDiscovery = () => {};
+  export const tuyaLanRefreshSensors = async () => ({ read: new Set(), errors: [] });
+  export const tuyaLanTargetOf = () => undefined;
+  export const tuyaLanDiscoveryStatus = () => ({ listening: false, seen: 0 });
   export const toast = { message() {} };
   export const useHome = { getState: () => ({
     ...state.snap,
@@ -36,6 +40,7 @@ const fixtureUrl = `data:text/javascript,${encodeURIComponent(`
     unexpected as tuyaRefreshSensors, unexpected as daikinSync,
     unexpected as isRetiredDaikinOutdoorId, unexpected as homeBelongsToLanOwner,
     unexpected as startBackupRunner, unexpected as loadEntitlement,
+    unexpected as tuyaLanControl,
   };
 `)}`;
 const mocked = new Set(
@@ -43,6 +48,7 @@ const mocked = new Set(
     "home/remo",
     "home/switchbot",
     "home/tuya",
+    "home/tuya-lan",
     "home/daikin",
     "home/run",
     "home/store",

@@ -54,6 +54,26 @@ export interface Device {
   extra?: string;
   /** SwitchBot Bot のモード。無いときは押すモードとして扱う。 */
   botMode?: "press" | "switch";
+  /** Smart Life の LAN 直結。結と同じ LAN で機器が名乗ったときに載る。 */
+  lan?: DeviceLan;
+}
+
+/** LAN 上の Smart Life 機器の居場所と直近の結果。IP は秘密ではないので画面に出す。 */
+export interface DeviceLan {
+  host: string;
+  /** Tuya ローカルプロトコルの版。結が読み書きできるのは 3.3 だけ。 */
+  version: string;
+  /** 直近に LAN で読めた時刻。 */
+  readAt?: string;
+  /** 直近の LAN の失敗。成功すると消える。 */
+  error?: string;
+}
+
+/** 同期で受け取った Smart Life 機器の LAN 用の鍵と dp 対応。credentials と一緒に暗号化して保存する。 */
+export interface TuyaLocalDevice {
+  localKey: string;
+  /** dp 番号 → コード（例: "1" → "va_temperature"）。 */
+  dps: Record<string, string>;
 }
 
 /** 押すだけのボット。入れる／切るではなく、押す。 */
@@ -101,6 +121,8 @@ export interface Credentials {
   tuyaSecret: string;
   tuyaUid: string;
   tuyaRegion: string;
+  /** 機器 ID → LAN 用の鍵と dp 対応。同期だけが書き、クライアントへは出さない。 */
+  tuyaLocal: Record<string, TuyaLocalDevice>;
 }
 
 export const EMPTY_CREDENTIALS: Credentials = {
@@ -111,6 +133,7 @@ export const EMPTY_CREDENTIALS: Credentials = {
   tuyaSecret: "",
   tuyaUid: "",
   tuyaRegion: "us",
+  tuyaLocal: {},
 };
 
 export interface DeviceCommand {

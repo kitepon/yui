@@ -1,31 +1,46 @@
-import { test } from "node:test";
+import { test, after } from "node:test";
 import assert from "node:assert/strict";
+import { createServer, type Server } from "node:net";
+import { createHash } from "node:crypto";
 import {
+  buildControl,
   buildDpQuery,
   buildFrame,
+  decodeAnnouncement,
   decodeDps,
+  decryptPayload,
   encryptPayload,
+  lookupTuyaLan,
+  noteTuyaLanAnnouncement,
   parseFrame,
-  parseTuyaLanDevices,
-  readingsFromTuyaDps,
+  statusFromDps,
+  tuyaLanControl,
+  tuyaLanRefreshSensors,
+  tuyaLanTargetOf,
 } from "./tuya-lan.ts";
+import type { Device } from "./types.ts";
 
 const KEY = "0123456789abcdef";
-const TARGET = { deviceId: "eb7096a6a56761b155qppj", host: "192.168.1.54", localKey: KEY };
+const ID = "eb7096a6a56761b155qppj";
+const TARGET = { deviceId: ID, host: "192.168.1.54", localKey: KEY };
+const UDP_KEY = createHash("md5").update("yGAdlopoPVldABfn").digest();
+const WSDCG_DPS = { "1": "va_temperature", "2": "va_humidity", "9": "temp_unit_convert" };
 
-test("YUI_TUYA_LAN_DEVICES は deviceId=IP:LOCALKEY をカンマ区切りで読む", () => {
-  const list = parseTuyaLanDevices(` eb70=192.168.1.54:${KEY}, ab12=10.0.0.2:${KEY} `);
-  assert.deepEqual(list, [
-    { deviceId: "eb70", host: "192.168.1.54", localKey: KEY },
-    { deviceId: "ab12", host: "10.0.0.2", localKey: KEY },
-  ]);
-  assert.deepEqual(parseTuyaLanDevices(undefined), []);
-});
-
-test("形が違う項目と 16 文字でない Local Key は typed error", () => {
-  assert.throws(() => parseTuyaLanDevices("eb70=192.168.1.54"), /deviceId=IP:LOCALKEY/);
-  assert.throws(() => parseTuyaLanDevices("eb70=192.168.1.54:short"), /16 文字/);
-});
+function sensor(over: Partial<Device> = {}): Device {
+  return {
+    id: `smartlife:${ID}`,
+    name: "水温計",
+    room: "その他",
+    brand: "smartlife",
+    kind: "sensor",
+    online: false,
+    source: "live",
+    nativeId: ID,
+    connector: "smartlife",
+    temperature: 20,
+    ...over,
+  };
+}
 
 test("DP_QUERY は 55aa フレームで、CRC と末尾が揃う", () => {
   const frame = buildDpQuery(TARGET, 7, 1_700_000_000_000);
@@ -36,6 +51,23 @@ test("DP_QUERY は 55aa フレームで、CRC と末尾が揃う", () => {
   assert.equal(frame.readUInt32BE(12), frame.length - 16);
 });
 
+test("CONTROL は 3.3 header 付きで dps を送る", () => {
+  const frame = buildControl(TARGET, { "1": true }, 2, 1_700_000_000_000);
+  const parsed = parseFrame(frame);
+  assert.ok(parsed);
+  assert.equal(parsed.cmd, 0x07);
+  // 応答ではなく送信なので retcode 位置から本文。header "3.3" + 12 byte の後が暗号文。
+  const body = frame.subarray(16, frame.length - 8);
+  assert.equal(body.subarray(0, 3).toString(), "3.3");
+  const json = JSON.parse(Buffer.from(decodeDpsRaw(KEY, body.subarray(15))).toString());
+  assert.deepEqual(json.dps, { "1": true });
+  assert.equal(json.devId, ID);
+});
+
+function decodeDpsRaw(key: string, data: Buffer) {
+  return decryptPayload(key, data);
+}
+
 test("途中までの受信は undefined、壊れた CRC は typed error", () => {
   const frame = buildFrame(1, 0x0a, encryptPayload(KEY, Buffer.from("{}")));
   assert.equal(parseFrame(frame.subarray(0, frame.length - 3)), undefined);
@@ -44,24 +76,105 @@ test("途中までの受信は undefined、壊れた CRC は typed error", () =>
   assert.throws(() => parseFrame(broken), /CRC/);
 });
 
-test("実機 SNT957W-TDE の応答（retcode + 暗号本文）から dps を読む", () => {
+test("実機の応答（retcode + 暗号本文、3.3 header あり／なし）から dps を読む。鍵違いは typed error", () => {
   const body = encryptPayload(KEY, Buffer.from(JSON.stringify({ dps: { "1": 255, "9": "c" } })));
   const frame = buildFrame(1, 0x0a, Buffer.concat([Buffer.alloc(4), body]));
   const parsed = parseFrame(frame);
   assert.ok(parsed);
   assert.equal(parsed.retcode, 0);
   assert.deepEqual(decodeDps(KEY, parsed.data), { "1": 255, "9": "c" });
-});
-
-test("3.3 header 付きの本文も読める。鍵違いは typed error", () => {
-  const body = encryptPayload(KEY, Buffer.from(JSON.stringify({ dps: { "1": 200 } })));
-  const withHeader = Buffer.concat([Buffer.from("3.3"), Buffer.alloc(12), body]);
-  assert.deepEqual(decodeDps(KEY, withHeader), { "1": 200 });
+  assert.deepEqual(decodeDps(KEY, Buffer.concat([Buffer.from("3.3"), Buffer.alloc(12), body])), { "1": 255, "9": "c" });
   assert.throws(() => decodeDps("fedcba9876543210", body), /復号できません/);
 });
 
-test("wsdcg の dp1 は十分の一度、dp9 が f なら摂氏へ", () => {
-  assert.deepEqual(readingsFromTuyaDps({ "1": 255, "9": "c", "10": 1200 }), { temperature: 25.5, humidity: undefined });
-  assert.deepEqual(readingsFromTuyaDps({ "1": 779, "2": 40, "9": "f" }), { temperature: 25.5, humidity: 40 });
-  assert.deepEqual(readingsFromTuyaDps({ "9": "c" }), { temperature: undefined, humidity: undefined });
+test("UDP 6667 の名乗りを共通鍵で読む", () => {
+  const announce = { ip: "192.168.1.54", gwId: ID, active: 2, encrypt: true, productKey: "fqs8czlq3m0seqyp", version: "3.3" };
+  const datagram = buildFrame(0, 0x13, Buffer.concat([Buffer.alloc(4), encryptPayload(UDP_KEY, Buffer.from(JSON.stringify(announce)))]));
+  assert.deepEqual(decodeAnnouncement(datagram), { gwId: ID, ip: "192.168.1.54", version: "3.3" });
+});
+
+test("dps は同期で得た対応でクラウドと同じ status の並びになる。対応の無い番号は捨てる", () => {
+  assert.deepEqual(statusFromDps({ "1": 255, "9": "c", "23": 0 }, WSDCG_DPS), [
+    { code: "va_temperature", value: 255 },
+    { code: "temp_unit_convert", value: "c" },
+  ]);
+});
+
+test("名乗りを聞いた 3.3 の機器で鍵があるものだけ LAN の宛先になる。古い名乗りは信じない", () => {
+  const local = { [ID]: { localKey: KEY, dps: WSDCG_DPS } };
+  assert.equal(tuyaLanTargetOf(sensor(), local), undefined);
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.3" });
+  assert.deepEqual(tuyaLanTargetOf(sensor(), local), { deviceId: ID, host: "192.168.1.54", port: undefined, localKey: KEY, dps: WSDCG_DPS });
+  assert.equal(tuyaLanTargetOf(sensor(), {}), undefined);
+  assert.equal(tuyaLanTargetOf({ connector: "switchbot", nativeId: ID }, local), undefined);
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.4" });
+  assert.equal(tuyaLanTargetOf(sensor(), local), undefined, "3.4 は LAN で扱わない");
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.3" }, Date.now() - 10 * 60 * 1000);
+  assert.equal(lookupTuyaLan(ID), undefined);
+});
+
+/** 擬似機器: DP_QUERY に dps を返し、CONTROL は受けた dps を控えて retcode 0 を返す。 */
+function fakeDevice(dps: Record<string, unknown>) {
+  const received: Record<string, unknown>[] = [];
+  const server: Server = createServer((socket) => {
+    socket.on("data", (buf) => {
+      const frame = parseFrame(buf);
+      if (!frame) return;
+      if (frame.cmd === 0x0a) {
+        const body = encryptPayload(KEY, Buffer.from(JSON.stringify({ dps })));
+        socket.write(buildFrame(frame.seq, 0x0a, Buffer.concat([Buffer.alloc(4), body])));
+      } else if (frame.cmd === 0x07) {
+        const json = JSON.parse(decodeDpsRaw(KEY, frame.data.subarray(11)).toString()) as { dps: Record<string, unknown> };
+        received.push(json.dps);
+        socket.write(buildFrame(frame.seq, 0x07, Buffer.alloc(4)));
+      }
+    });
+  });
+  return new Promise<{ port: number; received: Record<string, unknown>[]; close: () => void }>((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const port = (server.address() as { port: number }).port;
+      resolve({ port, received, close: () => server.close() });
+    });
+  });
+}
+
+const servers: Array<() => void> = [];
+after(() => servers.forEach((c) => c()));
+
+test("LAN で読めたセンサーは温度が入り lan.readAt が付き、クラウドへ回さない一覧に載る", async () => {
+  const dev = await fakeDevice({ "1": 255, "9": "c", "10": 1200 });
+  servers.push(dev.close);
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "127.0.0.1", version: "3.3", port: dev.port });
+  const d = sensor();
+  const other = sensor({ id: "smartlife:x", nativeId: "x", name: "別の機器" });
+  const res = await tuyaLanRefreshSensors([d, other], { [ID]: { localKey: KEY, dps: WSDCG_DPS } });
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual([...res.read], [d.id]);
+  assert.equal(d.temperature, 25.5);
+  assert.equal(d.online, true);
+  assert.equal(d.lan?.host, "127.0.0.1");
+  assert.ok(d.lan?.readAt);
+  assert.equal(d.lan?.error, undefined);
+  assert.equal(other.lan, undefined, "名乗りの無い機器には lan を付けない");
+});
+
+test("届かない機器は lan.error に理由が残り、値は前のまま。他の機器は止めない", async () => {
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "127.0.0.1", version: "3.3", port: 1 });
+  const d = sensor({ temperature: 21.5 });
+  const res = await tuyaLanRefreshSensors([d], { [ID]: { localKey: KEY, dps: WSDCG_DPS } });
+  assert.equal(res.errors.length, 1);
+  assert.equal(d.temperature, 21.5);
+  assert.match(d.lan?.error ?? "", /届きません|応答/);
+});
+
+test("LAN の操作は機器の dp を読んでから、結の操作をその dp 番号で送る", async () => {
+  const dev = await fakeDevice({ "1": false, "9": 0 });
+  servers.push(dev.close);
+  const plugId = "plug1";
+  noteTuyaLanAnnouncement({ gwId: plugId, ip: "127.0.0.1", version: "3.3", port: dev.port });
+  const plug = sensor({ id: `smartlife:${plugId}`, nativeId: plugId, kind: "plug", name: "水流", extra: "cz" });
+  const target = tuyaLanTargetOf(plug, { [plugId]: { localKey: KEY, dps: { "1": "switch_1", "9": "countdown_1" } } });
+  assert.ok(target);
+  await tuyaLanControl(target, { ...plug, on: true }, { on: true });
+  assert.deepEqual(dev.received, [{ "1": true }]);
 });

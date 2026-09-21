@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { tuyaKindFromCategory } from "./ha-catalog.ts";
 import type { DevicePatch } from "./device-patch.ts";
-import type { AcMode, Device, FanSpeed } from "./types";
+import type { AcMode, Device, FanSpeed, TuyaLocalDevice } from "./types";
 
 export const TUYA_REGIONS = [
   { id: "us", label: "Western America (tuyaus)", host: "https://openapi.tuyaus.com" },
@@ -140,7 +140,35 @@ type RawDevice = {
   category?: string;
   product_name?: string;
   status?: Array<{ code: string; value: unknown }>;
+  /** LAN 直結の鍵。機器一覧 API が返す。再ペアリングまで変わらない。 */
+  local_key?: string;
 };
+
+function rawId(d: RawDevice) {
+  return String(d.id || d.devId || d.device_id || d.deviceId || "");
+}
+
+/** 一覧の応答から機器 ID → Local Key を拾う。16 文字でないものは鍵として使えないので拾わない。 */
+export function collectLocalKeys(raw: RawDevice[], into: Map<string, string>) {
+  for (const d of raw) {
+    const id = rawId(d);
+    const key = d.local_key;
+    if (id && typeof key === "string" && Buffer.byteLength(key, "utf8") === 16) into.set(id, key);
+  }
+}
+
+type SpecItem = { code?: string; dp_id?: number | string };
+
+/** `/v1.1/devices/{id}/specifications` の functions と status から dp 番号 → コードを作る。 */
+export function dpMapFromSpecification(result: unknown): Record<string, string> {
+  const dps: Record<string, string> = {};
+  if (!result || typeof result !== "object") return dps;
+  const obj = result as { functions?: SpecItem[]; status?: SpecItem[] };
+  for (const item of [...(obj.status ?? []), ...(obj.functions ?? [])]) {
+    if (item.code && item.dp_id != null && dps[String(item.dp_id)] == null) dps[String(item.dp_id)] = item.code;
+  }
+  return dps;
+}
 
 function asDeviceList(result: unknown): RawDevice[] {
   if (Array.isArray(result)) return result as RawDevice[];
@@ -570,6 +598,12 @@ async function listForUid(
 ) {
   const encoded = encodeURIComponent(uid);
   const bag = new Map<string, Device>();
+  const keys = new Map<string, string>();
+  const take = (result: unknown, roomHint?: string) => {
+    const raw = asDeviceList(result);
+    collectLocalKeys(raw, keys);
+    mergeDevices(bag, mapTuyaDevices(raw, roomHint));
+  };
 
   const paths = [
     `/v1.0/users/${encoded}/devices`,
@@ -580,7 +614,7 @@ async function listForUid(
   ];
   for (const path of paths) {
     const result = await tryGet(host, accessId, secret, path, token);
-    if (result) mergeDevices(bag, mapTuyaDevices(asDeviceList(result)));
+    if (result) take(result);
   }
 
   let lastKey = "";
@@ -590,7 +624,7 @@ async function listForUid(
       : "/v1.3/iot-03/devices?page_size=100";
     const result = await tryGet(host, accessId, secret, q, token);
     if (!result) break;
-    mergeDevices(bag, mapTuyaDevices(asDeviceList(result)));
+    take(result);
     const rec = result as { last_row_key?: string; has_more?: boolean };
     if (!rec.has_more || !rec.last_row_key || rec.last_row_key === lastKey) break;
     lastKey = rec.last_row_key;
@@ -602,7 +636,7 @@ async function listForUid(
     const homeId = home.home_id ?? home.homeId;
     if (homeId == null) continue;
     const homeDevices = await tryGet(host, accessId, secret, `/v1.0/homes/${homeId}/devices`, token);
-    if (homeDevices) mergeDevices(bag, mapTuyaDevices(asDeviceList(homeDevices)));
+    if (homeDevices) take(homeDevices);
 
     const roomsRaw = await tryGet(host, accessId, secret, `/v1.0/homes/${homeId}/rooms`, token);
     for (const room of asRooms(roomsRaw)) {
@@ -615,13 +649,23 @@ async function listForUid(
         `/v1.0/homes/${homeId}/rooms/${roomId}/devices`,
         token,
       );
-      if (roomDevices) mergeDevices(bag, mapTuyaDevices(asDeviceList(roomDevices), room.name));
+      if (roomDevices) take(roomDevices, room.name);
     }
   }
 
   const devices = [...bag.values()];
   await refreshTuyaSensorStatus(host, accessId, secret, token, devices);
-  return devices;
+
+  // LAN 直結に要る dp 番号 → コードは specifications だけが返す。鍵のある機器だけ引く。
+  const local: Record<string, TuyaLocalDevice> = {};
+  for (const d of devices) {
+    const localKey = keys.get(d.nativeId);
+    if (!localKey) continue;
+    const spec = await tryGet(host, accessId, secret, `/v1.1/devices/${d.nativeId}/specifications`, token);
+    const dps = dpMapFromSpecification(spec);
+    if (Object.keys(dps).length) local[d.nativeId] = { localKey, dps };
+  }
+  return { devices, local };
 }
 
 export async function tuyaSync(
@@ -629,7 +673,14 @@ export async function tuyaSync(
   secret: string,
   uid: string,
   region: string = "auto",
-): Promise<{ devices: Device[]; region: string; regionLabel: string; rooms: string[] }> {
+): Promise<{
+  devices: Device[];
+  /** LAN 直結の鍵と dp 対応。credentials.tuyaLocal へ保存する。 */
+  local: Record<string, TuyaLocalDevice>;
+  region: string;
+  regionLabel: string;
+  rooms: string[];
+}> {
   const preferred = TUYA_REGIONS.filter((r) => region === "auto" || r.id === region);
   const rest = TUYA_REGIONS.filter((r) => !preferred.includes(r));
   const order = region === "auto" ? TUYA_REGIONS : [...preferred, ...rest];
@@ -638,7 +689,7 @@ export async function tuyaSync(
   for (const dc of order) {
     try {
       const token = await getToken(dc.host, accessId, secret);
-      const devices = await listForUid(dc.host, accessId, secret, token.access_token, uid);
+      const { devices, local } = await listForUid(dc.host, accessId, secret, token.access_token, uid);
       if (!devices.length) {
         throw new Error(
           `接続はできましたが機器が0台です（${dc.label}）。プロジェクトの Devices → Link Tuya App Account で Smart Life を連携し、UID がそのユーザーか確認してください。`,
@@ -646,6 +697,7 @@ export async function tuyaSync(
       }
       return {
         devices,
+        local,
         region: dc.id,
         regionLabel: dc.label,
         rooms: [...new Set(devices.map((d) => d.room))],

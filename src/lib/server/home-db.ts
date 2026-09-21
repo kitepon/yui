@@ -4,11 +4,13 @@ import { emptySnapshot, type HomeSnapshot } from "@/lib/home/snapshot";
 import { migrateAutomation } from "@/lib/home/types";
 import { applyOverrides } from "@/lib/home/overrides";
 import { daikinConfigured, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
+import { tuyaLanDiscoveryStatus } from "@/lib/home/tuya-lan";
 import {
   credentialFlags,
   decryptJson,
   encryptJson,
   mergeIncomingCredentials,
+  normalizeCredentials,
   publicCredentials,
   secretsKeyFromEnv,
 } from "./home-secrets";
@@ -46,7 +48,9 @@ function bodyOf(snap: HomeSnapshot) {
 function decodeRow(row: HomeRow): { id: string; ownerUserId: string; snap: HomeSnapshot } {
   const key = secretsKeyFromEnv();
   const body = JSON.parse(row.body_json) as Partial<HomeSnapshot>;
-  const credentials = decryptJson<HomeSnapshot["credentials"]>(key, row.credentials_enc);
+  const credentials = normalizeCredentials(
+    decryptJson<Partial<HomeSnapshot["credentials"]>>(key, row.credentials_enc),
+  );
   const base = emptySnapshot();
   return {
     id: row.id,
@@ -119,6 +123,7 @@ export function clientHome(snap: HomeSnapshot, host?: string | null, isOwner = f
     runner: true,
     odelicBridge: isOwner && Boolean(process.env.YUI_ODELIC_BRIDGE_URL),
     daikinDirect: isOwner && daikinConfigured(),
+    tuyaLan: tuyaLanDiscoveryStatus(),
   };
 }
 

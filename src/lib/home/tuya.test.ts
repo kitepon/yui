@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mapTuyaDevices, readingsFromTuyaStatus, tuyaCommandsFromPatch, applyTuyaStatus } from "./tuya.ts";
+import { mapTuyaDevices, readingsFromTuyaStatus, tuyaCommandsFromPatch, applyTuyaStatus, collectLocalKeys, dpMapFromSpecification } from "./tuya.ts";
 import type { Device } from "./types.ts";
 
 test("Tuya の temp_current は十分の一度", () => {
@@ -220,4 +220,33 @@ test("エアコン kt は温度とモードの DP を機器の語彙のまま送
     { code: "mode", value: "hot" },
     { code: "fan_speed_enum", value: "middle" },
   ]);
+});
+
+test("機器一覧の local_key を拾う。16 文字でないものは鍵として使えないので拾わない", () => {
+  const keys = new Map<string, string>();
+  collectLocalKeys(
+    [
+      { id: "eb70", local_key: "0123456789abcdef" },
+      { device_id: "ab12", local_key: "short" },
+      { id: "cd34" },
+    ],
+    keys,
+  );
+  assert.deepEqual([...keys], [["eb70", "0123456789abcdef"]]);
+});
+
+test("specifications の status と functions から dp 番号 → コードを作る", () => {
+  const dps = dpMapFromSpecification({
+    category: "wsdcg",
+    status: [
+      { code: "va_temperature", dp_id: 1, type: "Integer", values: "{}" },
+      { code: "temp_unit_convert", dp_id: 9, type: "Enum", values: "{}" },
+    ],
+    functions: [
+      { code: "temp_unit_convert", dp_id: 9, type: "Enum", values: "{}" },
+      { code: "maxtemp_set", dp_id: 10, type: "Integer", values: "{}" },
+    ],
+  });
+  assert.deepEqual(dps, { "1": "va_temperature", "9": "temp_unit_convert", "10": "maxtemp_set" });
+  assert.deepEqual(dpMapFromSpecification(null), {});
 });

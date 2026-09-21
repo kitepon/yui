@@ -6,7 +6,7 @@ import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
 import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
-import { tuyaLanConfigured, tuyaLanRefreshSensors } from "@/lib/home/tuya-lan";
+import { startTuyaLanDiscovery, tuyaLanRefreshSensors } from "@/lib/home/tuya-lan";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import { heldSkipReason } from "@/lib/home/analysis-series";
 import { homeBelongsToLanOwner } from "./lan-owner";
@@ -245,32 +245,31 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
       /* keep last */
     }
   }
-  const tuya = cur.credentials;
-  if (
-    tuya.tuyaAccessId.trim() &&
-    tuya.tuyaSecret.trim() &&
-    tuya.tuyaRegion.trim() &&
-    tuya.tuyaRegion !== "auto" &&
-    cur.devices.some((d) => d.connector === "smartlife" && d.kind === "sensor")
-  ) {
-    try {
-      const devices = cur.devices.map((d) => ({ ...d }));
-      await tuyaRefreshSensors(tuya.tuyaAccessId, tuya.tuyaSecret, tuya.tuyaRegion, devices);
-      cur = await saveHomeRecord(homeId, { devices });
-    } catch {
-      /* keep last */
-    }
-  }
-  // Smart Life の LAN 直結はクラウドの後に当てる。IoT Core の枠が尽きていても LAN の値で更新する。
-  if (
-    tuyaLanConfigured() &&
-    cur.devices.some((d) => d.connector === "smartlife" && d.kind === "sensor") &&
-    homeBelongsToLanOwner((await loadHomeRecord(homeId))?.ownerUserId ?? "")
-  ) {
+  // Smart Life は LAN で読める機器を先に読む。LAN で読めた機器はクラウドへ問い合わせない
+  // （IoT Core の枠を使わない）。LAN に居ない機器だけクラウドで読む。
+  if (cur.devices.some((d) => d.connector === "smartlife")) {
     const devices = cur.devices.map((d) => ({ ...d }));
-    const errors = await tuyaLanRefreshSensors(devices);
-    for (const err of errors) console.error("[yui] smartlife lan", homeId, err.message);
+    const lan = await tuyaLanRefreshSensors(devices, cur.credentials.tuyaLocal);
+    for (const err of lan.errors) console.error("[yui] smartlife lan", homeId, err.message);
     cur = await saveHomeRecord(homeId, { devices });
+    const tuya = cur.credentials;
+    const viaCloud = cur.devices.filter((d) => !(d.connector === "smartlife" && lan.read.has(d.id)));
+    if (
+      tuya.tuyaAccessId.trim() &&
+      tuya.tuyaSecret.trim() &&
+      tuya.tuyaRegion.trim() &&
+      tuya.tuyaRegion !== "auto" &&
+      viaCloud.some((d) => d.connector === "smartlife" && d.kind === "sensor")
+    ) {
+      try {
+        const copy = viaCloud.map((d) => ({ ...d }));
+        await tuyaRefreshSensors(tuya.tuyaAccessId, tuya.tuyaSecret, tuya.tuyaRegion, copy);
+        const byId = new Map(copy.map((d) => [d.id, d]));
+        cur = await saveHomeRecord(homeId, { devices: cur.devices.map((d) => byId.get(d.id) ?? d) });
+      } catch {
+        /* keep last */
+      }
+    }
   }
   return cur;
 }
@@ -311,6 +310,7 @@ export async function tickAllHomes() {
 export function startControlRunner() {
   if (started) return;
   started = true;
+  startTuyaLanDiscovery();
   void tickAllHomes();
   setInterval(() => void tickAllHomes(), SENSOR_TICK_SECONDS * 1000);
   startBackupRunner();

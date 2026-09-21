@@ -33,6 +33,8 @@ export interface HomeSnapshot {
   odelicBridge?: boolean;
   /** ダイキン直結の宛先が設定されているか。自宅の image だけ true。 */
   daikinDirect?: boolean;
+  /** Smart Life の LAN 探索の状態。サーバーが返す。 */
+  tuyaLan?: { listening: boolean; error?: string; seen: number };
 }
 
 export function emptyConnectors(): Record<Brand, ConnectorStatus> {

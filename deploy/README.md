@@ -24,7 +24,6 @@
 | `BETTER_AUTH_URL` | 必須 | 外から見た公開 URL（例 `https://yui.example.com`） |
 | `YUI_LAN_OWNER` | LAN 直結を使うなら必須 | この結の持ち主のメール。**この人だけ**が LAN 直結を使える |
 | `YUI_DAIKIN_ADDRS` | 任意 | ダイキン直結の宛先。`部屋=IP` をカンマ区切り |
-| `YUI_TUYA_LAN_DEVICES` | 任意 | Smart Life センサーを LAN で読む宛先。`deviceId=IP:LocalKey` をカンマ区切り。同期済みのセンサーだけが対象で、読み取りのみ（version 3.3） |
 | `YUI_ODELIC_BRIDGE_URL` | 任意 | 自作オーデリックブリッジの URL（この repo には含まれない） |
 | `YUI_SWITCHBOT_BLE_URL` | 任意 | SwitchBot Bot をサーバーの Bluetooth で押す口。例 `http://host.docker.internal:18862` |
 | `COMPOSE_PROFILES` | 任意 | Bot 直結を使うなら `ble`。`switchbot-ble` サービスが起きる |
@@ -32,15 +31,18 @@
 
 **`HOME_SECRETS_KEY` を失うと、保存済みの家電トークンは復号できない。** 必ず控えを取る。
 
-**LAN 直結（ダイキン・オーデリック・SwitchBot の Bluetooth 押し・Smart Life センサー）は `YUI_LAN_OWNER` に書いた人だけが使える。**
+**LAN 直結（ダイキン・オーデリック・SwitchBot の Bluetooth 押し）は `YUI_LAN_OWNER` に書いた人だけが使える。**
 これらは宛先をサーバーが持ち、利用者ごとの認証情報が無い。誰でも登録できる結で
 開いたままにすると、登録した他人が家主の機器を操作できてしまう。書かなければ
 LAN 直結は誰にも開かない。
 
-Smart Life のセンサーを LAN で読むには、機器の Device ID・LAN 内 IP・Local Key が要る。
-Local Key は Tuya IoT Platform の API Explorer（Query Device Details）か、Smart Life アカウントの
-QR ログイン（[tuya-local-key](https://github.com/vineetchoudhary/tuya-local-key)）で取り、
-機器は先に接続タブの Smart Life 同期で家に入れておく。対応は Tuya ローカル version 3.3 の読み取りだけ。
+Smart Life（Tuya）の機器は、接続タブの同期で機器ごとの鍵を受け取ったあと、結と同じ LAN にいるものは
+クラウドを通さず直接読み書きする（Tuya ローカル version 3.3 の機器。3.4 / 3.5 はクラウドのまま）。
+機器は LAN へ UDP 6667 で名乗るので、`compose.yaml` はそのポートをホストへ公開している。
+ホストに firewall があるなら LAN からの UDP 6667 を通す（ufw なら
+`ufw allow from 192.168.1.0/24 to any port 6667 proto udp`。帯は自宅に合わせる）。
+どの機器が LAN で動いているかは接続タブの Smart Life カードに出る。この経路は利用者ごとの鍵で動くので
+`YUI_LAN_OWNER` の制限は受けない。
 
 SwitchBot の押すボットをハブ無しで動かすときは、サーバーに Bluetooth アダプタがあり、
 ボットが電波の届くところにあること。`.env` に `COMPOSE_PROFILES=ble` と

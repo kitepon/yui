@@ -1,6 +1,7 @@
 import { remoControl } from "@/lib/home/remo";
 import { switchbotControl, switchbotUsesBle } from "@/lib/home/switchbot";
 import { tuyaControl } from "@/lib/home/tuya";
+import { tuyaLanControl, tuyaLanTargetOf } from "@/lib/home/tuya-lan";
 import { odelicControl } from "@/lib/home/odelic";
 import { daikinControl } from "@/lib/home/daikin";
 import { matchesStep } from "@/lib/home/demo";
@@ -48,13 +49,19 @@ export async function executeDevice(
       } else if (device.connector === "switchbot") {
         await switchbotControl(snap.credentials.switchbotToken, snap.credentials.switchbotSecret, next, patch);
       } else if (device.connector === "smartlife") {
-        await tuyaControl(
-          snap.credentials.tuyaAccessId,
-          snap.credentials.tuyaSecret,
-          snap.credentials.tuyaRegion,
-          next,
-          patch,
-        );
+        // 同じ LAN に居て鍵を持つ機器は LAN で送る。居ない機器だけクラウドへ。
+        const lan = tuyaLanTargetOf(device, snap.credentials.tuyaLocal);
+        if (lan) {
+          await tuyaLanControl(lan, next, patch);
+        } else {
+          await tuyaControl(
+            snap.credentials.tuyaAccessId,
+            snap.credentials.tuyaSecret,
+            snap.credentials.tuyaRegion,
+            next,
+            patch,
+          );
+        }
       } else if (device.connector === "daikin") {
         await daikinControl(next, patch);
       } else if (device.connector === "odelec") {
