@@ -183,11 +183,18 @@ export async function saveHome(ownerUserId: string, patch: Partial<HomeSnapshot>
   return saved;
 }
 
+/** 画面からの保存は `lan` を持たないことがある。サーバーが付けた印を消さない。 */
+function keepLan(prev: HomeSnapshot["devices"], next: HomeSnapshot["devices"]) {
+  const prevLan = new Map(prev.filter((d) => d.lan).map((d) => [d.id, d.lan]));
+  return next.map((d) => (d.lan || !prevLan.has(d.id) ? d : { ...d, lan: prevLan.get(d.id) }));
+}
+
 export async function replaceHome(ownerUserId: string, next: HomeSnapshot): Promise<HomeSnapshot> {
   const cur = await ensureHome(ownerUserId);
   const prevById = new Map(cur.snap.automations.map((a) => [a.id, a]));
   const snap: HomeSnapshot = {
     ...next,
+    devices: keepLan(cur.snap.devices, next.devices),
     credentials: mergeIncomingCredentials(cur.snap.credentials, next.credentials),
     pairPin: cur.snap.pairPin,
     lastRanAutomationId: next.lastRanAutomationId ?? cur.snap.lastRanAutomationId ?? null,

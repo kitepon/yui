@@ -361,6 +361,8 @@ export async function tuyaLanRefreshSensors(
         if (where) {
           // LAN に居るのに鍵が無い。初回同期の前か、鍵を返さない一覧だった。
           device.lan = { host: where.host, version: where.version, error: "鍵がありません。接続タブで Smart Life を同期すると受け取ります" };
+        } else if (device.lan?.readAt && Date.now() - Date.parse(device.lan.readAt) <= SEEN_TTL_MS) {
+          // 名乗りは途切れる（3.1 はアプリやこちらの読み取り中に止まる）。直近に読めた印は残す。
         } else if (device.lan) {
           delete device.lan;
         }

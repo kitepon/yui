@@ -160,6 +160,20 @@ test("LAN で読めたセンサーは温度が入り lan.readAt が付き、ク�
   assert.equal(other.lan, undefined, "名乗りの無い機器には lan を付けない");
 });
 
+test("名乗りが途切れても、直近に読めた LAN の印は残す。30 分より前の印は消す", async () => {
+  noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.3" }, Date.now() - 31 * 60 * 1000);
+  const fresh = sensor({ lan: { host: "192.168.1.54", version: "3.3", readAt: new Date().toISOString() } });
+  const stale = sensor({
+    id: "smartlife:old",
+    nativeId: "old-sensor",
+    lan: { host: "192.168.1.99", version: "3.3", readAt: new Date(Date.now() - 31 * 60 * 1000).toISOString() },
+  });
+  await tuyaLanRefreshSensors([fresh, stale], { [ID]: { localKey: KEY, dps: WSDCG_DPS } });
+  assert.equal(fresh.lan?.host, "192.168.1.54");
+  assert.equal(fresh.lan?.error, undefined);
+  assert.equal(stale.lan, undefined);
+});
+
 test("届かない機器は lan.error に理由が残り、値は前のまま。他の機器は止めない", async () => {
   noteTuyaLanAnnouncement({ gwId: ID, ip: "127.0.0.1", version: "3.3", port: 1 });
   const d = sensor({ temperature: 21.5 });
