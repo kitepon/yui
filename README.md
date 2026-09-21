@@ -67,7 +67,8 @@ npm run dev
 `HOME_SECRETS_KEY`は家電tokenの暗号化鍵で、失うと保存済みtokenを復号できません。
 
 ダイキン直結を使う場合は`YUI_DAIKIN_ADDRS`（例: `リビング=192.168.0.10`）を設定し、
-結を家と同じLANで動かします。
+結を家と同じLANで動かします。Smart Lifeのセンサーをクラウドを通さずLANで読む場合は
+`YUI_TUYA_LAN_DEVICES`（例: `deviceId=192.168.0.20:LocalKey`）を設定します。
 
 ## 技術とsecurity
 

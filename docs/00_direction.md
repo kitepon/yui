@@ -35,6 +35,7 @@
 - Tuya の `category` と SwitchBot の `deviceType` から結の kind への写しは、Home Assistant core（Apache-2.0）の静的表。正本は `src/lib/home/ha-catalog.ts`。
 - Nature Remo エアコンの風量・風向は hass-nature-remo（MIT）と同じ `air_volume` / `air_direction`。Remo の風向は上下が主で、左右の独立指定は持たない。
 - 結に kind が無い機種（掃除機・加湿器など）は一覧に出ても詳細操作を出さない。未実装を実装済みに見せない。
+- Smart Life センサーは `YUI_TUYA_LAN_DEVICES`（`deviceId=IP:LocalKey`）があるとき、`tickAllHomes()` のセンサー更新でクラウドの後に LAN 直結（Tuya ローカル 3.3、読み取りのみ）を当てる。対象は同期済みの `smartlife` センサーだけで、`YUI_LAN_OWNER` の家にだけ効く。Local Key の取得は利用者が行い、結は代行しない。
 - SwitchBot ボットの押すモードは `press`。クラウドから押すにはハブが要る。サーバーの Bluetooth で押す口（`YUI_SWITCHBOT_BLE_URL`）があるときは、押すボットはクラウドへ送らず直結する。ハブ無しクラウドはオフラインとして出す。直結の押し口はプロセスで一つのイベントループを使う。押すたびに `asyncio.run` しない。
 - オートメーションの「連続では動かさない」は機器ごと。直前に動いたオートメーションが自分自身なら、その機器への再送を省く。条件成立中の機器の優先権は保ち、下位は同じ機器を操作しない。優先権は条件が外れたときに手放す。
 - ダイキン直結の風向は自動・固定・上下スイング・左右スイングだけ。固定羽根の多段位置は出さない。自動運転の相対温度は `p_1F`。外気温は読み取りだけで、エアコンのセンサー項目としてオートメーションの条件に使う。

@@ -6,6 +6,7 @@ import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
 import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
+import { tuyaLanConfigured, tuyaLanRefreshSensors } from "@/lib/home/tuya-lan";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import { heldSkipReason } from "@/lib/home/analysis-series";
 import { homeBelongsToLanOwner } from "./lan-owner";
@@ -259,6 +260,17 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
     } catch {
       /* keep last */
     }
+  }
+  // Smart Life の LAN 直結はクラウドの後に当てる。IoT Core の枠が尽きていても LAN の値で更新する。
+  if (
+    tuyaLanConfigured() &&
+    cur.devices.some((d) => d.connector === "smartlife" && d.kind === "sensor") &&
+    homeBelongsToLanOwner((await loadHomeRecord(homeId))?.ownerUserId ?? "")
+  ) {
+    const devices = cur.devices.map((d) => ({ ...d }));
+    const errors = await tuyaLanRefreshSensors(devices);
+    for (const err of errors) console.error("[yui] smartlife lan", homeId, err.message);
+    cur = await saveHomeRecord(homeId, { devices });
   }
   return cur;
 }
