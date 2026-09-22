@@ -179,6 +179,37 @@ test("55aa フレームは長さ欄で 1 枚分を切る", () => {
   assert.equal(tuyaFrameTotal(buf), 24);
 });
 
+test("受け役は Unix ソケットでも同じ中継をする", async () => {
+  const { createServer } = await import("node:net");
+  const { mkdtempSync, rmSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const payload = Buffer.from("UNIXOK!!!");
+  const reply = Buffer.alloc(16 + payload.length);
+  reply.writeUInt32BE(0x000055aa, 0);
+  reply.writeUInt32BE(payload.length, 12);
+  payload.copy(reply, 16);
+  const device = createServer((socket) => {
+    socket.on("data", () => socket.end(reply));
+  });
+  const devicePort = await new Promise<number>((resolve) => {
+    device.listen(0, "127.0.0.1", () => resolve((device.address() as { port: number }).port));
+  });
+  const dir = mkdtempSync(join(tmpdir(), "yui-relay-"));
+  const sock = join(dir, "tuya.sock");
+  const relay = startTuyaLanRelay(sock);
+  assert.ok(relay);
+  try {
+    await relay.ready;
+    const got = await relayLanTcp(relay.url, "127.0.0.1", devicePort, Buffer.from("QUERY"));
+    assert.deepEqual(got, reply);
+  } finally {
+    await relay.close();
+    await new Promise<void>((resolve) => device.close(() => resolve()));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("受け役は容器の代わりに機器へ TCP して応答フレームを返す", async () => {
   const { createServer } = await import("node:net");
   const payload = Buffer.from("REPLYOK!!");

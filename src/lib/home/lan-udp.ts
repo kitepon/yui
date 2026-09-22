@@ -1,7 +1,7 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { createServer, request as httpRequest, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createConnection } from "node:net";
 import { createSocket, type Socket } from "node:dgram";
-import { readdirSync, readFileSync } from "node:fs";
+import { chmodSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
 
 /**
@@ -337,15 +337,28 @@ function exchangeOnce(host: string, port: number, frame: Buffer): Promise<Buffer
 
 export type ListenLanRelay = { ready: Promise<void>; url: string; close: () => Promise<void> };
 
+function isUnixBind(bind: string): boolean {
+  return bind.startsWith("/") || bind.startsWith("unix:");
+}
+
+function unixPath(bind: string): string {
+  return bind.startsWith("unix:") ? bind.slice("unix:".length) : bind;
+}
+
 /** 容器から届かない LAN の TCP を、ホストの口で中継する。 */
 export function startTuyaLanRelay(bind?: string): ListenLanRelay | undefined {
   const raw = bind?.trim();
   if (!raw) return undefined;
-  const sep = raw.lastIndexOf(":");
-  const host = raw.slice(0, sep);
-  const port = Number(raw.slice(sep + 1));
-  if (!host || !Number.isInteger(port) || port < 0 || port > 65535) {
-    throw new Error(`Smart Life 直結: 受け役の待ち受けが読めません（${raw}）`);
+  const unix = isUnixBind(raw) ? unixPath(raw) : undefined;
+  let listenHost: string | undefined;
+  let listenPort = 0;
+  if (!unix) {
+    const sep = raw.lastIndexOf(":");
+    listenHost = raw.slice(0, sep);
+    listenPort = Number(raw.slice(sep + 1));
+    if (!listenHost || !Number.isInteger(listenPort) || listenPort < 0 || listenPort > 65535) {
+      throw new Error(`Smart Life 直結: 受け役の待ち受けが読めません（${raw}）`);
+    }
   }
   let server: Server | undefined;
   const ready = new Promise<void>((resolve, reject) => {
@@ -353,27 +366,56 @@ export function startTuyaLanRelay(bind?: string): ListenLanRelay | undefined {
       void handleRelayRequest(req, res);
     });
     server.on("error", reject);
-    server.listen(port, host, () => {
+    const onListening = () => {
       server?.off("error", reject);
       server?.on("error", (err) => {
         console.error("[yui] smartlife lan relay", err.message);
       });
-      console.error("[yui] smartlife lan relay", `http://${host}:${(server?.address() as { port: number } | null)?.port ?? port}`);
+      if (unix) {
+        chmodSync(unix, 0o666);
+        console.error("[yui] smartlife lan relay", unix);
+      } else {
+        const addr = server?.address();
+        const port = addr && typeof addr !== "string" ? addr.port : listenPort;
+        console.error("[yui] smartlife lan relay", `http://${listenHost}:${port}`);
+      }
       resolve();
-    });
+    };
+    if (unix) {
+      try {
+        unlinkSync(unix);
+      } catch {
+        /* 初回はソケットが無い。 */
+      }
+      server.listen(unix, onListening);
+    } else {
+      server.listen(listenPort, listenHost, onListening);
+    }
   });
   return {
     ready,
     get url() {
+      if (unix) return unix;
       const addr = server?.address();
-      if (!addr || typeof addr === "string") return `http://${host}:${port}`;
+      if (!addr || typeof addr === "string") return `http://${listenHost}:${listenPort}`;
       return `http://${addr.address}:${addr.port}`;
     },
     close() {
       const current = server;
       server = undefined;
       if (!current) return Promise.resolve();
-      return new Promise((resolve) => current.close(() => resolve()));
+      return new Promise((resolve) => {
+        current.close(() => {
+          if (unix) {
+            try {
+              unlinkSync(unix);
+            } catch {
+              /* 閉じたあと消えないこともある。 */
+            }
+          }
+          resolve();
+        });
+      });
     },
   };
 }
@@ -396,22 +438,47 @@ async function handleRelayRequest(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+function postExchange(options: { url?: string; socketPath?: string }, body: string): Promise<{ status: number; json: { frame?: string; error?: string } }> {
+  return new Promise((resolve, reject) => {
+    const url = options.url ? new URL("/exchange", options.url) : undefined;
+    const req = httpRequest(
+      options.socketPath
+        ? { socketPath: options.socketPath, path: "/exchange", method: "POST", headers: { "content-type": "application/json" } }
+        : { hostname: url!.hostname, port: url!.port, path: url!.pathname, method: "POST", headers: { "content-type": "application/json" } },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => {
+          try {
+            resolve({ status: res.statusCode ?? 0, json: JSON.parse(Buffer.concat(chunks).toString("utf8")) as { frame?: string; error?: string } });
+          } catch {
+            reject(new Error("Smart Life 直結: 受け役の応答が JSON ではありません"));
+          }
+        });
+      },
+    );
+    req.setTimeout(RELAY_TIMEOUT_MS + 1000, () => {
+      req.destroy();
+      reject(new Error("Smart Life 直結: 受け役へ届きません（timeout）"));
+    });
+    req.on("error", (err) => reject(new Error(`Smart Life 直結: 受け役へ届きません（${err.message}）`)));
+    req.end(body);
+  });
+}
+
 /** 容器側。受け役へ 1 フレーム渡し、機器の応答フレームを返す。 */
 export async function relayLanTcp(relayUrl: string, host: string, port: number, frame: Buffer): Promise<Buffer> {
-  let res: Response;
+  const body = JSON.stringify({ host, port, frame: frame.toString("base64") });
+  let res: { status: number; json: { frame?: string; error?: string } };
   try {
-    res = await fetch(new URL("/exchange", relayUrl), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ host, port, frame: frame.toString("base64") }),
-      signal: AbortSignal.timeout(RELAY_TIMEOUT_MS + 1000),
-    });
+    res = isUnixBind(relayUrl)
+      ? await postExchange({ socketPath: unixPath(relayUrl) }, body)
+      : await postExchange({ url: relayUrl }, body);
   } catch (err) {
-    throw new Error(`Smart Life 直結: 受け役へ届きません（${err instanceof Error ? err.message : err}）`);
+    throw new Error(err instanceof Error ? err.message : `Smart Life 直結: 受け役へ届きません（${err}）`);
   }
-  const json = (await res.json()) as { frame?: string; error?: string };
-  if (!res.ok || !json.frame) {
-    throw new Error(json.error || `Smart Life 直結: 受け役が HTTP ${res.status}`);
+  if (res.status !== 200 || !res.json.frame) {
+    throw new Error(res.json.error || `Smart Life 直結: 受け役が HTTP ${res.status}`);
   }
-  return Buffer.from(json.frame, "base64");
+  return Buffer.from(res.json.frame, "base64");
 }

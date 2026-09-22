@@ -23,10 +23,11 @@ services:
       TZ: ${TZ:-Asia/Tokyo}
       PORT: "8080"
       HOST: 0.0.0.0
-      # 家の LAN への TCP は、host network の受け役が中継する。
-      YUI_TUYA_LAN_RELAY: http://${YUI_LAN_GW:-172.16.240.1}:18863
+      # 家の LAN への TCP は、host network の受け役が Unix ソケットで中継する。
+      YUI_TUYA_LAN_RELAY: /relay/tuya.sock
     volumes:
       - yui-data:/data
+      - tuya-relay:/relay
     ports:
       # 直接インターネットへ晒さない。リバースプロキシ（Caddy 等）の後ろに置く。
       # 別のアドレスで受けるなら .env の YUI_BIND に書く。
@@ -60,22 +61,26 @@ services:
 
   # Smart Life の名乗り（UDP 6666 / 6667）をホストの LAN で直接受ける。
   # ルーター再起動でアドレスやリンクが変わると、このプロセスが口を開き直す。
-  # ウェブの待受は app の 127.0.0.1 のまま。ここは UDP だけを持つ。
+  # ウェブの待受は app の 127.0.0.1 のまま。UDP の受けと TCP 6668 の中継を持つ。
   tuya-lan:
     image: yuihome:local
     container_name: yuihome-tuya-lan
     restart: unless-stopped
     network_mode: host
     command: ["node", "--experimental-strip-types", "src/lib/home/tuya-lan-forward.ts"]
+    user: "0"
+    volumes:
+      - tuya-relay:/relay
     environment:
       YUI_TUYA_LAN_UPSTREAM: ${YUI_APP_ADDR:-172.16.240.10}
-      YUI_TUYA_LAN_RELAY_BIND: ${YUI_LAN_GW:-172.16.240.1}:18863
+      YUI_TUYA_LAN_RELAY_BIND: /relay/tuya.sock
       TZ: ${TZ:-Asia/Tokyo}
     depends_on:
       - app
 
 volumes:
   yui-data:
+  tuya-relay:
 
 networks:
   # 帯を固定する。docker の自動割当だと再作成のたびに変わり、
