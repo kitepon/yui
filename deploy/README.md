@@ -28,6 +28,8 @@
 | `YUI_SWITCHBOT_BLE_URL` | 任意 | SwitchBot Bot をサーバーの Bluetooth で押す口。例 `http://host.docker.internal:18862` |
 | `COMPOSE_PROFILES` | 任意 | Bot 直結を使うなら `ble`。`switchbot-ble` サービスが起きる |
 | `YUI_BIND` / `YUI_PORT` | 任意 | 受けるアドレスとポート（既定 `127.0.0.1:18861`） |
+| `YUI_SUBNET` | 任意 | 容器の帯（既定 `172.16.240.0/24`） |
+| `YUI_APP_ADDR` | 任意 | 容器の固定アドレス（既定 `172.16.240.10`）。`YUI_SUBNET` の中の空きにする。Smart Life の通知はここへ渡す |
 
 **`HOME_SECRETS_KEY` を失うと、保存済みの家電トークンは復号できない。** 必ず控えを取る。
 
@@ -38,7 +40,7 @@ LAN 直結は誰にも開かない。
 
 Smart Life（Tuya）の機器は、接続タブの同期で機器ごとの鍵を受け取ったあと、結と同じ LAN にいるものは
 クラウドを通さず直接読み書きする（Tuya ローカル version 3.1 と 3.3 の機器。3.4 / 3.5 はクラウドのまま）。
-機器は LAN へ UDP 6666（3.1）/ 6667（3.3 以降）で名乗るので、`compose.yaml` はそのポートをホストへ公開している。
+機器は LAN へ UDP 6666（3.1）/ 6667（3.3 以降）で名乗る。`tuya-lan` がホストの LAN にその口を直接開き、受け取った datagram を容器（`YUI_APP_ADDR`）へ渡す。ルーターの再起動でアドレスやリンクが変わると、口を閉じて開き直す。ウェブの待受は `127.0.0.1` のまま。
 ホストに firewall があるなら LAN からの UDP 6666 と 6667 を通す（ufw なら
 `ufw allow from 192.168.1.0/24 to any port 6666:6667 proto udp`。帯は自宅に合わせる）。
 3.1 の古い機器は LAN 接続を 1 本しか受けず、Smart Life アプリが握っている間は結からの操作が失敗する（画面に理由が出る）。

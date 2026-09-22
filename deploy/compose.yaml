@@ -29,12 +29,10 @@ services:
       # 直接インターネットへ晒さない。リバースプロキシ（Caddy 等）の後ろに置く。
       # 別のアドレスで受けるなら .env の YUI_BIND に書く。
       - "${YUI_BIND:-127.0.0.1}:${YUI_PORT:-18861}:8080"
-      # Smart Life 機器が LAN へ送る名乗り（3.1 は UDP 6666、3.3 以降は UDP 6667）を結が聞くための口。
-      # docker-proxy がホストの 0.0.0.0 で受けて容器へ渡す。ホストの firewall で LAN からの UDP 6666/6667 を許可する。
-      - "6666:6666/udp"
-      - "6667:6667/udp"
     networks:
-      - yui
+      yui:
+        # Smart Life の名乗りを受け役がこのアドレスへ渡す。帯は下の yui ネットワーク。
+        ipv4_address: ${YUI_APP_ADDR:-172.16.240.10}
 
   # サーバーの Bluetooth で SwitchBot Bot を押す。COMPOSE_PROFILES=ble のときだけ起動。
   # 結は同じ compose ネットワークの http://switchbot-ble:18862 へ届ける。
@@ -57,6 +55,21 @@ services:
       SWITCHBOT_BLE_PORT: "18862"
     networks:
       - yui
+
+  # Smart Life の名乗り（UDP 6666 / 6667）をホストの LAN で直接受ける。
+  # ルーター再起動でアドレスやリンクが変わると、このプロセスが口を開き直す。
+  # ウェブの待受は app の 127.0.0.1 のまま。ここは UDP だけを持つ。
+  tuya-lan:
+    image: yuihome:local
+    container_name: yuihome-tuya-lan
+    restart: unless-stopped
+    network_mode: host
+    command: ["node", "--experimental-strip-types", "src/lib/home/tuya-lan-forward.ts"]
+    environment:
+      YUI_TUYA_LAN_UPSTREAM: ${YUI_APP_ADDR:-172.16.240.10}
+      TZ: ${TZ:-Asia/Tokyo}
+    depends_on:
+      - app
 
 volumes:
   yui-data:

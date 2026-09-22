@@ -1,8 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
-import { createSocket, type Socket } from "node:dgram";
 import { createConnection } from "node:net";
 import { crc32 } from "node:zlib";
 import type { DevicePatch } from "./device-patch.ts";
+import { listenLanUdp, type ListenLanUdp } from "./lan-udp.ts";
 import { applyTuyaStatus, tuyaCommandsFromPatch } from "./tuya.ts";
 import type { Device, TuyaLocalDevice } from "./types.ts";
 
@@ -15,7 +15,8 @@ import type { Device, TuyaLocalDevice } from "./types.ts";
  *
  * 機器の居場所は、機器自身が LAN へ 5 秒ごとに送る名乗り（3.1 は UDP 6666 に平文、
  * 3.3 以降は UDP 6667 に共通鍵で暗号化）を結が聞いて覚える。宛先を人が書くことはない。
- * Docker では 6666/udp と 6667/udp をホストへ公開する。
+ * Docker ではホストの LAN に直接開いた受け役が datagram を容器へ渡す。受け口は、
+ * アドレスかリンクが変わったときと、ソケットが死んだときに開き直す。
  *
  * 結が読み書きできるのは version 3.1 と 3.3。3.1 は読み取りが平文で、操作だけ鍵で暗号化して
  * md5 の署名を付ける。3.4 / 3.5 は握手が違うため LAN を使わず、その機器はクラウドに残す
@@ -234,47 +235,54 @@ export function decodeAnnouncement(datagram: Buffer): TuyaLanAnnouncement {
 }
 
 const seen = new Map<string, TuyaLanSeen>();
-let discoverySockets: Socket[] = [];
+const listeningPorts = new Set<number>();
 const discoveryErrors = new Map<number, string>();
+let discovery: ListenLanUdp | undefined;
 
 /** 探索の状態。画面へ出す。 */
 export function tuyaLanDiscoveryStatus(): { listening: boolean; error?: string; seen: number } {
   const error = [...discoveryErrors.values()].join(" / ") || undefined;
-  return { listening: discoverySockets.length > 0 && !error, error, seen: seen.size };
+  return { listening: listeningPorts.size > 0 && !error, error, seen: seen.size };
 }
 
 /**
- * 名乗りを聞き始める。プロセスで一つ。bind に失敗したら理由を残して止まる（別の
- * プロセスがポートを握っている等）。読めない datagram は捨てる。
+ * 名乗りを聞き始める。プロセスで一つ。読めない datagram は捨てる。
+ * アドレスかリンクが変わったとき、ソケットが死んだときは開き直す。覚えた居場所は消さない。
  */
 export function startTuyaLanDiscovery(): void {
-  if (discoverySockets.length) return;
-  discoverySockets = DISCOVERY_PORTS.map((port) => {
-    const socket = createSocket({ type: "udp4", reuseAddr: true });
-    socket.on("message", (msg) => {
+  if (discovery) return;
+  discovery = listenLanUdp({
+    ports: DISCOVERY_PORTS,
+    onReset: () => {
+      listeningPorts.clear();
+      discoveryErrors.clear();
+    },
+    onPortListening: (port) => {
+      listeningPorts.add(port);
+      discoveryErrors.delete(port);
+    },
+    onPortError: (port, err) => {
+      listeningPorts.delete(port);
+      discoveryErrors.set(port, `LAN の探索が動いていません（UDP ${port}: ${err.message}）`);
+    },
+    onMessage: (msg) => {
       try {
         const a = decodeAnnouncement(msg);
         seen.set(a.gwId, { host: a.ip, version: a.version, seenAt: Date.now() });
       } catch {
         /* Tuya 以外の datagram も同じポートへ来うる。読めないものは相手にしない。 */
       }
-    });
-    socket.on("error", (err) => {
-      discoveryErrors.set(port, `LAN の探索が動いていません（UDP ${port}: ${err.message}）`);
-      console.error("[yui] smartlife lan discovery", port, err.message);
-    });
-    socket.bind(port, () => {
-      discoveryErrors.delete(port);
-    });
-    return socket;
+    },
   });
 }
 
-export function stopTuyaLanDiscovery(): void {
-  for (const s of discoverySockets) s.close();
-  discoverySockets = [];
+export function stopTuyaLanDiscovery(): Promise<void> {
+  const current = discovery;
+  discovery = undefined;
+  listeningPorts.clear();
   discoveryErrors.clear();
   seen.clear();
+  return current ? current.close() : Promise.resolve();
 }
 
 /** テスト用。名乗りを直接入れる。擬似機器のポートも指せる。 */

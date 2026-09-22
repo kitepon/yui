@@ -12,6 +12,8 @@ ENV VITE_PUBLIC_HOSTNAME=yuihome.kitepon.dev
 COPY .output /app/.output
 COPY package.json /app/package.json
 COPY scripts/hosted-metrics.mjs /app/scripts/hosted-metrics.mjs
+COPY src/lib/home/lan-udp.ts /app/src/lib/home/lan-udp.ts
+COPY src/lib/home/tuya-lan-forward.ts /app/src/lib/home/tuya-lan-forward.ts
 
 RUN useradd --system --uid 1001 --create-home yui \
   && mkdir -p /data \
