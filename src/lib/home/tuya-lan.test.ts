@@ -18,6 +18,7 @@ import {
   tuyaLanRefreshSensors,
   tuyaLanTargetOf,
 } from "./tuya-lan.ts";
+import { startTuyaLanRelay } from "./lan-udp.ts";
 import type { Device } from "./types.ts";
 
 const KEY = "0123456789abcdef";
@@ -142,6 +143,29 @@ function fakeDevice(dps: Record<string, unknown>) {
 
 const servers: Array<() => void> = [];
 after(() => servers.forEach((c) => c()));
+
+test("受け役経由でも水温計の温度を読んでクラウドへ回さない", async () => {
+  const dev = await fakeDevice({ "1": 261, "9": "c" });
+  servers.push(dev.close);
+  const relay = startTuyaLanRelay("127.0.0.1:0");
+  assert.ok(relay);
+  servers.push(() => void relay.close());
+  await relay.ready;
+  const prev = process.env.YUI_TUYA_LAN_RELAY;
+  process.env.YUI_TUYA_LAN_RELAY = relay.url;
+  try {
+    noteTuyaLanAnnouncement({ gwId: ID, ip: "127.0.0.1", version: "3.3", port: dev.port });
+    const d = sensor({ extra: "wsdcg", temperature: 25.1 });
+    const res = await tuyaLanRefreshSensors([d], { [ID]: { localKey: KEY, dps: WSDCG_DPS } });
+    assert.deepEqual(res.errors, []);
+    assert.deepEqual([...res.read], [d.id]);
+    assert.equal(d.temperature, 26.1);
+    assert.equal(d.extra, "水温");
+  } finally {
+    if (prev === undefined) delete process.env.YUI_TUYA_LAN_RELAY;
+    else process.env.YUI_TUYA_LAN_RELAY = prev;
+  }
+});
 
 test("LAN で読めたセンサーは温度が入り lan.readAt が付き、クラウドへ回さない一覧に載る", async () => {
   const dev = await fakeDevice({ "1": 255, "9": "c", "10": 1200 });

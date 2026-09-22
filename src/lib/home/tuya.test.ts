@@ -27,6 +27,25 @@ test("実機の水温計は va_temperature を十分の一度で読む", () => {
   assert.equal(d.extra, "水温");
 });
 
+test("名前が水温計なら status の読み直しで extra を水温にする", () => {
+  const d = {
+    id: "smartlife:probe",
+    name: "水温計",
+    room: "その他",
+    brand: "smartlife" as const,
+    kind: "sensor" as const,
+    online: true,
+    source: "live" as const,
+    nativeId: "probe",
+    connector: "smartlife" as const,
+    extra: "wsdcg",
+    temperature: 25.1,
+  };
+  applyTuyaStatus(d, [{ code: "va_temperature", value: 261 }]);
+  assert.equal(d.temperature, 26.1);
+  assert.equal(d.extra, "水温");
+});
+
 test("既に温度がある水温計でも status の新しい値で上書きする", () => {
   const [d] = mapTuyaDevices([
     {

@@ -525,7 +525,7 @@ function applyReadings(device: Device, status: TuyaStatus[]) {
   if (reading.temperature != null) device.temperature = reading.temperature;
   if (reading.humidity != null) device.humidity = reading.humidity;
   if (reading.lux != null) device.lux = reading.lux;
-  if (reading.water) device.extra = "水温";
+  if (reading.water || isWaterName(device.name)) device.extra = "水温";
   if (device.kind === "other" && reading.temperature != null) device.kind = "sensor";
 }
 
@@ -539,30 +539,35 @@ function tuyaSensorsOf(devices: Device[]) {
   return devices.filter((d) => d.kind === "sensor");
 }
 
+/**
+ * センサーの status をクラウドから読み直す。読めなかった機器は古い値のまま残るので、
+ * その失敗（quota 切れ・権限・通信）は握りつぶさず返す。呼ぶ側が記録する。
+ */
 async function refreshTuyaSensorStatus(
   host: string,
   accessId: string,
   secret: string,
   token: string,
   devices: Device[],
-) {
+): Promise<Error[]> {
+  const errors: Error[] = [];
   const pending = tuyaSensorsOf(devices);
   for (let i = 0; i < pending.length; i += 5) {
     const chunk = pending.slice(i, i + 5);
     await Promise.all(
       chunk.map(async (d) => {
-        const raw = await tryGet(
-          host,
-          accessId,
-          secret,
-          `/v1.0/iot-03/devices/${d.nativeId}/status`,
-          token,
-        );
-        const status = asStatusList(raw);
-        if (status.length) applyReadings(d, status);
+        try {
+          const raw = await tuyaGet<unknown>(host, accessId, secret, `/v1.0/iot-03/devices/${d.nativeId}/status`, token);
+          const status = asStatusList(raw);
+          if (status.length) applyReadings(d, status);
+        } catch (err) {
+          const e = err instanceof Error ? err : new Error(String(err));
+          errors.push(new Error(`${d.name}: ${e.message}`));
+        }
       }),
     );
   }
+  return errors;
 }
 
 /** 保存済みリージョンでセンサーの status だけ取り直す。一覧の全件同期はしない。 */
@@ -571,14 +576,14 @@ export async function tuyaRefreshSensors(
   secret: string,
   region: string,
   devices: Device[],
-): Promise<Device[]> {
+): Promise<{ errors: Error[] }> {
   const dc = TUYA_REGIONS.find((r) => r.id === region);
-  if (!dc || !accessId.trim() || !secret.trim()) return devices;
+  if (!dc || !accessId.trim() || !secret.trim()) return { errors: [] };
   const sensors = tuyaSensorsOf(devices.filter((d) => d.connector === "smartlife"));
-  if (!sensors.length) return devices;
+  if (!sensors.length) return { errors: [] };
   const token = await getToken(dc.host, accessId, secret);
-  await refreshTuyaSensorStatus(dc.host, accessId, secret, token.access_token, sensors);
-  return devices;
+  const errors = await refreshTuyaSensorStatus(dc.host, accessId, secret, token.access_token, sensors);
+  return { errors };
 }
 
 async function tryGet(host: string, accessId: string, secret: string, path: string, token: string) {

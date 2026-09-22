@@ -13,7 +13,11 @@ import { fireDeviceOnServer, fireSceneOnServer, startControlRunner } from "@/lib
 import { newWaveId } from "@/lib/server/analysis";
 import { billingConfigured, loadEntitlement, paywall } from "@/lib/server/billing";
 
-startControlRunner();
+// 本番の着火点は server/plugins/control-runner.ts だけ。このモジュールは server と ssr の
+// 両方の bundle に入るため、ここで無条件に呼ぶと 1 プロセスに runner が 2 つ立つ
+// （tick と LAN 探索が二重になり、名乗りを受けない側が古い値で上書きした。2026-09-22 実被弾）。
+// dev は nitro plugin が動かないので、ここでだけ起こす。
+if (import.meta.env.DEV) startControlRunner();
 
 async function readJson(request: Request) {
   try {

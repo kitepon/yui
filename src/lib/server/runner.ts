@@ -263,11 +263,12 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
     ) {
       try {
         const copy = viaCloud.map((d) => ({ ...d }));
-        await tuyaRefreshSensors(tuya.tuyaAccessId, tuya.tuyaSecret, tuya.tuyaRegion, copy);
+        const cloud = await tuyaRefreshSensors(tuya.tuyaAccessId, tuya.tuyaSecret, tuya.tuyaRegion, copy);
+        for (const err of cloud.errors) console.error("[yui] smartlife cloud", homeId, err.message);
         const byId = new Map(copy.map((d) => [d.id, d]));
         cur = await saveHomeRecord(homeId, { devices: cur.devices.map((d) => byId.get(d.id) ?? d) });
-      } catch {
-        /* keep last */
+      } catch (err) {
+        console.error("[yui] smartlife cloud", homeId, err instanceof Error ? err.message : err);
       }
     }
   }

@@ -1,3 +1,5 @@
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { createConnection } from "node:net";
 import { createSocket, type Socket } from "node:dgram";
 import { readdirSync, readFileSync } from "node:fs";
 import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
@@ -14,18 +16,30 @@ const RETRY_MS = 1000;
 
 export type LanSnapshot = { ipv4: string[]; links: string[] };
 
+/**
+ * 家の LAN だけを見る。docker の橋や veth は容器の増減で毎回変わるので、
+ * ルーター再起動の対象に数えない。
+ */
+export function isLanWatchInterface(name: string): boolean {
+  if (!name || name === "lo") return false;
+  if (/^(docker|veth|cni|flannel|cali|virbr)/.test(name)) return false;
+  if (/^br-[0-9a-f]{12}$/i.test(name)) return false;
+  return true;
+}
+
 export function assembleLanSnapshot(
   interfaces: Partial<Record<string, NetworkInterfaceInfo[] | undefined>>,
   links: readonly string[],
 ): LanSnapshot {
   const ipv4: string[] = [];
   for (const [name, addrs] of Object.entries(interfaces)) {
+    if (!isLanWatchInterface(name)) continue;
     for (const addr of addrs ?? []) {
       if (addr.family === "IPv4" && !addr.internal) ipv4.push(`${name}=${addr.address}`);
     }
   }
   ipv4.sort();
-  return { ipv4, links: [...links].sort() };
+  return { ipv4, links: links.filter((row) => isLanWatchInterface(row.split("=")[0] ?? "")).sort() };
 }
 
 export function lanSnapshotChanged(prev: LanSnapshot, next: LanSnapshot): boolean {
@@ -42,7 +56,7 @@ export function readCarrierLinks(sysfsRoot = "/sys/class/net"): string[] {
   }
   const links: string[] = [];
   for (const name of names) {
-    if (name === "lo") continue;
+    if (!isLanWatchInterface(name)) continue;
     try {
       const carrier = readFileSync(`${sysfsRoot}/${name}/carrier`, "utf8").trim();
       if (carrier) links.push(`${name}=${carrier}`);
@@ -227,13 +241,16 @@ export function listenLanUdp(options: {
 }
 
 /** 受けた datagram を、別ネットワークの同じポート番号へ渡す。 */
+export type ListenLanForwarder = ListenLanUdp & { relayUrl?: string };
+
 export function startTuyaLanForwarder(options?: {
   upstreamHost?: string;
   ports?: readonly number[];
   upstreamPort?: (listenPort: number) => number;
   watch?: boolean;
   onPortListening?: (port: number) => void;
-}): ListenLanUdp {
+  relayBind?: string;
+}): ListenLanForwarder {
   const upstreamHost = options?.upstreamHost ?? process.env.YUI_TUYA_LAN_UPSTREAM?.trim();
   if (!upstreamHost) throw new Error("YUI_TUYA_LAN_UPSTREAM が無い");
   const ports = options?.ports ?? [6666, 6667];
@@ -250,12 +267,151 @@ export function startTuyaLanForwarder(options?: {
       sender.send(msg, upstreamPort(port), upstreamHost);
     },
   });
+  const relay = startTuyaLanRelay(options?.relayBind ?? process.env.YUI_TUYA_LAN_RELAY_BIND?.trim());
   return {
-    ready: listen.ready,
+    ready: Promise.all([listen.ready, relay?.ready ?? Promise.resolve()]).then(() => undefined),
     rebind: listen.rebind,
+    relayUrl: relay?.url,
     async close() {
       await listen.close();
+      await relay?.close();
       await closeQuiet(sender);
     },
   };
+}
+
+const RELAY_TIMEOUT_MS = 5000;
+
+/** 55aa フレームの長さ欄だけ見て、1 フレーム分揃ったか見る。CRC は呼ぶ側が判定する。 */
+export function tuyaFrameTotal(buf: Buffer): number | undefined {
+  if (buf.length < 16) return undefined;
+  return 16 + buf.readUInt32BE(12);
+}
+
+function readRequestJson(req: IncomingMessage): Promise<{ host: string; port: number; frame: string }> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => {
+      try {
+        const json = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { host?: unknown; port?: unknown; frame?: unknown };
+        if (typeof json.host !== "string" || !json.host) throw new Error("host");
+        if (typeof json.port !== "number" || !Number.isInteger(json.port) || json.port < 1 || json.port > 65535) {
+          throw new Error("port");
+        }
+        if (typeof json.frame !== "string" || !json.frame) throw new Error("frame");
+        resolve({ host: json.host, port: json.port, frame: json.frame });
+      } catch {
+        reject(new Error("Smart Life 直結: 受け役の要求が読めません"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function exchangeOnce(host: string, port: number, frame: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let done = false;
+    const finish = (fn: () => void) => {
+      if (done) return;
+      done = true;
+      socket.destroy();
+      fn();
+    };
+    const socket = createConnection({ host, port }, () => {
+      socket.write(frame);
+    });
+    socket.setTimeout(RELAY_TIMEOUT_MS);
+    socket.on("timeout", () => finish(() => reject(new Error(`Smart Life 直結: ${host} が ${RELAY_TIMEOUT_MS / 1000} 秒以内に応答しません`))));
+    socket.on("error", (err) => finish(() => reject(new Error(`Smart Life 直結: ${host} へ届きません（${err.message}）`))));
+    socket.on("data", (chunk) => {
+      chunks.push(chunk);
+      const buf = Buffer.concat(chunks);
+      const total = tuyaFrameTotal(buf);
+      if (total != null && buf.length >= total) finish(() => resolve(buf.subarray(0, total)));
+    });
+    socket.on("close", () => finish(() => reject(new Error(`Smart Life 直結: ${host} が応答前に切断しました`))));
+  });
+}
+
+export type ListenLanRelay = { ready: Promise<void>; url: string; close: () => Promise<void> };
+
+/** 容器から届かない LAN の TCP を、ホストの口で中継する。 */
+export function startTuyaLanRelay(bind?: string): ListenLanRelay | undefined {
+  const raw = bind?.trim();
+  if (!raw) return undefined;
+  const sep = raw.lastIndexOf(":");
+  const host = raw.slice(0, sep);
+  const port = Number(raw.slice(sep + 1));
+  if (!host || !Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error(`Smart Life 直結: 受け役の待ち受けが読めません（${raw}）`);
+  }
+  let server: Server | undefined;
+  const ready = new Promise<void>((resolve, reject) => {
+    server = createServer((req, res) => {
+      void handleRelayRequest(req, res);
+    });
+    server.on("error", reject);
+    server.listen(port, host, () => {
+      server?.off("error", reject);
+      server?.on("error", (err) => {
+        console.error("[yui] smartlife lan relay", err.message);
+      });
+      console.error("[yui] smartlife lan relay", `http://${host}:${(server?.address() as { port: number } | null)?.port ?? port}`);
+      resolve();
+    });
+  });
+  return {
+    ready,
+    get url() {
+      const addr = server?.address();
+      if (!addr || typeof addr === "string") return `http://${host}:${port}`;
+      return `http://${addr.address}:${addr.port}`;
+    },
+    close() {
+      const current = server;
+      server = undefined;
+      if (!current) return Promise.resolve();
+      return new Promise((resolve) => current.close(() => resolve()));
+    },
+  };
+}
+
+async function handleRelayRequest(req: IncomingMessage, res: ServerResponse) {
+  const write = (status: number, body: unknown) => {
+    res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(body));
+  };
+  if (req.method !== "POST" || req.url !== "/exchange") {
+    write(404, { error: "Smart Life 直結: 受け役にその口はありません" });
+    return;
+  }
+  try {
+    const body = await readRequestJson(req);
+    const frame = await exchangeOnce(body.host, body.port, Buffer.from(body.frame, "base64"));
+    write(200, { frame: frame.toString("base64") });
+  } catch (err) {
+    write(502, { error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+/** 容器側。受け役へ 1 フレーム渡し、機器の応答フレームを返す。 */
+export async function relayLanTcp(relayUrl: string, host: string, port: number, frame: Buffer): Promise<Buffer> {
+  let res: Response;
+  try {
+    res = await fetch(new URL("/exchange", relayUrl), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ host, port, frame: frame.toString("base64") }),
+      signal: AbortSignal.timeout(RELAY_TIMEOUT_MS + 1000),
+    });
+  } catch (err) {
+    throw new Error(`Smart Life 直結: 受け役へ届きません（${err instanceof Error ? err.message : err}）`);
+  }
+  const json = (await res.json()) as { frame?: string; error?: string };
+  if (!res.ok || !json.frame) {
+    throw new Error(json.error || `Smart Life 直結: 受け役が HTTP ${res.status}`);
+  }
+  return Buffer.from(json.frame, "base64");
 }

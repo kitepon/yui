@@ -9,7 +9,10 @@ import {
   lanSnapshotChanged,
   listenLanUdp,
   readCarrierLinks,
+  relayLanTcp,
   startTuyaLanForwarder,
+  startTuyaLanRelay,
+  tuyaFrameTotal,
 } from "./lan-udp.ts";
 
 function iface(address: string): NetworkInterfaceInfo {
@@ -46,6 +49,39 @@ function closeSocket(socket: Socket): Promise<void> {
     socket.close(() => resolve());
   });
 }
+
+test("docker の橋はスナップショットに入れない", () => {
+  const root = mkdtempSync(join(tmpdir(), "yui-lan-"));
+  try {
+    mkdirSync(join(root, "eth0"));
+    writeFileSync(join(root, "eth0", "carrier"), "1\n");
+    mkdirSync(join(root, "docker0"));
+    writeFileSync(join(root, "docker0", "carrier"), "1\n");
+    mkdirSync(join(root, "br-02f90251c9cb"));
+    writeFileSync(join(root, "br-02f90251c9cb", "carrier"), "1\n");
+    const snap = assembleLanSnapshot(
+      {
+        eth0: [iface("192.168.1.2")],
+        docker0: [iface("172.17.0.1")],
+        "br-02f90251c9cb": [iface("172.16.240.1")],
+      },
+      readCarrierLinks(root),
+    );
+    assert.deepEqual(snap.ipv4, ["eth0=192.168.1.2"]);
+    assert.deepEqual(snap.links, ["eth0=1"]);
+    const flapped = assembleLanSnapshot(
+      {
+        eth0: [iface("192.168.1.2")],
+        docker0: [iface("172.17.0.1")],
+        "br-aaaaaaaaaaaa": [iface("172.18.0.1")],
+      },
+      ["eth0=1", "docker0=0"],
+    );
+    assert.equal(lanSnapshotChanged(snap, flapped), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("IPv4 か carrier が変わったときだけ開き直す", () => {
   const root = mkdtempSync(join(tmpdir(), "yui-lan-"));
@@ -133,6 +169,38 @@ test("受けた datagram を上流のポートへ渡す", async () => {
     await closeSocket(client);
     await closeSocket(upstream);
     await forwarder.close();
+  }
+});
+
+test("55aa フレームは長さ欄で 1 枚分を切る", () => {
+  const buf = Buffer.alloc(24);
+  buf.writeUInt32BE(8, 12);
+  assert.equal(tuyaFrameTotal(buf.subarray(0, 10)), undefined);
+  assert.equal(tuyaFrameTotal(buf), 24);
+});
+
+test("受け役は容器の代わりに機器へ TCP して応答フレームを返す", async () => {
+  const { createServer } = await import("node:net");
+  const payload = Buffer.from("REPLYOK!!");
+  const reply = Buffer.alloc(16 + payload.length);
+  reply.writeUInt32BE(0x000055aa, 0);
+  reply.writeUInt32BE(payload.length, 12);
+  payload.copy(reply, 16);
+  const device = createServer((socket) => {
+    socket.on("data", () => socket.end(reply));
+  });
+  const devicePort = await new Promise<number>((resolve) => {
+    device.listen(0, "127.0.0.1", () => resolve((device.address() as { port: number }).port));
+  });
+  const relay = startTuyaLanRelay("127.0.0.1:0");
+  assert.ok(relay);
+  try {
+    await relay.ready;
+    const got = await relayLanTcp(relay.url, "127.0.0.1", devicePort, Buffer.from("QUERY"));
+    assert.deepEqual(got, reply);
+  } finally {
+    await relay.close();
+    await new Promise<void>((resolve) => device.close(() => resolve()));
   }
 });
 

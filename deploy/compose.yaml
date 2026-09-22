@@ -23,6 +23,8 @@ services:
       TZ: ${TZ:-Asia/Tokyo}
       PORT: "8080"
       HOST: 0.0.0.0
+      # 家の LAN への TCP は、host network の受け役が中継する。
+      YUI_TUYA_LAN_RELAY: http://${YUI_LAN_GW:-172.16.240.1}:18863
     volumes:
       - yui-data:/data
     ports:
@@ -67,6 +69,7 @@ services:
     command: ["node", "--experimental-strip-types", "src/lib/home/tuya-lan-forward.ts"]
     environment:
       YUI_TUYA_LAN_UPSTREAM: ${YUI_APP_ADDR:-172.16.240.10}
+      YUI_TUYA_LAN_RELAY_BIND: ${YUI_LAN_GW:-172.16.240.1}:18863
       TZ: ${TZ:-Asia/Tokyo}
     depends_on:
       - app

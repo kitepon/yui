@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
 import { createConnection } from "node:net";
 import { crc32 } from "node:zlib";
 import type { DevicePatch } from "./device-patch.ts";
-import { listenLanUdp, type ListenLanUdp } from "./lan-udp.ts";
+import { listenLanUdp, relayLanTcp, type ListenLanUdp } from "./lan-udp.ts";
 import { applyTuyaStatus, tuyaCommandsFromPatch } from "./tuya.ts";
 import type { Device, TuyaLocalDevice } from "./types.ts";
 
@@ -15,7 +15,8 @@ import type { Device, TuyaLocalDevice } from "./types.ts";
  *
  * 機器の居場所は、機器自身が LAN へ 5 秒ごとに送る名乗り（3.1 は UDP 6666 に平文、
  * 3.3 以降は UDP 6667 に共通鍵で暗号化）を結が聞いて覚える。宛先を人が書くことはない。
- * Docker ではホストの LAN に直接開いた受け役が datagram を容器へ渡す。受け口は、
+ * Docker ではホストの LAN に直接開いた受け役が datagram を容器へ渡し、TCP 6668 の
+ * 読み書きも受け役が中継する。容器から家の LAN へは届かない。受け口は、
  * アドレスかリンクが変わったときと、ソケットが死んだときに開き直す。
  *
  * 結が読み書きできるのは version 3.1 と 3.3。3.1 は読み取りが平文で、操作だけ鍵で暗号化して
@@ -161,8 +162,19 @@ export function decodeDps(localKey: string, data: Buffer): Record<string, unknow
   return json.dps;
 }
 
+function parseExchange(buf: Buffer): TuyaLanFrame {
+  const parsed = parseFrame(buf);
+  if (!parsed) throw new Error("Smart Life 直結: 応答が短すぎます");
+  return parsed;
+}
+
 /** 機器へ 1 回つなぎ、1 フレーム送って最初の応答フレームを返す。 */
-function exchange(target: TuyaLanTarget, frame: Buffer): Promise<TuyaLanFrame> {
+async function exchange(target: TuyaLanTarget, frame: Buffer): Promise<TuyaLanFrame> {
+  const relay = process.env.YUI_TUYA_LAN_RELAY?.trim();
+  const port = target.port ?? PORT;
+  if (relay) {
+    return parseExchange(await relayLanTcp(relay, target.host, port, frame));
+  }
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let done = false;
@@ -172,7 +184,7 @@ function exchange(target: TuyaLanTarget, frame: Buffer): Promise<TuyaLanFrame> {
       socket.destroy();
       fn();
     };
-    const socket = createConnection({ host: target.host, port: target.port ?? PORT }, () => {
+    const socket = createConnection({ host: target.host, port }, () => {
       socket.write(frame);
     });
     socket.setTimeout(TIMEOUT_MS);
