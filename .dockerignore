@@ -4,3 +4,8 @@
 !package.json
 !scripts
 !scripts/hosted-metrics.mjs
+!src
+!src/lib
+!src/lib/home
+!src/lib/home/lan-udp.ts
+!src/lib/home/tuya-lan-forward.ts
