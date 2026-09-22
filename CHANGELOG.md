@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-22
+
+本番 image `yuihome:20260922-25f23b3`。Bluetooth 押し `yuihome-switchbot-ble:20260922-25f23b3`。
+
+### 変わったこと
+
+- Smart Life の名乗り（UDP 6666 / 6667）を、Docker の中継ではなくホストの LAN で直接受ける。ルーター再起動でアドレスやリンクが変わると、受け口を閉じて開き直す。ウェブの待受は変えない
+
+### 限界
+
+- 機器が名乗りを出すまでの時間は縮まらない。3.1 は Smart Life アプリが LAN を握っているあいだ、数分黙ることがある
+
 ## 2026-09-21
 
 本番 image `yuihome:20260921-edfdb2a`。Bluetooth 押し `yuihome-switchbot-ble:20260921-edfdb2a`。
