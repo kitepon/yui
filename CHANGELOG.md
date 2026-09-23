@@ -2,13 +2,14 @@
 
 ## 2026-09-23
 
-本番 image `yuihome:20260923-c41cb9b`。Bluetooth 押し `yuihome-switchbot-ble:20260923-c41cb9b`。
+本番 image `yuihome:20260923-21c7edb`。Bluetooth 押し `yuihome-switchbot-ble:20260923-21c7edb`。
 
 ### 変わったこと
 
 - Smart Life の名乗りが一時的に途切れても、直近30分以内にLANで読めた機器は最後の宛先で操作と読取を試す
 - LAN読取に失敗した機器をIoT Coreへ切り替えず、失敗理由を表示する。カードでは失敗時に「LAN不可」、読取記録が古い場合はLAN印を外す
 - Tuyaの機器一覧が返す `localKey` / `isOnline` / `productName` と、仕様の `dpId` を同期時に読む。機器一覧はAPIの20台上限に合わせてページを送る
+- README、配備・Alexa手順、アプリ内ヘルプに LAN の表示と障害時の確認方法を記載する
 
 ### 限界
 
