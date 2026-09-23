@@ -71,6 +71,19 @@ function TuyaHelp() {
         </Note>
       </div>
 
+      <div>
+        <h2 className="font-display text-xl text-fg">6. LAN の状態を確認する</h2>
+        <p>
+          同期後、同じ LAN にいるローカル版 3.1 / 3.3 の機器は直接読み書きします。機器の IP を入力する必要はありません。
+          接続タブに機器ごとの経路を表示します。
+        </p>
+        <Note>
+          「LAN」は直近30分以内に読めた状態、「LAN不可」は表示された理由で直結できない状態です。
+          読取に失敗した対応機器はクラウドへ切り替えません。鍵が無い機器、LAN に見つからない機器、版 3.4 / 3.5 はクラウドを使います。
+          IoT Core の試用枠を使い切るとクラウド経路と新しい機器の鍵取得は失敗しますが、保存済みの鍵で動く LAN 機器には影響しません。
+        </Note>
+      </div>
+
       <p>
         開発者サイトは{" "}
         <a className="text-primary underline" href="https://iot.tuya.com" target="_blank" rel="noreferrer">

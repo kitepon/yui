@@ -38,6 +38,8 @@ Yui does not ship Home Assistant. Device kinds are copied from [Home Assistant c
 - **SwitchBot** — bots, plugs, lights, curtains, locks, meters/sensors, and IR air conditioners (temperature, mode, fan speed). Vacuums and humidifiers appear in the list but have no dedicated controls.
 - **Smart Life** — lights (brightness), plugs, curtains, air conditioners, and temperature/humidity/water sensors. Commands are sent only for data points the device actually has. Unknown Tuya categories stay `other`.
 
+Initial Smart Life sync and retrieval of keys for new devices require the Tuya IoT Platform. After sync, Yui reads and controls local-protocol 3.1 and 3.3 devices found on the same LAN. If announcements pause, it tries an address successfully read within the past 30 minutes. A LAN read failure is shown as “LAN不可” with its reason; it does not switch that device to the cloud. Devices not found on the LAN, and versions 3.4 and 3.5, use Tuya's cloud service.
+
 ## Hosted or self-hosted
 
 |            | Hosted service                                     | Self-hosted                          |
@@ -62,6 +64,7 @@ Development runs at `http://localhost:8080`. Production is designed for Docker b
 Required values are `BETTER_AUTH_SECRET`, `HOME_SECRETS_KEY`, and `BETTER_AUTH_URL`. Losing `HOME_SECRETS_KEY` makes stored device tokens impossible to decrypt.
 
 For direct Daikin control, set `YUI_DAIKIN_ADDRS` (for example `リビング=192.168.0.10`) and run Yui on the same LAN as the home.
+For supported Smart Life devices, sync once to save their keys and run Yui on the same LAN. You do not enter device IP addresses. The [deployment guide](deploy/README.md) covers the LAN listener and firewall requirements.
 
 Product decisions live in [docs/00_direction.md](docs/00_direction.md).
 
@@ -71,6 +74,7 @@ Product decisions live in [docs/00_direction.md](docs/00_direction.md).
 - Pre-2018 Daikin adapters using the older API are not supported.
 - Direct Daikin control has been measured on one 2020 Urusara X unit; other models are not yet verified. Airflow direction is auto, fixed, or swing — stepped vane positions, Powerful, and Streamer are not exposed.
 - Unknown cloud device types, vacuums, humidifiers, and Nature Remo left/right swing are out of scope. Smart Life cannot send commands the device does not expose.
+- Smart Life devices not found on the LAN and local-protocol versions 3.4 and 3.5 require Tuya IoT Core. Exhausting its trial quota prevents cloud operations and retrieval of keys for newly added devices, but does not invalidate keys already saved for LAN devices.
 - While releases are `v0.x`, long-term database and configuration upgrade compatibility is not guaranteed.
 - The native iPhone app and the production Cloudflare migration remain future work.
 

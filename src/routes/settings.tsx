@@ -305,7 +305,7 @@ export function SettingsPage() {
         <ConnectorCard
           title="Smart Life / Tuya"
           badge="直結"
-          desc="iot.tuya.com のプロジェクトから Access ID / Secret を、連携した Smart Life ユーザーから UID を取ります。同期で機器ごとの鍵を受け取り、以後は結と同じ LAN にいる機器をクラウドを通さず直接読み書きします。"
+          desc="iot.tuya.com から Access ID / Secret と UID を取得し、同期で機器ごとの鍵を保存します。同じ LAN にいるローカル版 3.1 / 3.3 の機器は直接読み書きします。LAN の失敗理由とクラウドに残る機器は下に表示します。"
           helpTo="/help/tuya"
           connected={connectors.smartlife.connected}
           deviceCount={connectors.smartlife.deviceCount}
