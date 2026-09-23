@@ -116,6 +116,15 @@ test("名乗りを聞いた 3.3 の機器で鍵があるものだけ LAN の宛�
   assert.equal(lookupTuyaLan(ID), undefined);
 });
 
+test("名乗りが途切れても直近に読めた LAN 宛先で操作を続ける", () => {
+  const local = { [ID]: { localKey: KEY, dps: WSDCG_DPS } };
+  const fresh = sensor({ lan: { host: "192.168.1.54", version: "3.3", readAt: new Date().toISOString(), error: "前回は応答なし" } });
+  assert.equal(tuyaLanTargetOf(fresh, local)?.host, "192.168.1.54");
+  const stale = sensor({ lan: { host: "192.168.1.54", version: "3.3", readAt: new Date(Date.now() - 31 * 60 * 1000).toISOString() } });
+  assert.equal(tuyaLanTargetOf(stale, local), undefined);
+  assert.equal(tuyaLanTargetOf(fresh, {}), undefined);
+});
+
 /** 擬似機器: DP_QUERY に dps を返し、CONTROL は受けた dps を控えて retcode 0 を返す。 */
 function fakeDevice(dps: Record<string, unknown>) {
   const received: Record<string, unknown>[] = [];
@@ -184,17 +193,17 @@ test("LAN で読めたセンサーは温度が入り lan.readAt が付き、ク�
   assert.equal(other.lan, undefined, "名乗りの無い機器には lan を付けない");
 });
 
-test("名乗りが途切れても、直近に読めた LAN の印は残す。30 分より前の印は消す", async () => {
+test("名乗りが途切れても直近の LAN 宛先を試し、30 分より前の印は消す", async () => {
   noteTuyaLanAnnouncement({ gwId: ID, ip: "192.168.1.54", version: "3.3" }, Date.now() - 31 * 60 * 1000);
-  const fresh = sensor({ lan: { host: "192.168.1.54", version: "3.3", readAt: new Date().toISOString() } });
+  const fresh = sensor({ lan: { host: "127.0.0.1", version: "3.3", readAt: new Date().toISOString() } });
   const stale = sensor({
     id: "smartlife:old",
     nativeId: "old-sensor",
     lan: { host: "192.168.1.99", version: "3.3", readAt: new Date(Date.now() - 31 * 60 * 1000).toISOString() },
   });
-  await tuyaLanRefreshSensors([fresh, stale], { [ID]: { localKey: KEY, dps: WSDCG_DPS } });
-  assert.equal(fresh.lan?.host, "192.168.1.54");
-  assert.equal(fresh.lan?.error, undefined);
+  const res = await tuyaLanRefreshSensors([fresh, stale], { [ID]: { localKey: KEY, dps: WSDCG_DPS } });
+  assert.deepEqual([...res.attempted], [fresh.id]);
+  assert.match(fresh.lan?.error ?? "", /届きません|応答/);
   assert.equal(stale.lan, undefined);
 });
 
@@ -203,6 +212,7 @@ test("届かない機器は lan.error に理由が残り、値は前のまま。
   const d = sensor({ temperature: 21.5 });
   const res = await tuyaLanRefreshSensors([d], { [ID]: { localKey: KEY, dps: WSDCG_DPS } });
   assert.equal(res.errors.length, 1);
+  assert.deepEqual([...res.attempted], [d.id], "LAN 失敗時もクラウドの対象にはしない");
   assert.equal(d.temperature, 21.5);
   assert.match(d.lan?.error ?? "", /届きません|応答/);
 });

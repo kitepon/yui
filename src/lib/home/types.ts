@@ -61,12 +61,24 @@ export interface Device {
 /** LAN 上の Smart Life 機器の居場所と直近の結果。IP は秘密ではないので画面に出す。 */
 export interface DeviceLan {
   host: string;
-  /** Tuya ローカルプロトコルの版。結が読み書きできるのは 3.3 だけ。 */
+  /** Tuya ローカルプロトコルの版。結が読み書きできるのは 3.1 と 3.3。 */
   version: string;
   /** 直近に LAN で読めた時刻。 */
   readAt?: string;
   /** 直近の LAN の失敗。成功すると消える。 */
   error?: string;
+}
+
+/** LAN の名乗りと最後の読取結果を有効とする時間。 */
+export const TUYA_LAN_SEEN_TTL_MS = 30 * 60 * 1000;
+
+export function recentDeviceLan(device: Pick<Device, "lan">, now = Date.now()): (DeviceLan & { readAt: string }) | undefined {
+  const lan = device.lan;
+  if (!lan?.readAt) return undefined;
+  const readAt = Date.parse(lan.readAt);
+  return Number.isFinite(readAt) && now - readAt <= TUYA_LAN_SEEN_TTL_MS
+    ? { ...lan, readAt: lan.readAt }
+    : undefined;
 }
 
 /** 同期で受け取った Smart Life 機器の LAN 用の鍵と dp 対応。credentials と一緒に暗号化して保存する。 */

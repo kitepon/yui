@@ -254,6 +254,16 @@ test("機器一覧の local_key を拾う。16 文字でないものは鍵とし
   assert.deepEqual([...keys], [["eb70", "0123456789abcdef"]]);
 });
 
+test("Tuya の新しい機器一覧の localKey と isOnline を読む", () => {
+  const raw = { id: "new", localKey: "0123456789abcdef", isOnline: true, category: "cz", productName: "コンセント" };
+  const keys = new Map<string, string>();
+  collectLocalKeys([raw], keys);
+  assert.equal(keys.get("new"), "0123456789abcdef");
+  const [device] = mapTuyaDevices([raw]);
+  assert.equal(device.online, true);
+  assert.equal(device.name, "コンセント");
+});
+
 test("specifications の status と functions から dp 番号 → コードを作る", () => {
   const dps = dpMapFromSpecification({
     category: "wsdcg",
@@ -268,4 +278,5 @@ test("specifications の status と functions から dp 番号 → コードを�
   });
   assert.deepEqual(dps, { "1": "va_temperature", "9": "temp_unit_convert", "10": "maxtemp_set" });
   assert.deepEqual(dpMapFromSpecification(null), {});
+  assert.deepEqual(dpMapFromSpecification({ functions: [{ code: "switch_1", dpId: 1 }] }), { "1": "switch_1" });
 });

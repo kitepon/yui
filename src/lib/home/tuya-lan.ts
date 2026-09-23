@@ -4,7 +4,7 @@ import { crc32 } from "node:zlib";
 import type { DevicePatch } from "./device-patch.ts";
 import { listenLanUdp, relayLanTcp, type ListenLanUdp } from "./lan-udp.ts";
 import { applyTuyaStatus, tuyaCommandsFromPatch } from "./tuya.ts";
-import type { Device, TuyaLocalDevice } from "./types.ts";
+import { recentDeviceLan, TUYA_LAN_SEEN_TTL_MS, type Device, type TuyaLocalDevice } from "./types.ts";
 
 /**
  * Smart Life（Tuya）機器の LAN 直結。
@@ -34,7 +34,6 @@ const TIMEOUT_MS = 5000;
  * Smart Life アプリが LAN 接続を握っている間は名乗りを止める（実測で数分の空白）。
  * IP が変わっていれば読み書きが typed error になって画面に出るので、長めに信じてよい。
  */
-const SEEN_TTL_MS = 30 * 60 * 1000;
 const PREFIX = 0x000055aa;
 const SUFFIX = 0x0000aa55;
 const CMD_CONTROL = 0x07;
@@ -304,20 +303,28 @@ export function noteTuyaLanAnnouncement(a: TuyaLanAnnouncement & { port?: number
 
 export function lookupTuyaLan(deviceId: string, now = Date.now()): TuyaLanSeen | undefined {
   const s = seen.get(deviceId);
-  if (!s || now - s.seenAt > SEEN_TTL_MS) return undefined;
+  if (!s || now - s.seenAt > TUYA_LAN_SEEN_TTL_MS) return undefined;
   return s;
+}
+
+/** 最後に読み取れた宛先は、名乗りが一時的に途切れても同じ時間だけ使う。 */
+export function recentTuyaLan(device: Pick<Device, "lan">, now = Date.now()): TuyaLanSeen | undefined {
+  const lan = recentDeviceLan(device, now);
+  return lan && SUPPORTED_VERSIONS.has(lan.version)
+    ? { host: lan.host, version: lan.version, seenAt: Date.parse(lan.readAt) }
+    : undefined;
 }
 
 /* ---------- 結の機器との接続 ---------- */
 
 /** LAN で読み書きできる機器か。鍵と dp 対応があり、名乗りを聞いており、版が 3.1 か 3.3 のとき。 */
 export function tuyaLanTargetOf(
-  device: Pick<Device, "connector" | "nativeId">,
+  device: Pick<Device, "connector" | "nativeId" | "lan">,
   local: Record<string, TuyaLocalDevice> | undefined,
 ): (TuyaLanTarget & { dps: Record<string, string> }) | undefined {
   if (device.connector !== "smartlife") return undefined;
   const entry = local?.[device.nativeId];
-  const where = lookupTuyaLan(device.nativeId);
+  const where = lookupTuyaLan(device.nativeId) ?? recentTuyaLan(device);
   if (!entry || !where || !SUPPORTED_VERSIONS.has(where.version)) return undefined;
   return {
     deviceId: device.nativeId,
@@ -364,8 +371,9 @@ function dpsFromCommands(commands: Array<{ code: string; value: unknown }>, map:
 export async function tuyaLanRefreshSensors(
   devices: Device[],
   local: Record<string, TuyaLocalDevice> | undefined,
-): Promise<{ read: Set<string>; errors: Error[] }> {
+): Promise<{ read: Set<string>; attempted: Set<string>; errors: Error[] }> {
   const read = new Set<string>();
+  const attempted = new Set<string>();
   const errors: Error[] = [];
   await Promise.all(
     devices.map(async (device) => {
@@ -381,13 +389,12 @@ export async function tuyaLanRefreshSensors(
         if (where) {
           // LAN に居るのに鍵が無い。初回同期の前か、鍵を返さない一覧だった。
           device.lan = { host: where.host, version: where.version, error: "鍵がありません。接続タブで Smart Life を同期すると受け取ります" };
-        } else if (device.lan?.readAt && Date.now() - Date.parse(device.lan.readAt) <= SEEN_TTL_MS) {
-          // 名乗りは途切れる（3.1 はアプリやこちらの読み取り中に止まる）。直近に読めた印は残す。
         } else if (device.lan) {
           delete device.lan;
         }
         return;
       }
+      attempted.add(device.id);
       try {
         const status = statusFromDps(await queryDps(target), target.dps);
         applyTuyaStatus(device, status);
@@ -403,7 +410,7 @@ export async function tuyaLanRefreshSensors(
       }
     }),
   );
-  return { read, errors };
+  return { read, attempted, errors };
 }
 
 /** LAN で操作する。機器がいま持つ dp を読んでから、結の操作をその dp に写して送る。 */

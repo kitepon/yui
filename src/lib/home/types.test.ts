@@ -6,11 +6,18 @@ import {
   connectorBadge,
   migrateAutomation,
   migrateOutdoorSensorTrigger,
+  recentDeviceLan,
   sensorMetricsOf,
   sensorTempLabel,
   stripConnectorFromExtra,
   type Device,
 } from "./types.ts";
+
+test("LAN の成功表示は直近30分の読取結果だけにする", () => {
+  const now = Date.now();
+  assert.ok(recentDeviceLan({ lan: { host: "192.168.1.12", version: "3.1", readAt: new Date(now).toISOString() } }, now));
+  assert.equal(recentDeviceLan({ lan: { host: "192.168.1.12", version: "3.1", readAt: new Date(now - 31 * 60 * 1000).toISOString() } }, now), undefined);
+});
 
 test("気温の別名は extra をラベルにする", () => {
   assert.equal(sensorTempLabel({ extra: "水温" }), "水温");

@@ -53,6 +53,7 @@ export async function executeDevice(
         const lan = tuyaLanTargetOf(device, snap.credentials.tuyaLocal);
         if (lan) {
           await tuyaLanControl(lan, next, patch);
+          next.lan = { host: lan.host, version: lan.version, readAt: new Date().toISOString() };
         } else {
           await tuyaControl(
             snap.credentials.tuyaAccessId,

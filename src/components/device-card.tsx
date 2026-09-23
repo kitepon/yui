@@ -15,6 +15,7 @@ import {
   stripConnectorFromExtra,
   acStatusLine,
   isMomentaryBot,
+  recentDeviceLan,
   type Device,
   type DeviceKind,
 } from "@/lib/home/types";
@@ -68,6 +69,7 @@ export function DeviceCard({
   const active = device.kind === "sensor" ? true : Boolean(device.on);
   const canToggle = device.kind !== "sensor" && device.kind !== "other";
   const tapToggles = canToggle && (device.kind === "light" || device.kind === "plug" || device.kind === "bot" || device.kind === "lock" || device.kind === "ir");
+  const lan = device.lan?.error ? device.lan : recentDeviceLan(device);
 
   return (
     <div
@@ -105,15 +107,15 @@ export function DeviceCard({
           >
             {connectorBadge(device)}
           </span>
-          {device.lan ? (
+          {lan ? (
             <span
               className={cn(
                 "rounded-sm px-1.5 py-0.5 text-[10px] tracking-wide",
-                device.lan.error ? "bg-danger/15 text-danger" : "bg-ok/15 text-ok",
+                lan.error ? "bg-danger/15 text-danger" : "bg-ok/15 text-ok",
               )}
-              title={device.lan.error ?? `LAN 直結 ${device.lan.host}`}
+              title={lan.error ?? `LAN 直結 ${lan.host}`}
             >
-              LAN
+              {lan.error ? "LAN不可" : "LAN"}
             </span>
           ) : null}
         </span>

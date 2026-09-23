@@ -245,15 +245,15 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
       /* keep last */
     }
   }
-  // Smart Life は LAN で読める機器を先に読む。LAN で読めた機器はクラウドへ問い合わせない
-  // （IoT Core の枠を使わない）。LAN に居ない機器だけクラウドで読む。
+  // Smart Life の LAN 宛先を持つ機器は、読み取り失敗時もクラウドへ切り替えない。
+  // 届かない理由を LAN のエラーとして残し、LAN 宛先の無い機器だけクラウドで読む。
   if (cur.devices.some((d) => d.connector === "smartlife")) {
     const devices = cur.devices.map((d) => ({ ...d }));
     const lan = await tuyaLanRefreshSensors(devices, cur.credentials.tuyaLocal);
     for (const err of lan.errors) console.error("[yui] smartlife lan", homeId, err.message);
     cur = await saveHomeRecord(homeId, { devices });
     const tuya = cur.credentials;
-    const viaCloud = cur.devices.filter((d) => !(d.connector === "smartlife" && lan.read.has(d.id)));
+    const viaCloud = cur.devices.filter((d) => !lan.attempted.has(d.id));
     if (
       tuya.tuyaAccessId.trim() &&
       tuya.tuyaSecret.trim() &&

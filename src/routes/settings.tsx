@@ -11,7 +11,7 @@ import { saveCredentials, serverSync } from "@/lib/home/control-client";
 import { BILLING } from "@/lib/billing-plan";
 import { useHome } from "@/lib/home/store";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
-import type { Device } from "@/lib/home/types";
+import { recentDeviceLan, type Device } from "@/lib/home/types";
 import { useHomeHydrated } from "@/lib/home/use-hydrated";
 
 export const Route = createFileRoute("/settings")({
@@ -412,7 +412,7 @@ function SmartLifeLanStatus({
   discovery: HomeSnapshot["tuyaLan"] | null;
 }) {
   if (!devices.length) return null;
-  const viaLan = devices.filter((d) => d.lan && !d.lan.error).length;
+  const viaLan = devices.filter((d) => recentDeviceLan(d) && !d.lan?.error).length;
   return (
     <div className="mt-4 rounded-md border border-border bg-bg p-3">
       <div className="flex items-center justify-between">
@@ -431,7 +431,7 @@ function SmartLifeLanStatus({
             <span className="truncate text-fg">{d.name}</span>
             {d.lan?.error ? (
               <span className="shrink-0 text-right text-danger">{d.lan.error}</span>
-            ) : d.lan ? (
+            ) : d.lan && recentDeviceLan(d) ? (
               <span className="shrink-0 text-ok">
                 LAN {d.lan.host}
                 {d.lan.readAt ? ` · ${timeLabel(d.lan.readAt)}` : ""}

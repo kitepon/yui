@@ -137,11 +137,14 @@ type RawDevice = {
   deviceId?: string;
   name?: string;
   online?: boolean;
+  isOnline?: boolean;
   category?: string;
   product_name?: string;
+  productName?: string;
   status?: Array<{ code: string; value: unknown }>;
   /** LAN 直結の鍵。機器一覧 API が返す。再ペアリングまで変わらない。 */
   local_key?: string;
+  localKey?: string;
 };
 
 function rawId(d: RawDevice) {
@@ -152,12 +155,12 @@ function rawId(d: RawDevice) {
 export function collectLocalKeys(raw: RawDevice[], into: Map<string, string>) {
   for (const d of raw) {
     const id = rawId(d);
-    const key = d.local_key;
+    const key = d.local_key ?? d.localKey;
     if (id && typeof key === "string" && Buffer.byteLength(key, "utf8") === 16) into.set(id, key);
   }
 }
 
-type SpecItem = { code?: string; dp_id?: number | string };
+type SpecItem = { code?: string; dp_id?: number | string; dpId?: number | string };
 
 /** `/v1.1/devices/{id}/specifications` の functions と status から dp 番号 → コードを作る。 */
 export function dpMapFromSpecification(result: unknown): Record<string, string> {
@@ -165,7 +168,8 @@ export function dpMapFromSpecification(result: unknown): Record<string, string> 
   if (!result || typeof result !== "object") return dps;
   const obj = result as { functions?: SpecItem[]; status?: SpecItem[] };
   for (const item of [...(obj.status ?? []), ...(obj.functions ?? [])]) {
-    if (item.code && item.dp_id != null && dps[String(item.dp_id)] == null) dps[String(item.dp_id)] = item.code;
+    const id = item.dp_id ?? item.dpId;
+    if (item.code && id != null && dps[String(id)] == null) dps[String(id)] = item.code;
   }
   return dps;
 }
@@ -370,7 +374,7 @@ export function mapTuyaDevices(raw: RawDevice[], roomHint?: string): Device[] {
   for (const d of raw) {
     const nativeId = String(d.id || d.devId || d.device_id || d.deviceId || "");
     if (!nativeId) continue;
-    const name = d.name || d.product_name || nativeId;
+    const name = d.name || d.product_name || d.productName || nativeId;
     const cat = (d.category || "").toLowerCase();
     const reading = readingsFromTuyaStatus(d.status);
     const water = WATER_TEMP_CATS.has(cat) || isWaterName(name) || reading.water;
@@ -389,10 +393,10 @@ export function mapTuyaDevices(raw: RawDevice[], roomHint?: string): Device[] {
       id: `smartlife:${nativeId}`,
       name,
       room: guessRoom(name, roomHint),
-      extra: water ? "水温" : d.category || d.product_name,
+      extra: water ? "水温" : d.category || d.product_name || d.productName,
       brand: "smartlife",
       kind,
-      online: Boolean(d.online),
+      online: Boolean(d.online ?? d.isOnline),
       source: "live",
       nativeId,
       connector: "smartlife",
@@ -615,7 +619,6 @@ async function listForUid(
     `/v1.0/iot-01/associated-users/actions/devices?uid=${encoded}`,
     "/v1.0/iot-03/devices?page_no=1&page_size=100",
     "/v1.3/iot-03/devices?page_size=100",
-    "/v2.0/cloud/thing/device?page_size=100",
   ];
   for (const path of paths) {
     const result = await tryGet(host, accessId, secret, path, token);
@@ -633,6 +636,22 @@ async function listForUid(
     const rec = result as { last_row_key?: string; has_more?: boolean };
     if (!rec.has_more || !rec.last_row_key || rec.last_row_key === lastKey) break;
     lastKey = rec.last_row_key;
+  }
+
+  // v2.0 の一覧は最大 20 台ずつ。返す鍵と状態のフィールド名も旧 API と異なる。
+  let lastId = "";
+  const pagedIds = new Set<string>();
+  for (;;) {
+    const q = `/v2.0/cloud/thing/device?page_size=20${lastId ? `&last_id=${encodeURIComponent(lastId)}` : ""}`;
+    const result = await tryGet(host, accessId, secret, q, token);
+    if (!result) break;
+    const list = asDeviceList(result);
+    take(result);
+    if (list.length < 20) break;
+    const nextId = rawId(list[list.length - 1]);
+    if (!nextId || pagedIds.has(nextId)) break;
+    pagedIds.add(nextId);
+    lastId = nextId;
   }
 
   const homesRaw = await tryGet(host, accessId, secret, `/v1.0/users/${encoded}/homes`, token);
