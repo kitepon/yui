@@ -118,6 +118,7 @@ export function clientHome(snap: HomeSnapshot, host?: string | null, isOwner = f
   return {
     ...snap,
     credentials: publicCredentials(),
+    tuyaRegion: snap.credentials.tuyaRegion,
     credentialFlags: credentialFlags(snap.credentials),
     host: host ?? snap.host,
     runner: true,

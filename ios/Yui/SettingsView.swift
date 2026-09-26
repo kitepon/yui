@@ -2,12 +2,14 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.openURL) private var openURL
     @State private var natureToken = ""
     @State private var switchbotToken = ""
     @State private var switchbotSecret = ""
     @State private var tuyaAccessId = ""
     @State private var tuyaSecret = ""
     @State private var tuyaUid = ""
+    @State private var tuyaRegion = "auto"
     @State private var notice: String?
     @State private var showRooms = false
 
@@ -19,6 +21,7 @@ struct SettingsView: View {
             "tuyaAccessId": tuyaAccessId,
             "tuyaSecret": tuyaSecret,
             "tuyaUid": tuyaUid,
+            "tuyaRegion": tuyaRegion == session.home?.tuyaRegion ? "" : tuyaRegion,
         ].filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
@@ -38,6 +41,8 @@ struct SettingsView: View {
                         .foregroundStyle(YuiTheme.muted)
                 }
 
+                accountCard
+                billingCard
                 serverCard
 
                 Button { showRooms = true } label: {
@@ -58,15 +63,41 @@ struct SettingsView: View {
 
                 connectionCard("Nature Remo", id: "nature", symbol: "thermometer.medium") {
                     secretField("アクセストークン", text: $natureToken, saved: flag(\.natureToken))
+                    helpLink("トークンの発行方法", path: "/help/remo")
                 }
                 connectionCard("SwitchBot", id: "switchbot", symbol: "switch.2") {
                     secretField("トークン", text: $switchbotToken, saved: flag(\.switchbotToken))
                     secretField("シークレット", text: $switchbotSecret, saved: flag(\.switchbotSecret))
+                    helpLink("接続方法", path: "/help/switchbot")
+                }
+                if session.home?.daikinDirect == true {
+                    connectionCard("ダイキン · LAN直結", id: "daikin", symbol: "air.conditioner.horizontal") {
+                        Text("自宅の無線LAN内蔵エアコンと直接つながります")
+                            .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    }
+                }
+                if session.home?.odelicBridge == true {
+                    connectionCard("オーデリック · ブリッジ", id: "odelec", symbol: "lightbulb") {
+                        Text("自宅のブリッジを通して照明を操作します")
+                            .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    }
                 }
                 connectionCard("Smart Life", id: "smartlife", symbol: "network") {
                     secretField("Access ID", text: $tuyaAccessId, saved: flag(\.tuyaAccessId))
                     secretField("Secret", text: $tuyaSecret, saved: flag(\.tuyaSecret))
                     secretField("UID", text: $tuyaUid, saved: flag(\.tuyaUid))
+                    Picker("データセンター", selection: $tuyaRegion) {
+                        Text("自動").tag("auto")
+                        Text("America").tag("us")
+                        Text("Europe").tag("eu")
+                        Text("Japan").tag("jp")
+                        Text("Western Europe").tag("we")
+                        Text("India").tag("in")
+                        Text("China").tag("cn")
+                    }
+                    .tint(YuiTheme.accent)
+                    smartLifeLanStatus
+                    helpLink("Smart Life の接続方法", path: "/help/tuya")
                 }
 
                 Button {
@@ -115,6 +146,120 @@ struct SettingsView: View {
                 .environmentObject(session)
                 .presentationDragIndicator(.visible)
         }
+        .task {
+            tuyaRegion = session.home?.tuyaRegion ?? "auto"
+            #if DEBUG
+            if session.token == "visual-preview" { return }
+            #endif
+            await session.loadAccount()
+        }
+        .onChange(of: session.home?.tuyaRegion) { _, region in
+            if let region { tuyaRegion = region }
+        }
+    }
+
+    private var accountCard: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("アカウント")
+                .font(.system(size: 11, weight: .bold)).foregroundStyle(YuiTheme.muted)
+            Text(session.user?.email ?? "ログイン中")
+                .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+            Text("接続コード  \(session.home?.pairPin ?? "—")")
+                .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+            if let error = session.accountError {
+                Text(error).font(.system(size: 11)).foregroundStyle(YuiTheme.warning)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    private var billingCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("この結について")
+                .font(.system(size: 11, weight: .bold)).foregroundStyle(YuiTheme.muted)
+            if let billing = session.billingStatus {
+                if billing.configured {
+                    Text("月額\(billing.plans.monthlyYen)円 / 年額\(billing.plans.annualYen)円")
+                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+                    Text(billing.entitlement.message ?? "初回\(billing.plans.trialDays)日間は無料です")
+                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    if billing.entitlement.writable {
+                        billingButton("支払い方法の変更・解約", action: "portal")
+                    } else {
+                        HStack {
+                            billingButton("月額ではじめる", action: "checkout", plan: "monthly")
+                            billingButton("年額ではじめる", action: "checkout", plan: "annual")
+                        }
+                    }
+                } else {
+                    Text("無料で使えます")
+                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+                    Text("この結には課金も広告もありません")
+                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                }
+            } else if session.accountError == nil {
+                ProgressView("契約を確認しています").tint(YuiTheme.accent)
+            }
+            Button("契約状態を更新") { Task { await session.loadAccount(refreshBilling: true) } }
+                .font(.system(size: 11)).foregroundStyle(YuiTheme.accent)
+            HStack(spacing: 12) {
+                helpLink("利用規約", path: "/terms")
+                helpLink("プライバシー", path: "/privacy")
+                helpLink("特商法", path: "/legal")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    private func billingButton(_ title: String, action: String, plan: String? = nil) -> some View {
+        Button {
+            Task {
+                if let url = await session.billingURL(action: action, plan: plan) { openURL(url) }
+            }
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(YuiTheme.bg)
+                .frame(maxWidth: .infinity, minHeight: 45)
+                .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 13))
+        }
+    }
+
+    private var smartLifeLanStatus: some View {
+        let devices = (session.home?.liveDevices ?? []).filter { $0.connector == "smartlife" }
+        let viaLan = devices.filter { $0.lan?.recent == true && $0.lan?.error == nil }.count
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("LAN直結  \(viaLan)/\(devices.count) 台")
+                .font(.system(size: 12, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+            if let error = session.home?.tuyaLan?.error {
+                Text(error).font(.system(size: 11)).foregroundStyle(YuiTheme.warning)
+            }
+            if !flag(\.tuyaLocal) {
+                Text("機器の鍵がありません。同期すると受け取れます。")
+                    .font(.system(size: 11)).foregroundStyle(YuiTheme.muted)
+            }
+            ForEach(devices) { device in
+                HStack(alignment: .top) {
+                    Text(device.name).lineLimit(1).foregroundStyle(YuiTheme.fg)
+                    Spacer()
+                    Text(device.lan?.error ?? (device.lan?.recent == true ? "LAN \(device.lan?.host ?? "")" : "クラウド"))
+                        .foregroundStyle(device.lan?.error == nil ? YuiTheme.muted : YuiTheme.warning)
+                }
+                .font(.system(size: 11))
+            }
+        }
+        .padding(13)
+        .background(YuiTheme.bg, in: RoundedRectangle(cornerRadius: 13))
+    }
+
+    private func helpLink(_ title: String, path: String) -> some View {
+        Link(title, destination: URL(string: "https://yuihome.kitepon.dev\(path)")!)
+            .font(.system(size: 11))
+            .foregroundStyle(YuiTheme.accent)
     }
 
     private var serverCard: some View {

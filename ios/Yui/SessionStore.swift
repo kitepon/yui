@@ -8,6 +8,11 @@ final class SessionStore: ObservableObject {
     @Published var error: String?
     @Published var busy = false
     @Published var analysis: AnalysisData?
+    @Published var analysisLoading = false
+    @Published var analysisError: String?
+    @Published var user: AuthUser?
+    @Published var billingStatus: BillingStatus?
+    @Published var accountError: String?
 
     var isLoggedIn: Bool { token != nil }
 
@@ -46,10 +51,43 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    func loadAccount(refreshBilling: Bool = false) async {
+        guard let token else { return }
+        accountError = nil
+        do {
+            user = try await YuiClient.shared.currentUser(token: token)
+        } catch {
+            accountError = error.localizedDescription
+        }
+        do {
+            billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: refreshBilling)
+        } catch {
+            accountError = error.localizedDescription
+        }
+    }
+
+    func billingURL(action: String, plan: String? = nil) async -> URL? {
+        guard let token else { return nil }
+        accountError = nil
+        do {
+            return try await YuiClient.shared.billingURL(token: token, action: action, plan: plan)
+        } catch {
+            accountError = error.localizedDescription
+            return nil
+        }
+    }
+
     func loadAnalysis(days: Int) async {
         guard let token else { return }
-        await run {
-            self.analysis = try await YuiClient.shared.analysis(token: token, days: days)
+        analysisLoading = true
+        analysisError = nil
+        analysis = nil
+        defer { analysisLoading = false }
+        do {
+            analysis = try await YuiClient.shared.analysis(token: token, days: days)
+        } catch {
+            if case YuiError.unauthorized = error { signOut() }
+            analysisError = error.localizedDescription
         }
     }
 
@@ -90,6 +128,22 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    func saveAutomation(_ automation: HomeAutomation?, draft: [String: Any]) async -> Bool {
+        guard let token else { return false }
+        await run {
+            self.home = try await YuiClient.shared.saveAutomation(token: token, id: automation?.id, draft: draft)
+        }
+        return error == nil
+    }
+
+    func automationAction(_ automation: HomeAutomation, op: String) async -> Bool {
+        guard let token else { return false }
+        await run {
+            self.home = try await YuiClient.shared.automationAction(token: token, id: automation.id, op: op)
+        }
+        return error == nil
+    }
+
     func updateDeviceMeta(_ device: Device, name: String, room: String) async {
         guard let token else { return }
         await run {
@@ -103,6 +157,13 @@ final class SessionStore: ObservableObject {
         guard let token else { return }
         await run {
             self.home = try await YuiClient.shared.roomAction(token: token, op: op, fields: fields)
+        }
+    }
+
+    func reorder(_ target: String, id: String, direction: Int) async {
+        guard let token else { return }
+        await run {
+            self.home = try await YuiClient.shared.reorder(token: token, target: target, id: id, direction: direction)
         }
     }
 
@@ -149,6 +210,9 @@ final class SessionStore: ObservableObject {
     func signOut() {
         token = nil
         home = nil
+        analysis = nil
+        user = nil
+        billingStatus = nil
         Keychain.clear()
     }
 

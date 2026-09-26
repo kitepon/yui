@@ -51,8 +51,10 @@ struct RoomManagementView: View {
                     .accessibilityLabel("場所を追加")
                 }
 
-                ForEach(rooms, id: \.self) { room in
+                ForEach(Array(rooms.enumerated()), id: \.element) { roomIndex, room in
+                    VStack(spacing: 12) {
                     HStack(spacing: 13) {
+                        reorderButtons(target: "room", id: room, index: roomIndex, count: rooms.count)
                         Image(systemName: "door.left.hand.closed")
                             .font(.system(size: 19))
                             .foregroundStyle(YuiTheme.accent)
@@ -84,6 +86,33 @@ struct RoomManagementView: View {
                     }
                     .font(.system(size: 14))
                     .foregroundStyle(YuiTheme.muted)
+                    ForEach(Array((session.home?.orderedDevices(in: room) ?? []).enumerated()), id: \.element.id) { index, device in
+                        HStack(spacing: 8) {
+                            reorderButtons(target: "device", id: device.id, index: index,
+                                           count: session.home?.orderedDevices(in: room).count ?? 0)
+                            Image(systemName: device.symbol)
+                                .foregroundStyle(YuiTheme.accent)
+                                .frame(width: 28)
+                            Text(device.name)
+                                .font(.system(size: 13))
+                                .foregroundStyle(YuiTheme.fg)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Menu {
+                                ForEach(rooms.filter { $0 != room }, id: \.self) { destination in
+                                    Button(destination) {
+                                        Task { await session.updateDeviceMeta(device, name: device.name, room: destination) }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "arrow.right")
+                                    .foregroundStyle(YuiTheme.muted)
+                                    .frame(width: 38, height: 38)
+                            }
+                            .accessibilityLabel("\(device.name)を別の場所へ移す")
+                        }
+                    }
+                    }
                     .padding(14)
                     .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 20))
                 }
@@ -118,5 +147,24 @@ struct RoomManagementView: View {
         } message: {
             Text("この場所の機器は、一覧の最初の別の場所へ移ります")
         }
+    }
+
+    private func reorderButtons(target: String, id: String, index: Int, count: Int) -> some View {
+        VStack(spacing: 0) {
+            Button {
+                Task { await session.reorder(target, id: id, direction: -1) }
+            } label: {
+                Image(systemName: "chevron.up").frame(width: 32, height: 27)
+            }
+            .disabled(index == 0 || session.busy)
+            Button {
+                Task { await session.reorder(target, id: id, direction: 1) }
+            } label: {
+                Image(systemName: "chevron.down").frame(width: 32, height: 27)
+            }
+            .disabled(index >= count - 1 || session.busy)
+        }
+        .font(.system(size: 12, weight: .bold))
+        .foregroundStyle(YuiTheme.accent)
     }
 }

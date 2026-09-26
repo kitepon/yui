@@ -1,6 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dropRoomFromOrder, renameOrderKey } from "./order.ts";
+import { dropRoomFromOrder, moveById, orderedByIds, renameOrderKey } from "./order.ts";
+
+test("登録順で機器を並べ、未登録の機器は末尾へ置く", () => {
+  assert.deepEqual(orderedByIds([{ id: "a" }, { id: "b" }, { id: "c" }], ["c", "a"]),
+    [{ id: "c" }, { id: "a" }, { id: "b" }]);
+});
+
+test("範囲外の並べ替えは変更せず、範囲内は隣と交換する", () => {
+  const items = [{ id: "a" }, { id: "b" }];
+  assert.deepEqual(moveById(items, "b", -1), [{ id: "b" }, { id: "a" }]);
+  assert.equal(moveById(items, "a", -1), null);
+  assert.equal(moveById(items, "x", 1), null);
+});
 
 test("部屋の名前を変えても並び順が付いてくる", () => {
   const order = { リビング: ["a", "b"], 寝室: ["c"] };

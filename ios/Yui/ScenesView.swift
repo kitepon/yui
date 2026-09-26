@@ -4,6 +4,8 @@ struct ScenesView: View {
     @EnvironmentObject private var session: SessionStore
     @State private var editingScene: HomeScene?
     @State private var creatingScene = false
+    @State private var editingAutomation: HomeAutomation?
+    @State private var creatingAutomation = false
 
     private var scenes: [HomeScene] { session.home?.scenes ?? [] }
     private var automations: [HomeAutomation] { session.home?.automations ?? [] }
@@ -27,6 +29,7 @@ struct ScenesView: View {
                 VStack(spacing: 12) {
                     ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
                         HStack(spacing: 8) {
+                            reorderButtons(target: "scene", id: scene.id, index: index, count: scenes.count)
                             Button {
                                 Task { await session.runScene(scene) }
                             } label: {
@@ -92,8 +95,17 @@ struct ScenesView: View {
                     if automations.isEmpty {
                         emptyCard("自動化はまだありません", symbol: "timer")
                     }
-                    ForEach(automations) { automation in
+                    Button { creatingAutomation = true } label: {
+                        Label("オートメーションを作る", systemImage: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(YuiTheme.accent)
+                            .frame(maxWidth: .infinity, minHeight: 49)
+                            .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                    ForEach(Array(automations.enumerated()), id: \.element.id) { index, automation in
+                        VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 14) {
+                            reorderButtons(target: "automation", id: automation.id, index: index, count: automations.count)
                             Image(systemName: symbol(for: automation.trigger.type))
                                 .font(.system(size: 19))
                                 .foregroundStyle(automation.enabled ? YuiTheme.mint : YuiTheme.muted)
@@ -104,9 +116,10 @@ struct ScenesView: View {
                                     .font(.system(size: 15, weight: .semibold))
                                     .foregroundStyle(YuiTheme.fg)
                                     .lineLimit(1)
-                                Text("\(automation.trigger.summary) · \(automation.actions.count) 件の操作")
+                                Text("\(automation.trigger.summary(devices: session.home?.devices ?? [], scenes: scenes)) → \(automation.actions.map { $0.summary(devices: session.home?.devices ?? []) }.joined(separator: "、"))\(automation.stopOnMatch == true ? " · 下を打ち切る" : "")")
                                     .font(.system(size: 11))
                                     .foregroundStyle(YuiTheme.muted)
+                                    .lineLimit(3)
                             }
                             Spacer(minLength: 0)
                             Toggle(automation.name, isOn: Binding(
@@ -116,6 +129,21 @@ struct ScenesView: View {
                             .labelsHidden()
                             .tint(YuiTheme.accent)
                             .disabled(session.busy)
+                        }
+                        HStack(spacing: 10) {
+                            Button { editingAutomation = automation } label: {
+                                Label("編集", systemImage: "pencil")
+                            }
+                            Button {
+                                Task { _ = await session.automationAction(automation, op: "automation-run") }
+                            } label: {
+                                Label("今すぐ", systemImage: "play.fill")
+                            }
+                            .disabled(session.busy)
+                        }
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(YuiTheme.accent)
+                        .padding(.leading, 40)
                         }
                         .padding(15)
                         .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 21))
@@ -133,6 +161,12 @@ struct ScenesView: View {
         }
         .sheet(isPresented: $creatingScene) {
             SceneEditorView(scene: nil).environmentObject(session).presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingAutomation) { automation in
+            AutomationEditorView(automation: automation).environmentObject(session).presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $creatingAutomation) {
+            AutomationEditorView(automation: nil).environmentObject(session).presentationDragIndicator(.visible)
         }
     }
 
@@ -155,5 +189,20 @@ struct ScenesView: View {
         case "sensor": "thermometer.medium"
         default: "timer"
         }
+    }
+
+    private func reorderButtons(target: String, id: String, index: Int, count: Int) -> some View {
+        VStack(spacing: 0) {
+            Button { Task { await session.reorder(target, id: id, direction: -1) } } label: {
+                Image(systemName: "chevron.up").frame(width: 28, height: 26)
+            }
+            .disabled(index == 0 || session.busy)
+            Button { Task { await session.reorder(target, id: id, direction: 1) } } label: {
+                Image(systemName: "chevron.down").frame(width: 28, height: 26)
+            }
+            .disabled(index >= count - 1 || session.busy)
+        }
+        .font(.system(size: 11, weight: .bold))
+        .foregroundStyle(YuiTheme.accent)
     }
 }

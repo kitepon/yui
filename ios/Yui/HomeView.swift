@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
     @State private var selectedRoom = "すべて"
     @State private var selectedDevice: Device?
+    @State private var showRooms = false
 
     private var devices: [Device] { session.home?.liveDevices ?? [] }
     private var rooms: [String] {
@@ -12,7 +13,9 @@ struct HomeView: View {
         return ["すべて"] + configured.filter { present.contains($0) } + present.subtracting(configured).sorted()
     }
     private var visibleDevices: [Device] {
-        devices.filter { selectedRoom == "すべて" || $0.room == selectedRoom }
+        guard let home = session.home else { return [] }
+        if selectedRoom != "すべて" { return home.orderedDevices(in: selectedRoom) }
+        return rooms.dropFirst().flatMap { home.orderedDevices(in: $0) }
     }
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {
@@ -40,6 +43,9 @@ struct HomeView: View {
             DeviceDetailView(initialDevice: device)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showRooms) {
+            RoomManagementView().environmentObject(session).presentationDragIndicator(.visible)
         }
     }
 
@@ -74,7 +80,7 @@ struct HomeView: View {
             sectionHeading("場面", subtitle: "ひと押しで、空気を変える")
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(Array(scenes.prefix(6).enumerated()), id: \.element.id) { index, scene in
+                    ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
                         Button {
                             Task { await session.runScene(scene) }
                         } label: {
@@ -115,6 +121,14 @@ struct HomeView: View {
                                 .frame(height: 38)
                                 .background(selectedRoom == room ? YuiTheme.accent : YuiTheme.surface, in: Capsule())
                         }
+                    }
+                    Button { showRooms = true } label: {
+                        Label("場所を編集", systemImage: "slider.horizontal.3")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(YuiTheme.muted)
+                            .padding(.horizontal, 15)
+                            .frame(height: 38)
+                            .background(YuiTheme.surface, in: Capsule())
                     }
                 }
             }
@@ -178,6 +192,12 @@ private struct AtmosphereCard: View {
                         .tracking(2.2)
                 }
                 .foregroundStyle(YuiTheme.fg.opacity(0.72))
+                TimelineView(.periodic(from: .now, by: 60)) { context in
+                    Text(context.date.formatted(.dateTime.hour().minute()))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(YuiTheme.fg.opacity(0.72))
+                }
                 Spacer()
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(climate?.temperature.map { String(format: "%.1f", $0) } ?? "—")
@@ -243,8 +263,14 @@ private struct DeviceTile: View {
             Text(device.status)
                 .font(.system(size: 11))
                 .foregroundStyle(device.online ? YuiTheme.muted : YuiTheme.warning)
-                .lineLimit(1)
+                .lineLimit(2)
                 .padding(.top, 4)
+            if let lan = device.lan, lan.error != nil || lan.recent {
+                Text(lan.error == nil ? "LAN直結" : "LAN不可")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(lan.error == nil ? YuiTheme.mint : YuiTheme.warning)
+                    .padding(.top, 5)
+            }
         }
         .padding(15)
         .frame(maxWidth: .infinity, minHeight: 164, alignment: .leading)

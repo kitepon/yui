@@ -27,6 +27,23 @@ struct YuiClient {
         try await send(path: "/api/home", method: "GET", token: token)
     }
 
+    func currentUser(token: String) async throws -> AuthUser? {
+        let response: AuthSessionEnvelope = try await send(path: "/api/auth/get-session", method: "GET", token: token)
+        return response.user
+    }
+
+    func billingStatus(token: String, refresh: Bool) async throws -> BillingStatus {
+        try await send(path: refresh ? "/api/stripe/status?refresh=1" : "/api/stripe/status", method: "GET", token: token)
+    }
+
+    func billingURL(token: String, action: String, plan: String? = nil) async throws -> URL {
+        let body = plan.map { ["plan": $0] }
+        let response: ExternalURLResponse = try await send(
+            path: "/api/stripe/\(action)", method: "POST", token: token, body: body
+        )
+        return response.url
+    }
+
     func control(token: String, deviceId: String, patch: [String: Any]) async throws -> HomeSnapshot {
         try await send(
             path: "/api/home",
@@ -73,11 +90,29 @@ struct YuiClient {
         try await send(path: "/api/home", method: "POST", token: token, body: ["op": op].merging(fields) { _, new in new })
     }
 
+    func reorder(token: String, target: String, id: String, direction: Int) async throws -> HomeSnapshot {
+        try await send(path: "/api/home", method: "POST", token: token, body: [
+            "op": "reorder", "target": target, "id": id, "direction": direction,
+        ])
+    }
+
     func saveScene(token: String, sceneId: String?, name: String, hint: String, steps: [[String: Any]]) async throws -> HomeSnapshot {
         var body: [String: Any] = ["op": "scene-save", "name": name, "hint": hint]
         if let sceneId { body["sceneId"] = sceneId }
-        if sceneId == nil { body["steps"] = steps }
+        body["steps"] = steps
         return try await send(path: "/api/home", method: "POST", token: token, body: body)
+    }
+
+    func saveAutomation(token: String, id: String?, draft: [String: Any]) async throws -> HomeSnapshot {
+        var body: [String: Any] = ["op": "automation-save", "automation": draft]
+        if let id { body["automationId"] = id }
+        return try await send(path: "/api/home", method: "POST", token: token, body: body)
+    }
+
+    func automationAction(token: String, id: String, op: String) async throws -> HomeSnapshot {
+        try await send(path: "/api/home", method: "POST", token: token, body: [
+            "op": op, "automationId": id,
+        ])
     }
 
     func removeScene(token: String, sceneId: String) async throws -> HomeSnapshot {

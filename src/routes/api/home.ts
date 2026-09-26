@@ -6,6 +6,9 @@ import { tuyaSync } from "@/lib/home/tuya";
 import { odelicSync } from "@/lib/home/odelic";
 import { daikinSync } from "@/lib/home/daikin";
 import { isLanOwner } from "@/lib/server/lan-owner";
+import { moveById, orderedByIds } from "@/lib/home/order";
+import { patchFromAction } from "@/lib/home/device-patch";
+import { parseNativeAutomation, parseNativeSceneSteps } from "@/lib/server/native-edit";
 import type { Brand, Device, Scene } from "@/lib/home/types";
 import { auth } from "@/lib/auth/server";
 import { clientHome, loadHome, replaceHome, saveHome } from "@/lib/server/home-db";
@@ -88,6 +91,100 @@ export const Route = createFileRoute("/api/home")({
           return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
         }
 
+        if (op === "automation-save") {
+          const automationId = String(body.automationId ?? "");
+          const previous = automationId ? snap.automations.find((item) => item.id === automationId) : undefined;
+          if (automationId && !previous) {
+            return Response.json({ error: "オートメーションが見つかりません" }, { status: 404 });
+          }
+          const draft = parseNativeAutomation(body.automation, snap);
+          if (!draft) return Response.json({ error: "オートメーションの設定が不正です" }, { status: 400 });
+          const automation = {
+            ...draft,
+            id: previous?.id ?? `auto-${randomUUID()}`,
+            lastExecutedKey: previous?.lastExecutedKey,
+          };
+          const automations = previous
+            ? snap.automations.map((item) => item.id === previous.id ? automation : item)
+            : [...snap.automations, automation];
+          const saved = await saveHome(userId, { automations });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "automation-remove") {
+          const automationId = String(body.automationId ?? "");
+          if (!snap.automations.some((item) => item.id === automationId)) {
+            return Response.json({ error: "オートメーションが見つかりません" }, { status: 404 });
+          }
+          const saved = await saveHome(userId, { automations: snap.automations.filter((item) => item.id !== automationId) });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "automation-run") {
+          const automationId = String(body.automationId ?? "");
+          const automation = snap.automations.find((item) => item.id === automationId);
+          if (!automation) return Response.json({ error: "オートメーションが見つかりません" }, { status: 404 });
+          let current = snap;
+          const waveId = newWaveId();
+          try {
+            for (const action of automation.actions) {
+              const device = current.devices.find((item) => item.id === action.deviceId);
+              if (!device) throw new Error("機器が見つかりません");
+              current = await executeDevice(homeId, current, device, patchFromAction(action), {
+                source: "manual", waveId, automationId: automation.id, automationName: automation.name,
+              });
+              if (action.on !== undefined) {
+                await fireDeviceOnServer(homeId, device.id, action.on, "manual");
+                current = (await loadHome(userId)).snap;
+              }
+            }
+            const saved = await saveHome(userId, { lastRanAutomationId: automation.id });
+            return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+          } catch (error) {
+            return Response.json({ error: error instanceof Error ? error.message : "実行に失敗しました" }, { status: 400 });
+          }
+        }
+
+        if (op === "reorder") {
+          const target = String(body.target ?? "");
+          const id = String(body.id ?? "");
+          const direction = body.direction;
+          if (direction !== -1 && direction !== 1) {
+            return Response.json({ error: "移動方向が不正です" }, { status: 400 });
+          }
+          if (target === "room") {
+            const moved = moveById(snap.rooms.map((name) => ({ id: name })), id, direction);
+            if (!moved) return Response.json({ error: "場所を移動できません" }, { status: 400 });
+            const saved = await saveHome(userId, { rooms: moved.map((room) => room.id) });
+            return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+          }
+          if (target === "scene") {
+            const moved = moveById(snap.scenes, id, direction);
+            if (!moved) return Response.json({ error: "項目を移動できません" }, { status: 400 });
+            const saved = await saveHome(userId, { scenes: moved });
+            return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+          }
+          if (target === "automation") {
+            const moved = moveById(snap.automations, id, direction);
+            if (!moved) return Response.json({ error: "項目を移動できません" }, { status: 400 });
+            const saved = await saveHome(userId, { automations: moved });
+            return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+          }
+          if (target === "device") {
+            const device = snap.devices.find((item) => item.id === id);
+            if (!device) return Response.json({ error: "機器が見つかりません" }, { status: 404 });
+            const inRoom = snap.devices.filter((item) => item.room === device.room && item.source === device.source);
+            const ordered = orderedByIds(inRoom, snap.deviceOrder[device.room]);
+            const moved = moveById(ordered, id, direction);
+            if (!moved) return Response.json({ error: "機器を移動できません" }, { status: 400 });
+            const saved = await saveHome(userId, {
+              deviceOrder: { ...snap.deviceOrder, [device.room]: moved.map((item) => item.id) },
+            });
+            return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+          }
+          return Response.json({ error: "並べ替え対象が不正です" }, { status: 400 });
+        }
+
         if (op === "device-meta") {
           const deviceId = String(body.deviceId ?? "");
           const device = snap.devices.find((item) => item.id === deviceId);
@@ -156,22 +253,9 @@ export const Route = createFileRoute("/api/home")({
           const name = String(body.name ?? "").trim();
           const hint = String(body.hint ?? "").trim();
           if (!name) return Response.json({ error: "場面の名前が必要です" }, { status: 400 });
-          let steps = previous?.steps;
-          if (!previous) {
-            const incoming = body.steps;
-            if (!Array.isArray(incoming) || !incoming.length || !incoming.every((step) =>
-              step && typeof step === "object" &&
-              typeof step.match?.id === "string" &&
-              snap.devices.some((device) => device.id === step.match.id && device.source === "live" &&
-                (["light", "plug", "ac"].includes(device.kind) ||
-                 (device.kind === "bot" && device.botMode === "switch"))) &&
-              typeof step.patch?.on === "boolean"
-            )) {
-              return Response.json({ error: "場面の操作が不正です" }, { status: 400 });
-            }
-            steps = incoming.map((step) => ({ match: { id: step.match.id }, patch: { on: step.patch.on } }));
-          }
-          const scene: Scene = { id: previous?.id ?? `scene-${randomUUID()}`, name, hint, steps: steps ?? [] };
+          const steps = body.steps == null && previous ? previous.steps : parseNativeSceneSteps(body.steps, snap, previous?.steps);
+          if (!steps) return Response.json({ error: "場面の操作が不正です" }, { status: 400 });
+          const scene: Scene = { id: previous?.id ?? `scene-${randomUUID()}`, name, hint, steps };
           const scenes = previous
             ? snap.scenes.map((item) => item.id === previous.id ? scene : item)
             : [...snap.scenes, scene];
