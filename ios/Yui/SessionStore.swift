@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import StoreKit
 
@@ -352,7 +353,12 @@ final class SessionStore: ObservableObject {
             try await work()
         } catch {
             if case YuiError.unauthorized = error { signOut() }
-            self.error = error.localizedDescription
+            if let authorizationError = error as? ASAuthorizationError {
+                if authorizationError.code == .canceled { return }
+                self.error = "Appleでのログインを完了できませんでした。端末のApple Account設定を確認して、もう一度お試しください"
+            } else {
+                self.error = error.localizedDescription
+            }
         }
     }
 }

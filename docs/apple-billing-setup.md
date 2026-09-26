@@ -12,22 +12,20 @@ Web契約はStripe、iPhoneアプリ内の契約はAppleの自動更新サブス
 - Sign in with Apple と In-App Purchase のApp ID能力は有効。
 - iPhone配布ビルドの`ITSAppUsesNonExemptEncryption`は`NO`。OS標準の暗号機能だけを使用するため、署名前のアーカイブ内でも値を確認した。
 - iPhone版1.0（ビルド1）はXcodeの検証とアップロードを通過した。App Store Connectでバイナリが「確認済み」、TestFlightが「提出準備完了」と表示され、App Store版1.0に紐付けて保存済み。ビルドのBundle IDは`dev.kitepon.yuihome`、暗号化の申告値は「いいえ」。
-- 本番サーバーのApple課金対応コードは公開済み。`/support`と`/privacy`を公開URLで確認済み。ただしApple用の秘密鍵は未設定のため、購入・通知・Appleログインの実運用確認は未完了。
+- 本番サーバーのApple課金対応コードは公開済み。`/support`と`/privacy`を公開URLで確認済み。
+- Sign in with Apple と In-App Purchase の鍵を作成し、秘密鍵をリポジトリ外に保管した。本番サーバーの設定とアプリの再起動が完了し、Apple課金の設定済み状態と通知APIの受信を確認した。
+- App Store Server Notifications V2 の本番・Sandbox送信先を登録した。
+- iPhone 6.9インチ用の画面写真3枚を、家・場面・分析の順で登録した。
+- 審査専用アカウントを作り、課金免除でデモ機器8台と場面4件を用意した。デモ照明の操作を確認した。未契約の購入試験用アカウントも別に用意した。認証情報はリポジトリ外に保管する。
+- iPhone 17 Pro Maxシミュレーターで未契約アカウントの購入画面を表示し、月額・年額の購入ボタンと復元導線を確認した。月額ボタンからStoreKitのApple Accountサインイン画面まで進んだ。Sandbox Apple Account未登録のため、購入確定と初回無料体験の表示は未検証。日本の価格設定は保存済みだが、未ログインのシミュレーターは米ドル表示だった。
+- シミュレーターでAppleログイン失敗時に英語の内部エラーが露出したため、日本語の操作案内へ修正して再現確認した。修正版はビルド2として提出する。
 
 ## 提出までの残作業
 
-1. Apple DeveloperでSign in with Appleの鍵、App Store ConnectでIn-App Purchase鍵を作る。`.p8`の内容をリポジトリやDocker imageへ入れない。
-2. 本番サーバーの`deploy/.env`に次を設定する。
+1. アプリのプライバシー回答を公開する。Appleの最終確認画面に正確性・規約遵守・更新義務への同意が表示されたため、オーナーの回答待ち。
+2. 月額・年額サブスクリプションの審査用画面写真を登録する。
+3. App Reviewの連絡先電話番号と審査用アカウントのパスワードを登録する。Appleへのパスワード送信確認と電話番号の回答待ち。
+4. Sandboxで購入・復元・更新・解約・返金、WebとiPhoneの利用権、Stripe契約中の二重購入防止、Appleログイン・アカウント削除を実機で確認する。
+5. iPhone版1.0と両サブスクリプションを審査へ提出する。
 
-   | 用途 | 変数 |
-   | --- | --- |
-   | Appleログインの認可コード交換・削除時のトークン解除 | `APPLE_SIGNIN_TEAM_ID`, `APPLE_SIGNIN_KEY_ID`, `APPLE_SIGNIN_PRIVATE_KEY_BASE64` |
-   | Apple取引の検証と契約状態照会 | `APPLE_APP_ID`, `APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY_BASE64` |
-
-   `*_PRIVATE_KEY_BASE64`にはダウンロードした`.p8`全体をbase64化した値を設定する。`APPLE_APP_ID`は`6816410748`。鍵は再ダウンロードできないため、アクセスを限定して保管する。
-3. App Store Server Notifications V2の本番・Sandbox送信先を`https://yuihome.kitepon.dev/api/apple/notifications`に設定する。
-4. アプリのプライバシー回答を公開し、用意したiPhoneの画面写真を登録する。月額・年額サブスクリプションの審査用画面写真も登録する。
-5. 審査用の機器データを持つ専用アカウントと審査担当者への説明を用意する。Sandboxで購入・復元・更新・解約・返金、WebとiPhoneの利用権、Stripe契約中の二重購入防止、Appleログイン・アカウント削除を実機で確認する。
-6. iPhone版1.0と両サブスクリプションを審査へ提出する。
-
-本番にApple課金設定がなければ、iPhoneアプリは「App Storeでの購入は準備中です」と表示する。ビルド成功や商品登録だけでは、購入と通知の動作は確認できない。
+ビルド成功や商品登録だけでは、購入と通知の動作は確認できない。審査承認後は手動でリリースする設定にしている。

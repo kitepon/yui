@@ -26,9 +26,8 @@
 
 ## 公開前の作業
 
-- Sign in with Apple、アカウント削除、初回無料体験の表示を実装した。App Store提出はまだ行っていない。
-- App Store Connectのアプリ、月額・年額の商品、日本の価格、両プランの初回1か月無料を保存した。鍵、Server Notifications V2、審査用の画面写真とビルド、実課金試験は`docs/apple-billing-setup.md`に従って完了させる。
-- 本番にAppleの鍵が未設定の間は、iPhoneアプリにAppleの購入ボタンを表示せず準備中と示す。購入・通知・復元の実課金試験とストア審査は設定後に行う。
+- Sign in with Apple、アカウント削除、初回無料体験の表示を実装した。App Store ConnectにiPhone版1.0のビルドを登録した。審査への提出はまだ行っていない。
+- 月額・年額の商品、日本の価格、両プランの初回1か月無料、Appleの鍵、Server Notifications V2、アプリの画面写真を登録した。購入・通知・復元の実課金試験と審査の残作業は`docs/apple-billing-setup.md`に記録する。
 - Web のデモ宅への切替は iPhone 版には未実装。
 
 ## 認証の実装境界
