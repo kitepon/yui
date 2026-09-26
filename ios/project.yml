@@ -28,6 +28,7 @@ targets:
           - CFBundleURLName: dev.kitepon.yuihome.auth
             CFBundleURLSchemes:
               - yuihome
+        ITSAppUsesNonExemptEncryption: false
     sources:
       - path: Yui
     entitlements:
