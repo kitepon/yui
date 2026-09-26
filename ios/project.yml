@@ -9,6 +9,7 @@ settings:
     PRODUCT_BUNDLE_IDENTIFIER: dev.kitepon.yuihome
     DEVELOPMENT_TEAM: TPWX489GV4
     GENERATE_INFOPLIST_FILE: YES
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     INFOPLIST_KEY_CFBundleDisplayName: 結
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
     INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
@@ -20,6 +21,13 @@ targets:
   Yui:
     type: application
     platform: iOS
+    info:
+      path: Yui/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.kitepon.yuihome.auth
+            CFBundleURLSchemes:
+              - yuihome
     sources:
       - path: Yui
     settings:

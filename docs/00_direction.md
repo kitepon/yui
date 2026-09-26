@@ -5,8 +5,8 @@
 ## 製品
 
 - 結の本線は Web（`https://yuihome.kitepon.dev`）。ユーザーはそこでアカウントを作り、家を操作する。
-- サーバー口は `/api/auth/*` と `/api/home`。Echo からは `/api/alexa`（中は同じ家の操作）。Web も将来の iPhone アプリも `/api/auth/*` と `/api/home` を使う。Echo の解釈は Alexa（Smart Home）。結は機器の実体と操作だけを持つ。
-- iPhone アプリは後続の拡張。Cloudflare への実移転と App Store 提出は次の工程。
+- サーバー口は `/api/auth/*` と `/api/home`。iPhone アプリの Google 認証中継は `/api/ios-auth`、分析は `/api/analysis`。Echo からは `/api/alexa`（中は同じ家の操作）。Web と iPhone アプリは同じ家のデータと操作口を使う。Echo の解釈は Alexa（Smart Home）。結は機器の実体と操作だけを持つ。
+- iPhone アプリは SwiftUI で開発用ビルドを提供する。Cloudflare への実移転と App Store 提出は次の工程。
 - サーバーは複数世帯を受け、家電トークンは結のインフラに置く。計算はいま自宅サーバーの Docker。
 
 ## 境界
@@ -15,7 +15,7 @@
 - 家電トークンの平文はディスクに置かない。応答 JSON に平文を載せない。クライアントは「保存済み」だけを見る。
 - 1 ユーザーは 1 家を持つ。家族共有は次の工程。
 - 機器の名前と場所は人が付け替えられる。付けた値は `overrides` が正本で、機器そのものの名前を正本にしない。各社の同期は毎回それぞれの元の名前を返すので、保存の入口で当て直す。片方の経路だけ当てると、結の画面と Alexa の呼び名が食い違って戻る。
-- 識別は Better Auth のセッション（Cookie または `Authorization: Bearer`）。本番のサインインはメール＋パスワードと、結専用 Google。Grok broker / プレビュー用 OAuth は使わない。Sign in with Apple は iPhone アプリ工程で足す。
+- 識別は Better Auth のセッション（Cookie または `Authorization: Bearer`）。本番のサインインはメール＋パスワードと、結専用 Google。iPhone アプリの Google ログインは iOS 標準の認証画面を使い、使い捨てコードと PKCE でセッションを受け取る。Grok broker / プレビュー用 OAuth は使わない。Sign in with Apple は App Store 公開前の工程で足す。
 - 永続は SQLite 方言だけ（ローカルはファイル、移転先は D1）。Postgres / PGLite / `yui.json` を正本にしない。
 - オートメーションの入口は `tickAllHomes()` だけ。ローカルは 60 秒間隔で同じ関数を呼ぶ（周期の正本は`src/lib/home/control-tick.ts`。画面の説明文も同じ定数を読む）。起動時の着火は Nitro プラグイン（`server/plugins/control-runner.ts`）が正で、初回リクエスト待ちにしない。Cloudflare では Cron が同じ関数を呼ぶ。プロセス常駐の 20 秒ループと、起きっぱなしの家単位ワーカーを正にしない。条件を満たした複数が同じ機器を含むとき、一覧の上だけがその機器を動かす。下は残った機器だけ動く。並びは場面タブのオートメーション欄が正。「条件成立で下の判定を打ち切る」を有効にしたオートメーションは、条件成立時にその行までで判定を終える。下の機器が違っても判定・実行しない。連続実行や同じ設定の再送を省略する回も打ち切る。条件不成立または無効なら下へ進み、設定の既定は切とする。
 - 時刻オートメーションの粒度は 1 分。比較する時計は `Asia/Tokyo`。センサーしきい値の粒度は小数点第一位。センサー範囲条件は、現在設定を読み返せる機器だけを操作し、値が違うときだけ送る。赤外線など一方通行の機器には適用しない。センサーは有効なオートメーションがある家だけを起こす。全戸 20 秒ポーリングを正にしない。

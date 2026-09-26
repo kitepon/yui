@@ -12,16 +12,27 @@ struct YuiClient {
         try await auth("sign-up", email: email, password: password, name: name)
     }
 
+    func exchangeGoogle(code: String, verifier: String) async throws -> String {
+        let response: AuthResponse = try await send(
+            path: "/api/ios-auth", method: "POST", token: nil,
+            body: ["code": code, "verifier": verifier]
+        )
+        guard let token = response.token, !token.isEmpty else {
+            throw YuiError.message("Googleログインが完了しませんでした")
+        }
+        return token
+    }
+
     func home(token: String) async throws -> HomeSnapshot {
         try await send(path: "/api/home", method: "GET", token: token)
     }
 
-    func control(token: String, deviceId: String, on: Bool) async throws -> HomeSnapshot {
+    func control(token: String, deviceId: String, patch: [String: Any]) async throws -> HomeSnapshot {
         try await send(
             path: "/api/home",
             method: "POST",
             token: token,
-            body: ["op": "control", "deviceId": deviceId, "patch": ["on": on]]
+            body: ["op": "control", "deviceId": deviceId, "patch": patch]
         )
     }
 
@@ -35,6 +46,42 @@ struct YuiClient {
 
     func saveCredentials(token: String, fields: [String: String]) async throws -> HomeSnapshot {
         try await send(path: "/api/home", method: "POST", token: token, body: ["op": "credentials", "credentials": fields])
+    }
+
+    func analysis(token: String, days: Int) async throws -> AnalysisData {
+        let end = Date()
+        let start = end.addingTimeInterval(-Double(days) * 86_400)
+        let from = AnalysisDate.formatter.string(from: start)
+        let to = AnalysisDate.formatter.string(from: end)
+        let path = "/api/analysis?from=\(from)&to=\(to)"
+        return try await send(path: path, method: "GET", token: token)
+    }
+
+    func toggleAutomation(token: String, automationId: String, enabled: Bool) async throws -> HomeSnapshot {
+        try await send(path: "/api/home", method: "POST", token: token, body: [
+            "op": "automation-toggle", "automationId": automationId, "enabled": enabled,
+        ])
+    }
+
+    func updateDeviceMeta(token: String, deviceId: String, name: String, room: String) async throws -> HomeSnapshot {
+        try await send(path: "/api/home", method: "POST", token: token, body: [
+            "op": "device-meta", "deviceId": deviceId, "name": name, "room": room,
+        ])
+    }
+
+    func roomAction(token: String, op: String, fields: [String: String]) async throws -> HomeSnapshot {
+        try await send(path: "/api/home", method: "POST", token: token, body: ["op": op].merging(fields) { _, new in new })
+    }
+
+    func saveScene(token: String, sceneId: String?, name: String, hint: String, steps: [[String: Any]]) async throws -> HomeSnapshot {
+        var body: [String: Any] = ["op": "scene-save", "name": name, "hint": hint]
+        if let sceneId { body["sceneId"] = sceneId }
+        if sceneId == nil { body["steps"] = steps }
+        return try await send(path: "/api/home", method: "POST", token: token, body: body)
+    }
+
+    func removeScene(token: String, sceneId: String) async throws -> HomeSnapshot {
+        try await send(path: "/api/home", method: "POST", token: token, body: ["op": "scene-remove", "sceneId": sceneId])
     }
 
     private func auth(_ kind: String, email: String, password: String, name: String?) async throws -> String {
@@ -65,7 +112,11 @@ struct YuiClient {
         }
         let (data, response) = try await URLSession.shared.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-        if code == 401 { throw YuiError.message("ログインが必要です") }
+        if code == 401 {
+            if token != nil { throw YuiError.unauthorized }
+            let err = try? JSONDecoder().decode(APIError.self, from: data)
+            throw YuiError.message(err?.message ?? err?.error ?? "ログインできません")
+        }
         if code >= 400 {
             let err = try? JSONDecoder().decode(APIError.self, from: data)
             throw YuiError.message(err?.error ?? err?.message ?? "サーバーエラー \(code)")
@@ -76,9 +127,11 @@ struct YuiClient {
 
 enum YuiError: LocalizedError {
     case message(String)
+    case unauthorized
     var errorDescription: String? {
         switch self {
         case .message(let text): return text
+        case .unauthorized: return "ログインの期限が切れました。もう一度ログインしてください"
         }
     }
 }

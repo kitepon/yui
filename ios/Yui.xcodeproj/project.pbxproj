@@ -7,33 +7,48 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1CB53EE8A78B450D420DECD5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE1BB3E8356695DF7DA421B3 /* Assets.xcassets */; };
+		1FE9117EE811F3608F420D73 /* DeviceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E1A18ED7FFD2F2A66A753A /* DeviceDetailView.swift */; };
 		249B95B8B8677E8828DF889B /* YuiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */; };
+		25B1625E1C593E34A41AA8DA /* GoogleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7E016594EA7B999DE01AB9 /* GoogleSignIn.swift */; };
 		2B6782FF35335C456230B0B7 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670AF44B343B14DEBCB6D731 /* LoginView.swift */; };
 		3A0CAD2FFA118570598DD1CE /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2981A0E63D79A4D16EBE0BAA /* RootView.swift */; };
 		455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31E8B800857AAE16AA60AD2 /* HomeView.swift */; };
+		6C8BE160DA527E08122C17E7 /* RoomManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */; };
+		7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */; };
 		8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50400412CEFFD51B5BC7D8EE /* YuiApp.swift */; };
+		9101F37DCFBE713DE6C39E39 /* VisualPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */; };
 		99BD7746C2277352FD6AEF31 /* ScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077672F56CC8346B91EC670D /* ScenesView.swift */; };
 		9F484E04C3B030787C85DDF0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F553E8EC520849F169D89C6A /* Theme.swift */; };
 		A0B5BDC51E6F6C8A1BD2603E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */; };
 		AE02CF887794FCC6DDBF29D2 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920858F0D3DE8419DB11F936 /* Models.swift */; };
 		CCC6F06C92B7FC409C66A840 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */; };
 		CD118DF31ECDEBC88AD096A8 /* MainTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729E834245DED0CF1B4E9032 /* MainTabs.swift */; };
+		D1FA8C157CE899B016630915 /* SceneEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5D8655E0BB39CAC86CDFF5 /* SceneEditorView.swift */; };
 		E3E5BA36150D37B3370FA2AA /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60D12689F93763BBBF3345E /* SessionStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		077672F56CC8346B91EC670D /* ScenesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesView.swift; sourceTree = "<group>"; };
+		0C7E016594EA7B999DE01AB9 /* GoogleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignIn.swift; sourceTree = "<group>"; };
 		2981A0E63D79A4D16EBE0BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiClient.swift; sourceTree = "<group>"; };
 		3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		50400412CEFFD51B5BC7D8EE /* YuiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiApp.swift; sourceTree = "<group>"; };
 		59A0440A5DB25F5D714E46B8 /* Yui.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Yui.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		61E1A18ED7FFD2F2A66A753A /* DeviceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDetailView.swift; sourceTree = "<group>"; };
 		670AF44B343B14DEBCB6D731 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		729E834245DED0CF1B4E9032 /* MainTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabs.swift; sourceTree = "<group>"; };
+		89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualPreview.swift; sourceTree = "<group>"; };
 		920858F0D3DE8419DB11F936 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManagementView.swift; sourceTree = "<group>"; };
+		B322D79D0E6B3D87B60058C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BD5D8655E0BB39CAC86CDFF5 /* SceneEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneEditorView.swift; sourceTree = "<group>"; };
 		D60D12689F93763BBBF3345E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		E31E8B800857AAE16AA60AD2 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		EE1BB3E8356695DF7DA421B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F553E8EC520849F169D89C6A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -49,16 +64,24 @@
 		87C27E0D4ADDD6089559429D /* Yui */ = {
 			isa = PBXGroup;
 			children = (
+				7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */,
+				EE1BB3E8356695DF7DA421B3 /* Assets.xcassets */,
+				61E1A18ED7FFD2F2A66A753A /* DeviceDetailView.swift */,
+				0C7E016594EA7B999DE01AB9 /* GoogleSignIn.swift */,
 				E31E8B800857AAE16AA60AD2 /* HomeView.swift */,
+				B322D79D0E6B3D87B60058C3 /* Info.plist */,
 				3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */,
 				670AF44B343B14DEBCB6D731 /* LoginView.swift */,
 				729E834245DED0CF1B4E9032 /* MainTabs.swift */,
 				920858F0D3DE8419DB11F936 /* Models.swift */,
+				A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */,
 				2981A0E63D79A4D16EBE0BAA /* RootView.swift */,
+				BD5D8655E0BB39CAC86CDFF5 /* SceneEditorView.swift */,
 				077672F56CC8346B91EC670D /* ScenesView.swift */,
 				D60D12689F93763BBBF3345E /* SessionStore.swift */,
 				E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */,
 				F553E8EC520849F169D89C6A /* Theme.swift */,
+				89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */,
 				50400412CEFFD51B5BC7D8EE /* YuiApp.swift */,
 				34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */,
 			);
@@ -81,6 +104,7 @@
 			buildConfigurationList = 4013CE293C978DBAD7E62C2F /* Build configuration list for PBXNativeTarget "Yui" */;
 			buildPhases = (
 				533246D3DC516EF63D974B24 /* Sources */,
+				5F2CBCC00136E910FC4328CA /* Resources */,
 			);
 			buildRules = (
 			);
@@ -127,21 +151,38 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		5F2CBCC00136E910FC4328CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1CB53EE8A78B450D420DECD5 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		533246D3DC516EF63D974B24 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */,
+				1FE9117EE811F3608F420D73 /* DeviceDetailView.swift in Sources */,
+				25B1625E1C593E34A41AA8DA /* GoogleSignIn.swift in Sources */,
 				455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */,
 				CCC6F06C92B7FC409C66A840 /* Keychain.swift in Sources */,
 				2B6782FF35335C456230B0B7 /* LoginView.swift in Sources */,
 				CD118DF31ECDEBC88AD096A8 /* MainTabs.swift in Sources */,
 				AE02CF887794FCC6DDBF29D2 /* Models.swift in Sources */,
+				6C8BE160DA527E08122C17E7 /* RoomManagementView.swift in Sources */,
 				3A0CAD2FFA118570598DD1CE /* RootView.swift in Sources */,
+				D1FA8C157CE899B016630915 /* SceneEditorView.swift in Sources */,
 				99BD7746C2277352FD6AEF31 /* ScenesView.swift in Sources */,
 				E3E5BA36150D37B3370FA2AA /* SessionStore.swift in Sources */,
 				A0B5BDC51E6F6C8A1BD2603E /* SettingsView.swift in Sources */,
 				9F484E04C3B030787C85DDF0 /* Theme.swift in Sources */,
+				9101F37DCFBE713DE6C39E39 /* VisualPreview.swift in Sources */,
 				8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */,
 				249B95B8B8677E8828DF889B /* YuiClient.swift in Sources */,
 			);
@@ -157,6 +198,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = TPWX489GV4;
+				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -171,6 +213,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -235,6 +278,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -309,6 +353,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = TPWX489GV4;
+				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

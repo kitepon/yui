@@ -20,6 +20,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiAnalysisRouteImport } from './routes/api/analysis'
 import { Route as ApiHomeRouteImport } from './routes/api/home'
+import { Route as ApiIosAuthRouteImport } from './routes/api/ios-auth'
 import { Route as HelpRemoRouteImport } from './routes/help/remo'
 import { Route as HelpSwitchbotRouteImport } from './routes/help/switchbot'
 import { Route as HelpTuyaRouteImport } from './routes/help/tuya'
@@ -86,6 +87,11 @@ const ApiHomeRoute = ApiHomeRouteImport.update({
   path: '/api/home',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIosAuthRoute = ApiIosAuthRouteImport.update({
+  id: '/api/ios-auth',
+  path: '/api/ios-auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HelpRemoRoute = HelpRemoRouteImport.update({
   id: '/help/remo',
   path: '/help/remo',
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
+  '/api/ios-auth': typeof ApiIosAuthRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
   '/help/tuya': typeof HelpTuyaRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
+  '/api/ios-auth': typeof ApiIosAuthRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
   '/help/tuya': typeof HelpTuyaRoute
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
+  '/api/ios-auth': typeof ApiIosAuthRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
   '/help/tuya': typeof HelpTuyaRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/analysis'
     | '/api/home'
+    | '/api/ios-auth'
     | '/help/remo'
     | '/help/switchbot'
     | '/help/tuya'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/analysis'
     | '/api/home'
+    | '/api/ios-auth'
     | '/help/remo'
     | '/help/switchbot'
     | '/help/tuya'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/analysis'
     | '/api/home'
+    | '/api/ios-auth'
     | '/help/remo'
     | '/help/switchbot'
     | '/help/tuya'
@@ -291,6 +303,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiAnalysisRoute: typeof ApiAnalysisRoute
   ApiHomeRoute: typeof ApiHomeRoute
+  ApiIosAuthRoute: typeof ApiIosAuthRoute
   HelpRemoRoute: typeof HelpRemoRoute
   HelpSwitchbotRoute: typeof HelpSwitchbotRoute
   HelpTuyaRoute: typeof HelpTuyaRoute
@@ -382,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ios-auth': {
+      id: '/api/ios-auth'
+      path: '/api/ios-auth'
+      fullPath: '/api/ios-auth'
+      preLoaderRoute: typeof ApiIosAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/help/remo': {
       id: '/help/remo'
       path: '/help/remo'
@@ -467,6 +487,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiAnalysisRoute: ApiAnalysisRoute,
   ApiHomeRoute: ApiHomeRoute,
+  ApiIosAuthRoute: ApiIosAuthRoute,
   HelpRemoRoute: HelpRemoRoute,
   HelpSwitchbotRoute: HelpSwitchbotRoute,
   HelpTuyaRoute: HelpTuyaRoute,

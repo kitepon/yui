@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { randomUUID } from "node:crypto";
 import { remoSync } from "@/lib/home/remo";
 import { switchbotSync } from "@/lib/home/switchbot";
 import { tuyaSync } from "@/lib/home/tuya";
 import { odelicSync } from "@/lib/home/odelic";
 import { daikinSync } from "@/lib/home/daikin";
 import { isLanOwner } from "@/lib/server/lan-owner";
-import type { Brand, Device } from "@/lib/home/types";
+import type { Brand, Device, Scene } from "@/lib/home/types";
 import { auth } from "@/lib/auth/server";
 import { clientHome, loadHome, replaceHome, saveHome } from "@/lib/server/home-db";
 import { executeDevice, executeScene } from "@/lib/server/execute";
@@ -68,6 +69,122 @@ export const Route = createFileRoute("/api/home")({
           const saved = await saveHome(userId, {
             credentials: { ...snap.credentials, ...incoming },
           });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "automation-toggle") {
+          const automationId = String(body.automationId ?? "");
+          if (typeof body.enabled !== "boolean") {
+            return Response.json({ error: "有効状態が不正です" }, { status: 400 });
+          }
+          if (!snap.automations.some((automation) => automation.id === automationId)) {
+            return Response.json({ error: "オートメーションが見つかりません" }, { status: 404 });
+          }
+          const saved = await saveHome(userId, {
+            automations: snap.automations.map((automation) =>
+              automation.id === automationId ? { ...automation, enabled: body.enabled as boolean } : automation,
+            ),
+          });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "device-meta") {
+          const deviceId = String(body.deviceId ?? "");
+          const device = snap.devices.find((item) => item.id === deviceId);
+          if (!device) return Response.json({ error: "機器が見つかりません" }, { status: 404 });
+          const name = String(body.name ?? "").trim();
+          const room = String(body.room ?? "").trim();
+          if (!name || !room || (room !== device.room && !snap.rooms.includes(room))) {
+            return Response.json({ error: "名前か場所が不正です" }, { status: 400 });
+          }
+          const deviceOrder = { ...snap.deviceOrder };
+          if (room !== device.room) {
+            deviceOrder[device.room] = (deviceOrder[device.room] ?? []).filter((id) => id !== deviceId);
+            deviceOrder[room] = [...(deviceOrder[room] ?? []), deviceId];
+          }
+          const saved = await saveHome(userId, {
+            overrides: { ...snap.overrides, [deviceId]: { ...snap.overrides[deviceId], name, room } },
+            deviceOrder,
+          });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "room-add") {
+          const name = String(body.name ?? "").trim();
+          if (!name || snap.rooms.includes(name)) {
+            return Response.json({ error: "その場所は追加できません" }, { status: 400 });
+          }
+          const saved = await saveHome(userId, { rooms: [...snap.rooms, name] });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "room-rename" || op === "room-remove") {
+          const from = String(body.from ?? "");
+          if (!snap.rooms.includes(from)) {
+            return Response.json({ error: "場所が見つかりません" }, { status: 404 });
+          }
+          const to = op === "room-rename"
+            ? String(body.to ?? "").trim()
+            : snap.rooms.find((room) => room !== from) ?? "";
+          if (!to || (op === "room-rename" && snap.rooms.includes(to))) {
+            return Response.json({ error: "その場所へ変更できません" }, { status: 400 });
+          }
+          const overrides = { ...snap.overrides };
+          for (const device of snap.devices.filter((item) => item.room === from)) {
+            overrides[device.id] = { ...overrides[device.id], room: to };
+          }
+          const deviceOrder = { ...snap.deviceOrder };
+          if (op === "room-rename") {
+            deviceOrder[to] = deviceOrder[from] ?? [];
+          } else {
+            deviceOrder[to] = [...(deviceOrder[to] ?? []), ...(deviceOrder[from] ?? [])];
+          }
+          delete deviceOrder[from];
+          const rooms = op === "room-rename"
+            ? snap.rooms.map((room) => room === from ? to : room)
+            : snap.rooms.filter((room) => room !== from);
+          const saved = await saveHome(userId, { rooms, overrides, deviceOrder });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "scene-save") {
+          const sceneId = String(body.sceneId ?? "");
+          const previous = snap.scenes.find((scene) => scene.id === sceneId);
+          if (sceneId && !previous) {
+            return Response.json({ error: "場面が見つかりません" }, { status: 404 });
+          }
+          const name = String(body.name ?? "").trim();
+          const hint = String(body.hint ?? "").trim();
+          if (!name) return Response.json({ error: "場面の名前が必要です" }, { status: 400 });
+          let steps = previous?.steps;
+          if (!previous) {
+            const incoming = body.steps;
+            if (!Array.isArray(incoming) || !incoming.length || !incoming.every((step) =>
+              step && typeof step === "object" &&
+              typeof step.match?.id === "string" &&
+              snap.devices.some((device) => device.id === step.match.id && device.source === "live" &&
+                (["light", "plug", "ac"].includes(device.kind) ||
+                 (device.kind === "bot" && device.botMode === "switch"))) &&
+              typeof step.patch?.on === "boolean"
+            )) {
+              return Response.json({ error: "場面の操作が不正です" }, { status: 400 });
+            }
+            steps = incoming.map((step) => ({ match: { id: step.match.id }, patch: { on: step.patch.on } }));
+          }
+          const scene: Scene = { id: previous?.id ?? `scene-${randomUUID()}`, name, hint, steps: steps ?? [] };
+          const scenes = previous
+            ? snap.scenes.map((item) => item.id === previous.id ? scene : item)
+            : [...snap.scenes, scene];
+          const saved = await saveHome(userId, { scenes });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "scene-remove") {
+          const sceneId = String(body.sceneId ?? "");
+          if (!snap.scenes.some((scene) => scene.id === sceneId)) {
+            return Response.json({ error: "場面が見つかりません" }, { status: 404 });
+          }
+          const saved = await saveHome(userId, { scenes: snap.scenes.filter((scene) => scene.id !== sceneId) });
           return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
         }
 
