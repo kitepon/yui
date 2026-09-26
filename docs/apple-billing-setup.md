@@ -5,7 +5,7 @@ WebはStripe、iPhoneアプリはAppleの自動更新サブスクリプション
 ## App Store Connectで必要な設定
 
 1. App Store ConnectのWeb画面でBundle ID `dev.kitepon.yuihome`の新規アプリを作り、数値のApple IDを控える。Apple公式APIは新規アプリレコードを作成できない。
-2. 同じサブスクリプショングループに月額`dev.kitepon.yuihome.subscription.monthly`と年額`dev.kitepon.yuihome.subscription.annual`を作る。日本の価格と無料体験はWeb契約（月100円／年1,000円、初回30日）に合わせ、実際に選べる価格と期間を購入画面で確認する。
+2. 同じサブスクリプショングループに月額`dev.kitepon.yuihome.subscription.monthly`と年額`dev.kitepon.yuihome.subscription.annual`を作る。日本の価格はWeb契約の月100円／年1,000円に合わせられるか価格表で確認する。Webの30日試用に対し、Appleの無料体験は「1か月」が設定候補なので、条件をオーナーと確定してから設定する。
 3. App Store Server APIのIn-App Purchase鍵（`.p8`）、Key ID、Issuer IDを用意する。鍵の中身をリポジトリやimageに入れない。
 4. App Store Server Notifications V2の本番・Sandbox送信先を`https://yuihome.kitepon.dev/api/apple/notifications`に設定する。
 5. 本番サーバーの環境変数に`APPLE_APP_ID`（数値）、`APPLE_IAP_KEY_ID`、`APPLE_IAP_ISSUER_ID`、`APPLE_IAP_PRIVATE_KEY_BASE64`（`.p8`全体をbase64化）を設定し、通常の本番更新手順で再起動する。
