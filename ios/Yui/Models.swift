@@ -11,6 +11,14 @@ struct AuthResponse: Decodable {
     let user: AuthUser?
 }
 
+struct DeleteAccountResponse: Decodable {
+    let success: Bool
+}
+
+struct AppleLoginTokenResponse: Decodable {
+    let success: Bool
+}
+
 struct AuthSessionEnvelope: Decodable {
     let user: AuthUser?
 }

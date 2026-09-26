@@ -6,7 +6,7 @@
 
 - 結の公式hosted版は Web（`https://yuihome.kitepon.dev`）でアカウントと家を持つ。iPhone では SwiftUI のネイティブアプリを日常の操作面とし、Web はブラウザと self-hosted 版の操作面として残す。どちらも同じ家を操作する。
 - サーバー口は `/api/auth/*` と `/api/home`。iPhone アプリの Google 認証中継は `/api/ios-auth`、分析は `/api/analysis`。Echo からは `/api/alexa`（中は同じ家の操作）。Web と iPhone アプリは同じ家のデータと操作口を使う。Echo の解釈は Alexa（Smart Home）。結は機器の実体と操作だけを持つ。
-- iPhone アプリは SwiftUI で開発用ビルドを提供する。Web と機能を照合し、分析・場所・場面・オートメーション・接続の操作をネイティブ画面で扱う。Cloudflare への実移転と App Store 提出は次の工程。
+- iPhone アプリは SwiftUI で開発し、Web と機能を照合する。分析・場所・場面・オートメーション・接続の操作をネイティブ画面で扱い、App Storeで配信する。
 - サーバーは複数世帯を受け、家電トークンは結のインフラに置く。計算はいま自宅サーバーの Docker。
 
 ## 境界
@@ -15,7 +15,7 @@
 - 家電トークンの平文はディスクに置かない。応答 JSON に平文を載せない。クライアントは「保存済み」だけを見る。
 - 1 ユーザーは 1 家を持つ。家族共有は次の工程。
 - 機器の名前と場所は人が付け替えられる。付けた値は `overrides` が正本で、機器そのものの名前を正本にしない。各社の同期は毎回それぞれの元の名前を返すので、保存の入口で当て直す。片方の経路だけ当てると、結の画面と Alexa の呼び名が食い違って戻る。
-- 識別は Better Auth のセッション（Cookie または `Authorization: Bearer`）。本番のサインインはメール＋パスワードと、結専用 Google。iPhone アプリの Google ログインは iOS 標準の認証画面を使い、使い捨てコードと PKCE でセッションを受け取る。Grok broker / プレビュー用 OAuth は使わない。Sign in with Apple は App Store 公開前の工程で足す。
+- 識別は Better Auth のセッション（Cookie または `Authorization: Bearer`）。本番のサインインはメール＋パスワード、結専用 Google、iPhoneのSign in with Apple。iPhone アプリの Google ログインは iOS 標準の認証画面を使い、使い捨てコードと PKCE でセッションを受け取る。AppleログインはiOSの認証画面で得たID tokenを検証し、削除時にAppleのトークンを解除する。Grok broker / プレビュー用 OAuth は使わない。
 - 永続は SQLite 方言だけ（ローカルはファイル、移転先は D1）。Postgres / PGLite / `yui.json` を正本にしない。
 - オートメーションの入口は `tickAllHomes()` だけ。ローカルは 60 秒間隔で同じ関数を呼ぶ（周期の正本は`src/lib/home/control-tick.ts`。画面の説明文も同じ定数を読む）。起動時の着火は Nitro プラグイン（`server/plugins/control-runner.ts`）が正で、初回リクエスト待ちにしない。Cloudflare では Cron が同じ関数を呼ぶ。プロセス常駐の 20 秒ループと、起きっぱなしの家単位ワーカーを正にしない。条件を満たした複数が同じ機器を含むとき、一覧の上だけがその機器を動かす。下は残った機器だけ動く。並びは場面タブのオートメーション欄が正。「条件成立で下の判定を打ち切る」を有効にしたオートメーションは、条件成立時にその行までで判定を終える。下の機器が違っても判定・実行しない。連続実行や同じ設定の再送を省略する回も打ち切る。条件不成立または無効なら下へ進み、設定の既定は切とする。
 - 時刻オートメーションの粒度は 1 分。比較する時計は `Asia/Tokyo`。センサーしきい値の粒度は小数点第一位。センサー範囲条件は、現在設定を読み返せる機器だけを操作し、値が違うときだけ送る。赤外線など一方通行の機器には適用しない。センサーは有効なオートメーションがある家だけを起こす。全戸 20 秒ポーリングを正にしない。
@@ -23,7 +23,7 @@
 - オートメーションと場面の操作は、画面に出ている項目を保存する。触っていない初期値も載せる。載せていない項目は送らない。
 - 秘密は環境変数だけに置く。リポジトリと image に入れない。必須は `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`、`HOME_SECRETS_KEY`。バックアップを使うなら `YUI_BACKUP_URL` と `YUI_BACKUP_SECRET` も。Google で入るなら `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET`。Echo なら `ALEXA_CLIENT_ID` と `ALEXA_CLIENT_SECRET`。
 - 公式hosted版のWeb契約は、1つの家あたり月額100円または年額1,000円（税込）、初回30日間無料で提供し、Stripeで購入・管理する。
-  iPhoneアプリの契約はApp Storeの自動更新サブスクリプションで購入・管理し、StoreKitが返す実際の価格・条件を表示する。
+  iPhoneアプリの契約はApp Storeの自動更新サブスクリプションで購入・管理し、月額・年額の初回1か月無料とStoreKitが返す実際の価格・条件を表示する。
   サーバーはStripeとAppleの有効契約を同じ家の利用権へ統合し、Appleの署名付き取引とサーバー通知を検証する。
   購入開始は結アカウントごとの単一予約と両決済元の最新状態確認で制御し、他方の購入手続き中も新規購入を許さない。Apple契約の成立を検知したら、未完了のStripe Checkoutを失効させる。
   Web料金は`src/lib/billing-plan.ts`、契約条件は`/terms`、`/legal`と一致させる。課金免除は`YUI_BILLING_EXEMPT`（カンマ区切りemail）だけで、
@@ -55,7 +55,7 @@
 ## 予備（R2）
 
 - 家の SQLite が正本。Cloudflare は家データ（ユーザー行と家。トークンは既に暗号化済み）の予備だけ。
-- Google と Stripe は吸わない。Appleのアカウント識別子・検証済み契約状態はSQLiteの予備に含める。復旧後の身分は Google、Stripeの契約はStripeをその場で見る。
+- Google と Stripe は吸わない。Appleのアカウント識別子・検証済み契約状態・暗号化したログイン解除用トークンと削除記録はSQLiteの予備に含める。復旧後のStripe契約はStripeをその場で見る。削除済みアカウントは古い予備から復活させない。
 - 家が 1 時間ごとに暗号化スナップショットを R2 へ押す。復旧は明示の `restore` だけ。壊れているとみなして自動では戻さない。
 
 ## Cloudflare 移転で変えてよいもの

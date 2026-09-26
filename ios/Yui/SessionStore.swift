@@ -4,6 +4,7 @@ import StoreKit
 @MainActor
 final class SessionStore: ObservableObject {
     private let googleSignIn = GoogleSignIn()
+    private let appleSignIn = AppleSignIn()
     @Published var token: String?
     @Published var home: HomeSnapshot?
     @Published var error: String?
@@ -15,6 +16,7 @@ final class SessionStore: ObservableObject {
     @Published var billingStatus: BillingStatus?
     @Published var accountError: String?
     @Published var appleProducts: [String: Product] = [:]
+    @Published var appleIntroEligible = false
     @Published var appleBusy = false
     private var appleAccount: AppleBillingAccount?
     private var updatesTask: Task<Void, Never>?
@@ -61,6 +63,14 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    func signInWithApple() async {
+        await run {
+            let token = try await appleSignIn.authenticate()
+            self.store(token)
+            self.home = try await YuiClient.shared.home(token: token)
+        }
+    }
+
     func refresh() async {
         guard let token else { return }
         await run {
@@ -93,6 +103,13 @@ final class SessionStore: ObservableObject {
         let products = try await Product.products(for: ids)
         appleProducts = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
         if products.count != ids.count { throw YuiError.message("App Storeの商品がまだ利用できません") }
+        if let subscription = products.first?.subscription {
+            appleIntroEligible = await subscription.isEligibleForIntroOffer && products.allSatisfy { product in
+                guard let offer = product.subscription?.introductoryOffer else { return false }
+                return offer.paymentMode == .freeTrial && offer.period.unit == .month &&
+                    offer.period.value == 1 && offer.periodCount == 1
+            }
+        }
     }
 
     func appleProduct(plan: String) -> Product? {
@@ -300,7 +317,26 @@ final class SessionStore: ObservableObject {
         billingStatus = nil
         appleAccount = nil
         appleProducts = [:]
+        appleIntroEligible = false
         Keychain.clear()
+    }
+
+    func deleteAccount() async {
+        guard let token else { return }
+        busy = true
+        accountError = nil
+        defer { busy = false }
+        do {
+            try await YuiClient.shared.deleteAccount(token: token)
+            signOut()
+        } catch {
+            if case YuiError.unauthorized = error {
+                signOut()
+                self.error = error.localizedDescription
+            } else {
+                accountError = error.localizedDescription
+            }
+        }
     }
 
     private func store(_ token: String) {

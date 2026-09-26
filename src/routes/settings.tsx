@@ -13,6 +13,7 @@ import { useHome } from "@/lib/home/store";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import { recentDeviceLan, type Device } from "@/lib/home/types";
 import { useHomeHydrated } from "@/lib/home/use-hydrated";
+import { authClient } from "@/lib/auth/client";
 
 export const Route = createFileRoute("/settings")({
   component: () => (
@@ -38,6 +39,7 @@ export function SettingsPage() {
   const devices = useHome((s) => s.devices);
   const applySnapshot = useHome((s) => s.applySnapshot);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [billing, setBilling] = useState<{
     configured: boolean;
     purchasePendingProvider: "stripe" | "apple" | null;
@@ -106,6 +108,21 @@ export function SettingsPage() {
       window.location.assign(json.url);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "契約管理を開けない");
+      setBusy(null);
+    }
+  }
+
+  async function deleteAccount() {
+    setBusy("delete-account");
+    try {
+      const { error } = await authClient.deleteUser();
+      if (error?.code === "SESSION_EXPIRED") {
+        throw new Error("安全のため再ログインが必要です。ログアウトして再ログイン後に削除してください");
+      }
+      if (error) throw new Error(error.message ?? "アカウントを削除できませんでした");
+      window.location.assign("/login");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "アカウントを削除できませんでした");
       setBusy(null);
     }
   }
@@ -423,6 +440,28 @@ export function SettingsPage() {
           >
             追加する
           </a>
+        </section>
+
+        <section className="rounded-lg border border-border bg-surface p-4">
+          <p className="text-[11px] tracking-wide text-faint">アカウント</p>
+          <h2 className="mt-0.5 text-lg font-medium text-fg">アカウントを削除</h2>
+          <p className="mt-2 text-sm text-muted">
+            家の設定と記録を完全に削除し、Web契約を終了します。App Storeの契約は
+            <a className="underline" href="https://apps.apple.com/account/subscriptions"> Appleのサブスクリプション管理</a>
+            で別途解約してください。
+          </p>
+          {confirmDelete ? (
+            <div className="mt-3 flex gap-2">
+              <Button variant="outline" disabled={Boolean(busy)} onClick={() => setConfirmDelete(false)}>やめる</Button>
+              <Button className="bg-danger text-white" disabled={Boolean(busy)} onClick={() => void deleteAccount()}>
+                完全に削除する
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" className="mt-3 text-danger" onClick={() => setConfirmDelete(true)}>
+              削除を進める
+            </Button>
+          )}
         </section>
 
         <Button

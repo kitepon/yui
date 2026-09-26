@@ -23,6 +23,29 @@ struct YuiClient {
         return token
     }
 
+    func signInWithApple(identityToken: String, nonce: String, firstName: String?, lastName: String?, email: String?, authorizationCode: String) async throws -> String {
+        var appleUser: [String: Any] = [:]
+        if firstName != nil || lastName != nil {
+            appleUser["name"] = ["firstName": firstName ?? "", "lastName": lastName ?? ""]
+        }
+        if let email { appleUser["email"] = email }
+        var idToken: [String: Any] = ["token": identityToken, "nonce": nonce]
+        if !appleUser.isEmpty { idToken["user"] = appleUser }
+        let response: AuthResponse = try await send(
+            path: "/api/auth/sign-in/social", method: "POST", token: nil,
+            body: ["provider": "apple", "idToken": idToken]
+        )
+        guard let token = response.token, !token.isEmpty else {
+            throw YuiError.message("Appleログインが完了しませんでした")
+        }
+        let result: AppleLoginTokenResponse = try await send(
+            path: "/api/apple/login-token", method: "POST", token: token,
+            body: ["authorizationCode": authorizationCode]
+        )
+        if !result.success { throw YuiError.message("Appleログインが完了しませんでした") }
+        return token
+    }
+
     func home(token: String) async throws -> HomeSnapshot {
         try await send(path: "/api/home", method: "GET", token: token)
     }
@@ -30,6 +53,17 @@ struct YuiClient {
     func currentUser(token: String) async throws -> AuthUser? {
         let response: AuthSessionEnvelope = try await send(path: "/api/auth/get-session", method: "GET", token: token)
         return response.user
+    }
+
+    func deleteAccount(token: String) async throws {
+        do {
+            let response: DeleteAccountResponse = try await send(
+                path: "/api/auth/delete-user", method: "POST", token: token, body: [:]
+            )
+            if !response.success { throw YuiError.message("アカウントを削除できませんでした") }
+        } catch YuiError.message(let reason) where reason == "SESSION_EXPIRED" {
+            throw YuiError.message("安全のため再ログインが必要です。ログアウトして再ログイン後に削除してください")
+        }
     }
 
     func billingStatus(token: String, refresh: Bool) async throws -> BillingStatus {

@@ -17,6 +17,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RoomsRouteImport } from './routes/rooms'
 import { Route as ScenesRouteImport } from './routes/scenes'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiAnalysisRouteImport } from './routes/api/analysis'
 import { Route as ApiHomeRouteImport } from './routes/api/home'
@@ -26,6 +27,7 @@ import { Route as HelpSwitchbotRouteImport } from './routes/help/switchbot'
 import { Route as HelpTuyaRouteImport } from './routes/help/tuya'
 import { Route as ApiAlexaSplatRouteImport } from './routes/api/alexa/$'
 import { Route as ApiAppleAccountRouteImport } from './routes/api/apple/account'
+import { Route as ApiAppleLoginTokenRouteImport } from './routes/api/apple/login-token'
 import { Route as ApiAppleNotificationsRouteImport } from './routes/api/apple/notifications'
 import { Route as ApiApplePurchaseRouteImport } from './routes/api/apple/purchase'
 import { Route as ApiAppleRefreshRouteImport } from './routes/api/apple/refresh'
@@ -77,6 +79,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -120,6 +127,11 @@ const ApiAlexaSplatRoute = ApiAlexaSplatRouteImport.update({
 const ApiAppleAccountRoute = ApiAppleAccountRouteImport.update({
   id: '/api/apple/account',
   path: '/api/apple/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAppleLoginTokenRoute = ApiAppleLoginTokenRouteImport.update({
+  id: '/api/apple/login-token',
+  path: '/api/apple/login-token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAppleNotificationsRoute = ApiAppleNotificationsRouteImport.update({
@@ -182,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/rooms': typeof RoomsRoute
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
@@ -191,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/help/tuya': typeof HelpTuyaRoute
   '/api/alexa/$': typeof ApiAlexaSplatRoute
   '/api/apple/account': typeof ApiAppleAccountRoute
+  '/api/apple/login-token': typeof ApiAppleLoginTokenRoute
   '/api/apple/notifications': typeof ApiAppleNotificationsRoute
   '/api/apple/purchase': typeof ApiApplePurchaseRoute
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
@@ -211,6 +225,7 @@ export interface FileRoutesByTo {
   '/rooms': typeof RoomsRoute
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
@@ -220,6 +235,7 @@ export interface FileRoutesByTo {
   '/help/tuya': typeof HelpTuyaRoute
   '/api/alexa/$': typeof ApiAlexaSplatRoute
   '/api/apple/account': typeof ApiAppleAccountRoute
+  '/api/apple/login-token': typeof ApiAppleLoginTokenRoute
   '/api/apple/notifications': typeof ApiAppleNotificationsRoute
   '/api/apple/purchase': typeof ApiApplePurchaseRoute
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
@@ -241,6 +257,7 @@ export interface FileRoutesById {
   '/rooms': typeof RoomsRoute
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/api/analysis': typeof ApiAnalysisRoute
   '/api/home': typeof ApiHomeRoute
@@ -250,6 +267,7 @@ export interface FileRoutesById {
   '/help/tuya': typeof HelpTuyaRoute
   '/api/alexa/$': typeof ApiAlexaSplatRoute
   '/api/apple/account': typeof ApiAppleAccountRoute
+  '/api/apple/login-token': typeof ApiAppleLoginTokenRoute
   '/api/apple/notifications': typeof ApiAppleNotificationsRoute
   '/api/apple/purchase': typeof ApiApplePurchaseRoute
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
@@ -272,6 +290,7 @@ export interface FileRouteTypes {
     | '/rooms'
     | '/scenes'
     | '/settings'
+    | '/support'
     | '/terms'
     | '/api/analysis'
     | '/api/home'
@@ -281,6 +300,7 @@ export interface FileRouteTypes {
     | '/help/tuya'
     | '/api/alexa/$'
     | '/api/apple/account'
+    | '/api/apple/login-token'
     | '/api/apple/notifications'
     | '/api/apple/purchase'
     | '/api/apple/refresh'
@@ -301,6 +321,7 @@ export interface FileRouteTypes {
     | '/rooms'
     | '/scenes'
     | '/settings'
+    | '/support'
     | '/terms'
     | '/api/analysis'
     | '/api/home'
@@ -310,6 +331,7 @@ export interface FileRouteTypes {
     | '/help/tuya'
     | '/api/alexa/$'
     | '/api/apple/account'
+    | '/api/apple/login-token'
     | '/api/apple/notifications'
     | '/api/apple/purchase'
     | '/api/apple/refresh'
@@ -330,6 +352,7 @@ export interface FileRouteTypes {
     | '/rooms'
     | '/scenes'
     | '/settings'
+    | '/support'
     | '/terms'
     | '/api/analysis'
     | '/api/home'
@@ -339,6 +362,7 @@ export interface FileRouteTypes {
     | '/help/tuya'
     | '/api/alexa/$'
     | '/api/apple/account'
+    | '/api/apple/login-token'
     | '/api/apple/notifications'
     | '/api/apple/purchase'
     | '/api/apple/refresh'
@@ -360,6 +384,7 @@ export interface RootRouteChildren {
   RoomsRoute: typeof RoomsRoute
   ScenesRoute: typeof ScenesRoute
   SettingsRoute: typeof SettingsRoute
+  SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   ApiAnalysisRoute: typeof ApiAnalysisRoute
   ApiHomeRoute: typeof ApiHomeRoute
@@ -369,6 +394,7 @@ export interface RootRouteChildren {
   HelpTuyaRoute: typeof HelpTuyaRoute
   ApiAlexaSplatRoute: typeof ApiAlexaSplatRoute
   ApiAppleAccountRoute: typeof ApiAppleAccountRoute
+  ApiAppleLoginTokenRoute: typeof ApiAppleLoginTokenRoute
   ApiAppleNotificationsRoute: typeof ApiAppleNotificationsRoute
   ApiApplePurchaseRoute: typeof ApiApplePurchaseRoute
   ApiAppleRefreshRoute: typeof ApiAppleRefreshRoute
@@ -439,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -500,6 +533,13 @@ declare module '@tanstack/react-router' {
       path: '/api/apple/account'
       fullPath: '/api/apple/account'
       preLoaderRoute: typeof ApiAppleAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/apple/login-token': {
+      id: '/api/apple/login-token'
+      path: '/api/apple/login-token'
+      fullPath: '/api/apple/login-token'
+      preLoaderRoute: typeof ApiAppleLoginTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/apple/notifications': {
@@ -584,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   RoomsRoute: RoomsRoute,
   ScenesRoute: ScenesRoute,
   SettingsRoute: SettingsRoute,
+  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   ApiAnalysisRoute: ApiAnalysisRoute,
   ApiHomeRoute: ApiHomeRoute,
@@ -593,6 +634,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpTuyaRoute: HelpTuyaRoute,
   ApiAlexaSplatRoute: ApiAlexaSplatRoute,
   ApiAppleAccountRoute: ApiAppleAccountRoute,
+  ApiAppleLoginTokenRoute: ApiAppleLoginTokenRoute,
   ApiAppleNotificationsRoute: ApiAppleNotificationsRoute,
   ApiApplePurchaseRoute: ApiApplePurchaseRoute,
   ApiAppleRefreshRoute: ApiAppleRefreshRoute,

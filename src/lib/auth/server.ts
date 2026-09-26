@@ -81,6 +81,8 @@ const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? (productAuth ? undefi
 const googleClientId = env("GOOGLE_CLIENT_ID");
 const googleClientSecret = env("GOOGLE_CLIENT_SECRET");
 const googleOn = googleAuthConfigured();
+const appleBundleId = "dev.kitepon.yuihome";
+const appleOn = productAuth && !authDisabled;
 
 /** True when a real sign-in method is active. */
 export const authConfigured =
@@ -192,19 +194,33 @@ export const auth = betterAuth({
       trustedProviders: [
         ...GROK_PROVIDERS.map((p) => p.providerId),
         ...(googleOn ? (["google"] as const) : []),
+        ...(appleOn ? (["apple"] as const) : []),
       ],
       requireLocalEmailVerified: false,
     },
   },
 
-  ...(googleOn
+  ...(googleOn || appleOn
     ? {
         socialProviders: {
-          google: {
+          ...(googleOn ? { google: {
             clientId: googleClientId as string,
             clientSecret: googleClientSecret as string,
             prompt: "select_account" as const,
-          },
+          } } : {}),
+          ...(appleOn ? { apple: {
+            clientId: appleBundleId,
+            appBundleIdentifier: appleBundleId,
+            // ネイティブから署名付き identity token を受ける。Web リダイレクトは使わない。
+            mapProfileToUser: async (profile: { sub: string; email?: string }) => {
+              if (profile.email) return {};
+              const row = getSqlite().prepare(
+                `SELECT u.email FROM account a JOIN "user" u ON u.id = a.userId
+                 WHERE a.providerId = 'apple' AND a.accountId = ?`,
+              ).get(profile.sub) as { email: string } | undefined;
+              return row ? { email: row.email } : {};
+            },
+          } } : {}),
         },
       }
     : {}),
@@ -214,6 +230,24 @@ export const auth = betterAuth({
   // window and reduces auth flicker. See the `auth` skill for the full
   // flicker-prevention guidance (gate on `isPending`; SSR the session).
   session: { cookieCache: { enabled: true, maxAge: 300 } },
+
+  user: {
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user) => {
+        const { prepareAccountDeletion } = await import("../server/account-deletion.ts");
+        await prepareAccountDeletion(user.id);
+      },
+      afterDelete: async (user) => {
+        const { recordDeletedUser } = await import("../server/account-deletion.ts");
+        recordDeletedUser(user.id);
+        const { backupConfigured, pushBackup } = await import("../server/home-backup.ts");
+        if (backupConfigured()) {
+          void pushBackup().catch((error) => console.error("[yui] アカウント削除後のバックアップに失敗", error));
+        }
+      },
+    },
+  },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),

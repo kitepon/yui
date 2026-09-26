@@ -27,6 +27,31 @@ struct LoginView: View {
                     .font(.system(size: 14))
                     .foregroundStyle(YuiTheme.muted)
                     .padding(.top, 7)
+                Text("すでに家がある場合は、以前と同じ方法でログインしてください")
+                    .font(.system(size: 11))
+                    .foregroundStyle(YuiTheme.muted)
+                    .padding(.top, 8)
+
+                Button {
+                    Task { await session.signInWithApple() }
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "apple.logo")
+                            .font(.system(size: 23))
+                        Spacer()
+                        Text("Appleでログイン")
+                            .font(.system(size: 16, weight: .semibold))
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .frame(height: 57)
+                    .background(.black, in: RoundedRectangle(cornerRadius: 17))
+                }
+                .disabled(session.busy)
+                .padding(.top, 29)
 
                 Button {
                     Task { await session.signInWithGoogle() }
@@ -47,7 +72,7 @@ struct LoginView: View {
                     .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 17))
                 }
                 .disabled(session.busy)
-                .padding(.top, 29)
+                .padding(.top, 12)
 
                 HStack(spacing: 12) {
                     Rectangle().frame(height: 1)

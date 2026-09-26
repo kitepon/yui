@@ -12,6 +12,7 @@
 		249B95B8B8677E8828DF889B /* YuiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */; };
 		25B1625E1C593E34A41AA8DA /* GoogleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7E016594EA7B999DE01AB9 /* GoogleSignIn.swift */; };
 		2B6782FF35335C456230B0B7 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670AF44B343B14DEBCB6D731 /* LoginView.swift */; };
+		3982C8273D4F4E6B1C53982E /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24FFD4CDB4C8D61089E82B87 /* AppleSignIn.swift */; };
 		3A0CAD2FFA118570598DD1CE /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2981A0E63D79A4D16EBE0BAA /* RootView.swift */; };
 		3BA97862956E8E2D53BC38BE /* AutomationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4288D7327FF06DEFCF6631D /* AutomationEditorView.swift */; };
 		3CECECE0844B4B3C287D1B18 /* AnalysisPlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62AEB133F7948548E3DF1105 /* AnalysisPlot.swift */; };
@@ -36,6 +37,8 @@
 /* Begin PBXFileReference section */
 		077672F56CC8346B91EC670D /* ScenesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesView.swift; sourceTree = "<group>"; };
 		0C7E016594EA7B999DE01AB9 /* GoogleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignIn.swift; sourceTree = "<group>"; };
+		24FBCA5AB5822FD167D77B24 /* Yui.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Yui.entitlements; sourceTree = "<group>"; };
+		24FFD4CDB4C8D61089E82B87 /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
 		2981A0E63D79A4D16EBE0BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiClient.swift; sourceTree = "<group>"; };
 		3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
@@ -77,6 +80,7 @@
 				DD09C3B8DD95E9ECAC6EAEF0 /* AnalysisChartCard.swift */,
 				62AEB133F7948548E3DF1105 /* AnalysisPlot.swift */,
 				7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */,
+				24FFD4CDB4C8D61089E82B87 /* AppleSignIn.swift */,
 				EE1BB3E8356695DF7DA421B3 /* Assets.xcassets */,
 				F4288D7327FF06DEFCF6631D /* AutomationEditorView.swift */,
 				5D9B701B7A90ECB310633C70 /* DeviceActionDraft.swift */,
@@ -97,6 +101,7 @@
 				E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */,
 				F553E8EC520849F169D89C6A /* Theme.swift */,
 				89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */,
+				24FBCA5AB5822FD167D77B24 /* Yui.entitlements */,
 				50400412CEFFD51B5BC7D8EE /* YuiApp.swift */,
 				34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */,
 			);
@@ -185,6 +190,7 @@
 				B2B7B721A72A59EC50CF53E5 /* AnalysisChartCard.swift in Sources */,
 				3CECECE0844B4B3C287D1B18 /* AnalysisPlot.swift in Sources */,
 				7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */,
+				3982C8273D4F4E6B1C53982E /* AppleSignIn.swift in Sources */,
 				3BA97862956E8E2D53BC38BE /* AutomationEditorView.swift in Sources */,
 				D87070E5AD02F25AF947EB4B /* DeviceActionDraft.swift in Sources */,
 				3E4FEE72B33923B3766C7BB2 /* DeviceActionEditor.swift in Sources */,
@@ -215,6 +221,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = TPWX489GV4;
@@ -225,7 +232,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -370,6 +377,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = TPWX489GV4;
@@ -380,7 +388,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

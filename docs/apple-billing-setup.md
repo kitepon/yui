@@ -1,20 +1,30 @@
-# iPhone課金の設定と現在地
+# iPhone版のApp Store提出
 
-WebはStripe、iPhoneアプリはAppleの自動更新サブスクリプションを使う。サーバーは双方を家の利用権へ統合する。Apple取引はStoreKitの署名付きJWSをAppleのルート証明書で検証し、購入時の`appAccountToken`で結のユーザーへ結びつける。通知は`/api/apple/notifications`で受け、利用者の「購入を復元・契約状態を更新」はStoreKitの同期とApp Store Server APIの状態取得を行う。
+Web契約はStripe、iPhoneアプリ内の契約はAppleの自動更新サブスクリプションで扱う。サーバーは両方を同じ家の利用権として判定し、他方の契約中や購入手続き中には新しい購入を始めさせない。Apple取引は署名付きJWSを検証して結のアカウントに結び付ける。利用者はアプリから購入を復元し、契約状態を再取得できる。
 
-## App Store Connectで必要な設定
+## App Store Connectで保存済み
 
-1. App Store ConnectのWeb画面でBundle ID `dev.kitepon.yuihome`の新規アプリを作り、数値のApple IDを控える。Apple公式APIは新規アプリレコードを作成できない。
-2. 同じサブスクリプショングループに月額`dev.kitepon.yuihome.subscription.monthly`と年額`dev.kitepon.yuihome.subscription.annual`を作る。日本の価格はWeb契約の月100円／年1,000円に合わせられるか価格表で確認する。Webの30日試用に対し、Appleの無料体験は「1か月」が設定候補なので、条件をオーナーと確定してから設定する。
-3. App Store Server APIのIn-App Purchase鍵（`.p8`）、Key ID、Issuer IDを用意する。鍵の中身をリポジトリやimageに入れない。
-4. App Store Server Notifications V2の本番・Sandbox送信先を`https://yuihome.kitepon.dev/api/apple/notifications`に設定する。
-5. 本番サーバーの環境変数に`APPLE_APP_ID`（数値）、`APPLE_IAP_KEY_ID`、`APPLE_IAP_ISSUER_ID`、`APPLE_IAP_PRIVATE_KEY_BASE64`（`.p8`全体をbase64化）を設定し、通常の本番更新手順で再起動する。
-6. Sandbox購入、更新、解約、返金、復元を実機で確認する。`/api/stripe/status`の`entitlement.provider`が`apple`となり、WebとiPhone双方から家を操作できることを確認する。Stripe契約者のWeb経路も確認する。
+- アプリ「結 Yui」: Apple ID `6816410748`、Bundle ID `dev.kitepon.yuihome`。無料アプリ、日本だけで配信する設定。iPhone版1.0は提出準備中。
+- サブスクリプショングループ「Yui Home」: `22415555`。
+- 月額 `dev.kitepon.yuihome.subscription.monthly`: 日本で月100円。初回1か月無料。
+- 年額 `dev.kitepon.yuihome.subscription.annual`: 日本で年1,000円。初回1か月無料。
+- プライバシーポリシーURL: `https://yuihome.kitepon.dev/privacy`。
+- Sign in with Apple と In-App Purchase のApp ID能力は有効。
 
-本番環境に上記のApple設定が無ければ、iPhoneアプリは「App Storeでの購入は準備中です」と表示する。コードのビルド成功は、App Store Connectの商品・鍵・通知設定や実課金試験の成功を意味しない。
+## 提出までの残作業
 
-## 現在地
+1. Apple DeveloperでSign in with Appleの鍵、App Store ConnectでIn-App Purchase鍵を作る。`.p8`の内容をリポジトリやDocker imageへ入れない。
+2. 本番サーバーの`deploy/.env`に次を設定する。
 
-- Apple DeveloperにBundle ID `dev.kitepon.yuihome`を登録済み。In-App Purchase能力が有効なことをAPIで確認済み。
-- App Store Connectのアプリレコードは未作成。AppleのAPIでは作れないため、Web画面での新規登録をオーナーへ依頼中。
-- サーバー`59ee1d6`を本番へ配備し、iPhone(Kaito)へ同版の開発用ビルドを導入・起動済み。Appleの課金設定は本番にまだ無く、購入・復元の実取引は未検証。
+   | 用途 | 変数 |
+   | --- | --- |
+   | Appleログインの認可コード交換・削除時のトークン解除 | `APPLE_SIGNIN_TEAM_ID`, `APPLE_SIGNIN_KEY_ID`, `APPLE_SIGNIN_PRIVATE_KEY_BASE64` |
+   | Apple取引の検証と契約状態照会 | `APPLE_APP_ID`, `APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY_BASE64` |
+
+   `*_PRIVATE_KEY_BASE64`にはダウンロードした`.p8`全体をbase64化した値を設定する。`APPLE_APP_ID`は`6816410748`。鍵は再ダウンロードできないため、アクセスを限定して保管する。
+3. サーバーを更新し、App Store Server Notifications V2の本番・Sandbox送信先を`https://yuihome.kitepon.dev/api/apple/notifications`に設定する。
+4. 審査用の機器データを持つ専用アカウント、iPhoneの画面写真、サブスクリプション審査用の画面写真、審査担当者への説明を用意する。
+5. 署名付きiOSビルドをApp Store Connectへアップロードする。Sandboxで購入・復元・更新・解約・返金、WebとiPhoneの利用権、Stripe契約中の二重購入防止、Appleログイン・アカウント削除を実機で確認する。
+6. iPhone版1.0と両サブスクリプションを審査へ提出する。
+
+本番にApple課金設定がなければ、iPhoneアプリは「App Storeでの購入は準備中です」と表示する。ビルド成功や商品登録だけでは、購入と通知の動作は確認できない。

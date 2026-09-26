@@ -194,7 +194,7 @@ struct AnalysisView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(YuiTheme.accent)
             }
-            Text("\(first.formatted(.dateTime.month().day().hour().minute())) 〜 \(last.formatted(.dateTime.month().day().hour().minute()))")
+            Text("\(first.formatted(.dateTime.month().day().hour().minute().locale(Locale(identifier: "ja_JP")))) 〜 \(last.formatted(.dateTime.month().day().hour().minute().locale(Locale(identifier: "ja_JP"))))")
                 .font(.system(size: 11))
                 .monospacedDigit()
                 .foregroundStyle(YuiTheme.muted)
@@ -235,7 +235,7 @@ struct AnalysisView: View {
                             .background(YuiTheme.surfaceRaised, in: Circle())
                         VStack(alignment: .leading, spacing: 4) {
                             if let date = event.date {
-                                Text(date.formatted(.dateTime.month().day().hour().minute().second()))
+                                Text(date.formatted(.dateTime.month().day().hour().minute().second().locale(Locale(identifier: "ja_JP"))))
                                     .font(.system(size: 10))
                                     .foregroundStyle(YuiTheme.muted)
                             }

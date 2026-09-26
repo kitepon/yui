@@ -85,18 +85,21 @@ export function appleSubscriptionRows(userId: string): AppleSubscriptionRow[] {
     .all(userId) as unknown as AppleSubscriptionRow[];
 }
 
-function userForAppleTransaction(transaction: JWSTransactionDecodedPayload) {
+function userForAppleTransaction(transaction: JWSTransactionDecodedPayload, expectedUserId?: string) {
   const originalId = transaction.originalTransactionId;
   const token = transaction.appAccountToken?.toLowerCase();
   if (!originalId || !token) throw new AppleBillingInputError("Appleのアカウント識別子がありません");
   const sqlite = getSqlite();
-  const account = sqlite.prepare("SELECT user_id FROM apple_billing_accounts WHERE app_account_token = ?")
-    .get(token) as { user_id: string } | undefined;
-  if (!account) throw new AppleBillingInputError("Appleの取引に対応する結のアカウントがありません");
   const existing = sqlite.prepare("SELECT user_id FROM apple_subscriptions WHERE original_transaction_id = ?")
     .get(originalId) as { user_id: string } | undefined;
-  if (existing && existing.user_id !== account.user_id) throw new AppleBillingInputError("Appleの契約は別の結アカウントに紐づいています");
-  return account.user_id;
+  if (existing) return existing.user_id;
+  const account = sqlite.prepare("SELECT user_id FROM apple_billing_accounts WHERE app_account_token = ?")
+    .get(token) as { user_id: string } | undefined;
+  if (account) return account.user_id;
+  const deleted = sqlite.prepare("SELECT 1 FROM apple_deleted_transactions WHERE original_transaction_id = ?")
+    .get(originalId);
+  if (deleted && expectedUserId) return expectedUserId;
+  throw new AppleBillingInputError("Appleの取引に対応する結のアカウントがありません");
 }
 
 function saveTransaction(
@@ -112,7 +115,7 @@ function saveTransaction(
   } catch {
     throw new AppleBillingInputError("Appleのサブスクリプション取引が不正です");
   }
-  const userId = userForAppleTransaction(transaction);
+  const userId = userForAppleTransaction(transaction, expectedUserId);
   if (expectedUserId && userId !== expectedUserId) throw new AppleBillingInputError("Appleの契約は別の結アカウントに紐づいています");
   getSqlite().prepare(
     `INSERT INTO apple_subscriptions (
@@ -134,6 +137,8 @@ function saveTransaction(
     fields.revokedAtMs, fields.autoRenewStatus, fields.offerDiscountType ?? null,
     stateAsOfMs ?? fields.signedAtMs, new Date().toISOString(),
   );
+  getSqlite().prepare("DELETE FROM apple_deleted_transactions WHERE original_transaction_id = ?")
+    .run(fields.originalTransactionId);
   if (fields.expiresAtMs > Date.now() && fields.revokedAtMs == null) {
     releaseApplePurchaseAttempt(userId, fields.signedAtMs);
   }
@@ -166,11 +171,20 @@ export async function acceptAppleNotification(signedPayload: string) {
   const signedTransaction = notification.data?.signedTransactionInfo;
   if (signedTransaction) {
     const transaction = await verifier(environment).verifyAndDecodeTransaction(signedTransaction);
-    const renewal = notification.data?.signedRenewalInfo
-      ? await verifier(environment).verifyAndDecodeRenewalInfo(notification.data.signedRenewalInfo)
-      : undefined;
-    const userId = saveTransaction(transaction, notification.data?.status, renewal, undefined, notification.signedDate);
-    if (appleEntitlement(appleSubscriptionRows(userId)).writable) await stopCompetingStripeCheckout(userId);
+    const originalId = transaction.originalTransactionId;
+    const deleted = originalId && sqlite.prepare(
+      "SELECT 1 FROM apple_deleted_transactions WHERE original_transaction_id = ?",
+    ).get(originalId);
+    const active = originalId && sqlite.prepare(
+      "SELECT 1 FROM apple_subscriptions WHERE original_transaction_id = ?",
+    ).get(originalId);
+    if (!deleted || active) {
+      const renewal = notification.data?.signedRenewalInfo
+        ? await verifier(environment).verifyAndDecodeRenewalInfo(notification.data.signedRenewalInfo)
+        : undefined;
+      const userId = saveTransaction(transaction, notification.data?.status, renewal, undefined, notification.signedDate);
+      if (appleEntitlement(appleSubscriptionRows(userId)).writable) await stopCompetingStripeCheckout(userId);
+    }
   }
   sqlite.prepare("INSERT OR IGNORE INTO apple_notification_events (id, received_at) VALUES (?, ?)")
     .run(notification.notificationUUID, new Date().toISOString());

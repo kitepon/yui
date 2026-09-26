@@ -30,8 +30,14 @@ targets:
               - yuihome
     sources:
       - path: Yui
+    entitlements:
+      path: Yui/Yui.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.kitepon.yuihome
         DEVELOPMENT_TEAM: TPWX489GV4
         CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"

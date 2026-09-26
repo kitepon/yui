@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var tuyaRegion = "auto"
     @State private var notice: String?
     @State private var showRooms = false
+    @State private var confirmDelete = false
 
     private var newCredentials: [String: String] {
         [
@@ -134,6 +135,14 @@ struct SettingsView: View {
                         .foregroundStyle(YuiTheme.muted)
                         .frame(maxWidth: .infinity, minHeight: 50)
                 }
+
+                Button(role: .destructive) { confirmDelete = true } label: {
+                    Label("アカウントを削除", systemImage: "person.crop.circle.badge.minus")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(YuiTheme.warning)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .disabled(session.busy)
             }
             .padding(.horizontal, 22)
             .padding(.top, 20)
@@ -144,6 +153,13 @@ struct SettingsView: View {
             RoomManagementView()
                 .environmentObject(session)
                 .presentationDragIndicator(.visible)
+        }
+        .confirmationDialog("結のアカウントを完全に削除しますか？", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("アカウントを削除", role: .destructive) {
+                Task { await session.deleteAccount() }
+            }
+        } message: {
+            Text("家の設定と記録が消え、Web契約は終了します。App Storeの契約はAppleのサブスクリプション管理で別途解約してください。削除後もAppleから請求される場合があります。")
         }
         .task {
             tuyaRegion = session.home?.tuyaRegion ?? "auto"
@@ -207,10 +223,14 @@ struct SettingsView: View {
                 } else if billing.appleConfigured == true {
                     Text("App Storeで利用を始める")
                         .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
-                    Text("購入前にApp Storeに表示される価格と無料体験の条件を確認してください")
+                    Text("一つの家の機器操作、場面、オートメーション、分析を利用できます。")
                         .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
                     if let monthly = session.appleProduct(plan: "monthly"),
                        let annual = session.appleProduct(plan: "annual") {
+                        Text(session.appleIntroEligible
+                             ? "初回1か月無料。その後は月額 \(monthly.displayPrice) または年額 \(annual.displayPrice) で自動更新します。"
+                             : "月額 \(monthly.displayPrice) または年額 \(annual.displayPrice) で自動更新します。")
+                            .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
                         HStack {
                             billingButton("月額 \(monthly.displayPrice)", plan: "monthly")
                             billingButton("年額 \(annual.displayPrice)", plan: "annual")

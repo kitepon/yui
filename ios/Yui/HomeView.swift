@@ -215,7 +215,7 @@ private struct AtmosphereCard: View {
                 }
                 .foregroundStyle(YuiTheme.fg.opacity(0.72))
                 TimelineView(.periodic(from: .now, by: 60)) { context in
-                    Text(context.date.formatted(.dateTime.hour().minute()))
+                    Text(context.date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "ja_JP"))))
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(YuiTheme.fg.opacity(0.72))

@@ -99,7 +99,7 @@ struct AnalysisChartCard: View {
                 .frame(height: 220)
 
                 if let selectedTime {
-                    Text(selectedTime.formatted(.dateTime.month().day().hour().minute()))
+                    Text(selectedTime.formatted(.dateTime.month().day().hour().minute().locale(Locale(identifier: "ja_JP"))))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(YuiTheme.muted)
                 }
