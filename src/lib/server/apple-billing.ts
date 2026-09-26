@@ -5,9 +5,9 @@ import {
   AppStoreServerAPIClient, Environment, SignedDataVerifier,
   type JWSTransactionDecodedPayload, type JWSRenewalInfoDecodedPayload,
 } from "@apple/app-store-server-library";
-import { APPLE_PRODUCT_IDS, appleTransactionFields, type AppleSubscriptionRow } from "./apple-billing-core.ts";
-import { forgetEntitlement } from "./billing.ts";
-import { releaseApplePurchaseAttempt } from "./billing-purchase.ts";
+import { APPLE_PRODUCT_IDS, appleEntitlement, appleTransactionFields, type AppleSubscriptionRow } from "./apple-billing-core.ts";
+import { cancelStripeCheckout, forgetEntitlement } from "./billing.ts";
+import { activePurchaseAttempt, releaseApplePurchaseAttempt } from "./billing-purchase.ts";
 import { getSqlite } from "./sqlite.ts";
 
 const BUNDLE_ID = "dev.kitepon.yuihome";
@@ -144,6 +144,16 @@ function saveTransaction(
 export async function acceptAppleTransaction(userId: string, signedTransaction: string) {
   const transaction = await verifiedTransaction(signedTransaction);
   saveTransaction(transaction, undefined, undefined, userId);
+  if (appleEntitlement(appleSubscriptionRows(userId)).writable) await stopCompetingStripeCheckout(userId);
+}
+
+async function stopCompetingStripeCheckout(userId: string) {
+  if (activePurchaseAttempt(userId)?.provider !== "stripe") return;
+  try {
+    await cancelStripeCheckout(userId);
+  } catch (error) {
+    console.error("[yui] Apple契約成立後にWebの購入手続きを失効できませんでした", error);
+  }
 }
 
 export async function acceptAppleNotification(signedPayload: string) {
@@ -159,7 +169,8 @@ export async function acceptAppleNotification(signedPayload: string) {
     const renewal = notification.data?.signedRenewalInfo
       ? await verifier(environment).verifyAndDecodeRenewalInfo(notification.data.signedRenewalInfo)
       : undefined;
-    saveTransaction(transaction, notification.data?.status, renewal, undefined, notification.signedDate);
+    const userId = saveTransaction(transaction, notification.data?.status, renewal, undefined, notification.signedDate);
+    if (appleEntitlement(appleSubscriptionRows(userId)).writable) await stopCompetingStripeCheckout(userId);
   }
   sqlite.prepare("INSERT OR IGNORE INTO apple_notification_events (id, received_at) VALUES (?, ?)")
     .run(notification.notificationUUID, new Date().toISOString());
