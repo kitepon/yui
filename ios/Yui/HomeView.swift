@@ -17,6 +17,9 @@ struct HomeView: View {
         if selectedRoom != "すべて" { return home.orderedDevices(in: selectedRoom) }
         return rooms.dropFirst().flatMap { home.orderedDevices(in: $0) }
     }
+    private var visibleRooms: [String] {
+        selectedRoom == "すべて" ? Array(rooms.dropFirst()) : [selectedRoom]
+    }
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {
         case 5..<11: "おはよう"
@@ -132,23 +135,42 @@ struct HomeView: View {
                     }
                 }
             }
-            if session.home == nil {
-                ProgressView("家を読み込んでいます")
-                    .tint(YuiTheme.accent)
-                    .frame(maxWidth: .infinity, minHeight: 160)
-            } else if visibleDevices.isEmpty {
-                ContentUnavailableView("機器がありません", systemImage: "house", description: Text("接続タブで家電サービスをつないでください"))
-                    .frame(maxWidth: .infinity, minHeight: 180)
-            } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    ForEach(visibleDevices) { device in
-                        DeviceTile(device: device, busy: session.busy) {
-                            selectedDevice = device
-                        } quickAct: {
-                            Task { await session.quickAct(device) }
+            if let home = session.home {
+                if visibleDevices.isEmpty {
+                    ContentUnavailableView("機器がありません", systemImage: "house", description: Text("接続タブで家電サービスをつないでください"))
+                        .frame(maxWidth: .infinity, minHeight: 180)
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 24) {
+                        ForEach(visibleRooms, id: \.self) { room in
+                            VStack(alignment: .leading, spacing: 11) {
+                                if selectedRoom == "すべて" {
+                                    HStack(spacing: 12) {
+                                        Text(room)
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .tracking(0.7)
+                                            .foregroundStyle(YuiTheme.muted)
+                                        Rectangle()
+                                            .fill(YuiTheme.border)
+                                            .frame(height: 1)
+                                    }
+                                }
+                                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                                    ForEach(home.orderedDevices(in: room)) { device in
+                                        DeviceTile(device: device, busy: session.busy) {
+                                            selectedDevice = device
+                                        } quickAct: {
+                                            Task { await session.quickAct(device) }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+            } else {
+                ProgressView("家を読み込んでいます")
+                    .tint(YuiTheme.accent)
+                    .frame(maxWidth: .infinity, minHeight: 160)
             }
         }
     }
