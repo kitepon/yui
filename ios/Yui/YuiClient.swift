@@ -40,6 +40,17 @@ struct YuiClient {
         try await send(path: "/api/apple/account", method: "GET", token: token)
     }
 
+    func beginApplePurchase(token: String) async throws -> ApplePurchaseAttempt {
+        try await send(path: "/api/apple/purchase", method: "POST", token: token)
+    }
+
+    func cancelApplePurchase(token: String, attemptId: String) async throws {
+        let _: ApplePurchaseCancellation = try await send(
+            path: "/api/apple/purchase", method: "DELETE", token: token,
+            body: ["attemptId": attemptId]
+        )
+    }
+
     func registerAppleTransaction(token: String, signedTransaction: String) async throws -> AppleBillingResult {
         try await send(path: "/api/apple/transaction", method: "POST", token: token,
                        body: ["signedTransaction": signedTransaction])

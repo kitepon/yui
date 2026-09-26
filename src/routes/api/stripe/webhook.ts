@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getStripe, recordWebhookEvent } from "@/lib/server/billing";
+import { forgetEntitlement, getStripe, recordWebhookEvent, userIdForCustomerId } from "@/lib/server/billing";
 
 export const Route = createFileRoute("/api/stripe/webhook")({
   server: {
@@ -12,7 +12,10 @@ export const Route = createFileRoute("/api/stripe/webhook")({
         const raw = await request.text();
         try {
           const event = getStripe().webhooks.constructEvent(raw, signature, secret);
-          recordWebhookEvent(event.id, event.type);
+          const object = event.data.object as { customer?: string | { id: string } | null };
+          const customerId = typeof object.customer === "string" ? object.customer : object.customer?.id;
+          const userId = customerId ? userIdForCustomerId(customerId) : null;
+          if (recordWebhookEvent(event.id, event.type) && userId) forgetEntitlement(userId);
           return Response.json({ received: true });
         } catch (err) {
           return new Response(err instanceof Error ? err.message : "invalid", { status: 400 });

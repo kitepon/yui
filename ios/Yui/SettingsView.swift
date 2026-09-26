@@ -195,6 +195,15 @@ struct SettingsView: View {
                         Text("お支払い方法と解約はWebのアカウント設定で管理できます")
                             .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
                     }
+                } else if billing.purchasePendingProvider != nil {
+                    Text(billing.purchasePendingProvider == "apple" ? "App Storeの購入手続き中" : "Webの購入手続き中")
+                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+                    Text("契約が確定したら状態を更新してください。別の購入は開始できません")
+                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    if billing.purchasePendingProvider == "apple" {
+                        Link("承認待ちが解決しない場合は問い合わせ", destination: URL(string: "mailto:kitepon@gmail.com")!)
+                            .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
+                    }
                 } else if billing.appleConfigured == true {
                     Text("App Storeで利用を始める")
                         .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)

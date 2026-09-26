@@ -29,6 +29,7 @@ extension SessionStore {
         store.billingStatus = BillingStatus(
             configured: true,
             appleConfigured: true,
+            purchasePendingProvider: nil,
             entitlement: BillingEntitlement(writable: true, provider: "apple", message: "Appleで契約中", status: "active"),
             stripeEntitlement: nil,
             plans: BillingPlans(monthlyYen: 100, annualYen: 1000, trialDays: 30)

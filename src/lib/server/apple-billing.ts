@@ -7,6 +7,7 @@ import {
 } from "@apple/app-store-server-library";
 import { APPLE_PRODUCT_IDS, appleTransactionFields, type AppleSubscriptionRow } from "./apple-billing-core.ts";
 import { forgetEntitlement } from "./billing.ts";
+import { releaseApplePurchaseAttempt } from "./billing-purchase.ts";
 import { getSqlite } from "./sqlite.ts";
 
 const BUNDLE_ID = "dev.kitepon.yuihome";
@@ -133,6 +134,9 @@ function saveTransaction(
     fields.revokedAtMs, fields.autoRenewStatus, fields.offerDiscountType ?? null,
     stateAsOfMs ?? fields.signedAtMs, new Date().toISOString(),
   );
+  if (fields.expiresAtMs > Date.now() && fields.revokedAtMs == null) {
+    releaseApplePurchaseAttempt(userId, fields.signedAtMs);
+  }
   forgetEntitlement(userId);
   return userId;
 }

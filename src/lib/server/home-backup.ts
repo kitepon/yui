@@ -1,13 +1,13 @@
 import { decryptJson, encryptJson, secretsKeyFromEnv } from "./home-secrets.ts";
 import { getSqlite } from "./sqlite.ts";
 
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 const LATEST_KEY = "yuihome/latest.enc";
 
 type Row = Record<string, unknown>;
 
 export type HomeDump = {
-  version: 1 | typeof BACKUP_VERSION;
+  version: 1 | 2 | typeof BACKUP_VERSION;
   takenAt: string;
   user: Row[];
   account: Row[];
@@ -16,10 +16,12 @@ export type HomeDump = {
   apple_billing_accounts?: Row[];
   apple_subscriptions?: Row[];
   apple_notification_events?: Row[];
+  billing_purchase_attempts?: Row[];
 };
 
 type Table = "user" | "account" | "homes" | "billing_customers" |
-  "apple_billing_accounts" | "apple_subscriptions" | "apple_notification_events";
+  "apple_billing_accounts" | "apple_subscriptions" | "apple_notification_events" |
+  "billing_purchase_attempts";
 
 export function backupConfigured() {
   return Boolean(process.env.YUI_BACKUP_URL?.trim() && process.env.YUI_BACKUP_SECRET?.trim());
@@ -43,6 +45,7 @@ export function dumpHomeDb(sqlite = getSqlite()): HomeDump {
     apple_billing_accounts: tableRows(sqlite, "apple_billing_accounts"),
     apple_subscriptions: tableRows(sqlite, "apple_subscriptions"),
     apple_notification_events: tableRows(sqlite, "apple_notification_events"),
+    billing_purchase_attempts: tableRows(sqlite, "billing_purchase_attempts"),
   };
 }
 
@@ -62,7 +65,7 @@ function insertRows(
 }
 
 export function applyHomeDump(dump: HomeDump, sqlite = getSqlite()) {
-  if (dump.version !== 1 && dump.version !== BACKUP_VERSION) {
+  if (dump.version !== 1 && dump.version !== 2 && dump.version !== BACKUP_VERSION) {
     throw new Error(`未対応のバックアップ版 ${String(dump.version)}`);
   }
   sqlite.exec("BEGIN");
@@ -71,6 +74,7 @@ export function applyHomeDump(dump: HomeDump, sqlite = getSqlite()) {
     sqlite.exec(`DELETE FROM "verification"`);
     sqlite.exec(`DELETE FROM "account"`);
     sqlite.exec(`DELETE FROM "billing_customers"`);
+    sqlite.exec(`DELETE FROM "billing_purchase_attempts"`);
     sqlite.exec(`DELETE FROM "apple_notification_events"`);
     sqlite.exec(`DELETE FROM "apple_subscriptions"`);
     sqlite.exec(`DELETE FROM "apple_billing_accounts"`);
@@ -80,6 +84,7 @@ export function applyHomeDump(dump: HomeDump, sqlite = getSqlite()) {
     insertRows(sqlite, "account", dump.account);
     insertRows(sqlite, "homes", dump.homes);
     insertRows(sqlite, "billing_customers", dump.billing_customers ?? []);
+    insertRows(sqlite, "billing_purchase_attempts", dump.billing_purchase_attempts ?? []);
     insertRows(sqlite, "apple_billing_accounts", dump.apple_billing_accounts ?? []);
     insertRows(sqlite, "apple_subscriptions", dump.apple_subscriptions ?? []);
     insertRows(sqlite, "apple_notification_events", dump.apple_notification_events ?? []);
@@ -108,7 +113,7 @@ export function packDump(dump: HomeDump) {
 
 export function unpackDump(packed: string): HomeDump {
   const dump = decryptJson<HomeDump>(secretsKeyFromEnv(), packed);
-  if ((dump.version !== 1 && dump.version !== BACKUP_VERSION) || !Array.isArray(dump.user) || !Array.isArray(dump.homes)) {
+  if ((dump.version !== 1 && dump.version !== 2 && dump.version !== BACKUP_VERSION) || !Array.isArray(dump.user) || !Array.isArray(dump.homes)) {
     throw new Error("バックアップの中身が読めない");
   }
   return dump;

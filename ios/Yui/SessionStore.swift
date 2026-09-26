@@ -122,7 +122,8 @@ final class SessionStore: ObservableObject {
             guard let appleAccount else { throw YuiError.message("Appleの課金情報を取得できません") }
             let id = plan == "monthly" ? appleAccount.productIds.monthly : appleAccount.productIds.annual
             guard let product = appleProducts[id] else { throw YuiError.message("App Storeの商品が見つかりません") }
-            let result = try await product.purchase(options: [.appAccountToken(appleAccount.appAccountToken)])
+            let attempt = try await YuiClient.shared.beginApplePurchase(token: token)
+            let result = try await product.purchase(options: [.appAccountToken(attempt.appAccountToken)])
             switch result {
             case .success(let verified):
                 try await registerAppleTransaction(verified, token: token)
@@ -130,8 +131,10 @@ final class SessionStore: ObservableObject {
                 home = try await YuiClient.shared.home(token: token)
             case .pending:
                 accountError = "購入の承認を待っています。承認後に契約が反映されます。"
+                billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
             case .userCancelled:
-                break
+                try await YuiClient.shared.cancelApplePurchase(token: token, attemptId: attempt.attemptId)
+                billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
             @unknown default:
                 throw YuiError.message("App Storeの購入結果を確認できません")
             }

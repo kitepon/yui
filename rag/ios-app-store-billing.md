@@ -12,3 +12,5 @@
 - [App Store Connect APIのApps](https://developer.apple.com/documentation/appstoreconnectapi/apps) — 新規アプリレコードはAPIから作れず、Web画面で作る。
 
 結の実装では、サーバーが署名、Bundle ID、Apple ID、商品ID、ユーザー識別子、有効期限、返金、猶予期間を検証する。通知の識別子で重複処理を避け、通知時刻と状態取得時刻で古い状態への巻き戻りを防ぐ。StripeとAppleの有効契約はいずれも同じ操作権限を与える。
+
+Appleの`PurchaseResult.pending`は、承認されると`Transaction.updates`へ届く。[Appleの説明](https://developer.apple.com/documentation/storekit/product/purchaseresult/pending)による。Ask to Buyが否認された場合は取引が届かないため、アプリから否認完了を確実には検出できない（[Appleのテスト手順](https://developer.apple.com/documentation/storekit/testing-ask-to-buy-in-xcode)）。結は二重購入を避けるためAppleの購入予約を保持し、解決しない場合はサポートが確認する。

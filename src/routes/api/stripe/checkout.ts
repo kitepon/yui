@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { parseBillingPlan, requireUser, startCheckout } from "@/lib/server/billing";
+import { cancelStripeCheckout, parseBillingPlan, requireUser, startCheckout } from "@/lib/server/billing";
 
 export const Route = createFileRoute("/api/stripe/checkout")({
   server: {
@@ -21,6 +21,16 @@ export const Route = createFileRoute("/api/stripe/checkout")({
             { error: err instanceof Error ? err.message : "Checkout を作れない" },
             { status: 400 },
           );
+        }
+      },
+      DELETE: async ({ request }) => {
+        const user = await requireUser(request);
+        if (!user) return Response.json({ error: "ログインが必要です" }, { status: 401 });
+        try {
+          await cancelStripeCheckout(user.id);
+          return Response.json({ canceled: true });
+        } catch (error) {
+          return Response.json({ error: error instanceof Error ? error.message : "購入をキャンセルできません" }, { status: 409 });
         }
       },
     },

@@ -8,6 +8,7 @@ import {
   exemptEntitlement,
   parseBillingPlan,
   planForPriceId,
+  unfinishedStripeSubscription,
 } from "./billing-core.ts";
 
 test("plan names", () => {
@@ -30,6 +31,15 @@ test("unknown price is not entitled", () => {
     items: { data: [{ price: { id: "price_other" }, current_period_end: 1 }] },
   } as unknown as Stripe.Subscription;
   assert.equal(entitlementFromSubscription(sub).writable, false);
+});
+
+test("未完了のStripe契約は別の購入を止める", () => {
+  for (const status of ["trialing", "active", "past_due", "unpaid", "paused", "incomplete"] as const) {
+    assert.equal(unfinishedStripeSubscription({ status } as Stripe.Subscription), true, status);
+  }
+  for (const status of ["canceled", "incomplete_expired"] as const) {
+    assert.equal(unfinishedStripeSubscription({ status } as Stripe.Subscription), false, status);
+  }
 });
 
 test("trialing monthly is writable", () => {

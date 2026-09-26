@@ -18,6 +18,7 @@ struct AuthSessionEnvelope: Decodable {
 struct BillingStatus: Decodable {
     let configured: Bool
     let appleConfigured: Bool?
+    let purchasePendingProvider: String?
     let entitlement: BillingEntitlement
     let stripeEntitlement: BillingEntitlement?
     let plans: BillingPlans
@@ -48,6 +49,15 @@ struct AppleProductIds: Decodable {
 
 struct AppleBillingResult: Decodable {
     let entitlement: BillingEntitlement
+}
+
+struct ApplePurchaseAttempt: Decodable {
+    let attemptId: String
+    let appAccountToken: UUID
+}
+
+struct ApplePurchaseCancellation: Decodable {
+    let released: Bool
 }
 
 struct ExternalURLResponse: Decodable {

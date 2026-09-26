@@ -19,6 +19,7 @@ function seed() {
   db.exec(readFileSync(join(root, "migrations/sqlite/0002_homes.sql"), "utf8"));
   db.exec(readFileSync(join(root, "migrations/sqlite/0003_billing.sql"), "utf8"));
   db.exec(readFileSync(join(root, "migrations/sqlite/0006_apple_billing.sql"), "utf8"));
+  db.exec(readFileSync(join(root, "migrations/sqlite/0007_billing_purchase.sql"), "utf8"));
   db.prepare(
     `INSERT INTO "user" (id, name, email, emailVerified, createdAt, updatedAt)
      VALUES (?, ?, ?, 0, ?, ?)`,
@@ -42,6 +43,9 @@ function seed() {
   );
   db.prepare("INSERT INTO apple_billing_accounts (user_id, app_account_token, created_at) VALUES (?, ?, ?)")
     .run("user-1", "00000000-0000-0000-0000-000000000001", "2026-01-01");
+  db.prepare(`INSERT INTO billing_purchase_attempts
+    (user_id, attempt_id, provider, created_at) VALUES (?, ?, ?, ?)`)
+    .run("user-1", "attempt-1", "apple", "2026-01-01");
   db.prepare(`INSERT INTO apple_subscriptions (
     original_transaction_id, user_id, transaction_id, product_id, environment, status,
     expires_at_ms, state_as_of_ms, updated_at
@@ -58,11 +62,13 @@ test("dump encrypts and restore puts rooms and login rows back", () => {
   assert.equal(dump.user.length, 1);
   assert.equal(dump.homes.length, 1);
   assert.equal(dump.apple_subscriptions?.length, 1);
+  assert.equal(dump.billing_purchase_attempts?.length, 1);
   const packed = packDump(dump);
   assert.equal(packed.includes("quo@example.com"), false);
   assert.equal(packed.includes("remo-secret"), false);
 
   db.exec(`DELETE FROM "apple_subscriptions"`);
+  db.exec(`DELETE FROM "billing_purchase_attempts"`);
   db.exec(`DELETE FROM "apple_billing_accounts"`);
   db.exec(`DELETE FROM "account"`);
   db.exec(`DELETE FROM "homes"`);
@@ -75,6 +81,7 @@ test("dump encrypts and restore puts rooms and login rows back", () => {
   assert.equal(restored.account[0]?.password, "hashed");
   assert.equal(restored.homes[0]?.id, "home-1");
   assert.equal(restored.apple_subscriptions?.[0]?.original_transaction_id, "original-1");
+  assert.equal(restored.billing_purchase_attempts?.[0]?.attempt_id, "attempt-1");
   assert.equal(String(restored.homes[0]?.body_json).includes("居間"), true);
 });
 

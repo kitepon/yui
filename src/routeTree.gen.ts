@@ -27,6 +27,7 @@ import { Route as HelpTuyaRouteImport } from './routes/help/tuya'
 import { Route as ApiAlexaSplatRouteImport } from './routes/api/alexa/$'
 import { Route as ApiAppleAccountRouteImport } from './routes/api/apple/account'
 import { Route as ApiAppleNotificationsRouteImport } from './routes/api/apple/notifications'
+import { Route as ApiApplePurchaseRouteImport } from './routes/api/apple/purchase'
 import { Route as ApiAppleRefreshRouteImport } from './routes/api/apple/refresh'
 import { Route as ApiAppleTransactionRouteImport } from './routes/api/apple/transaction'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -126,6 +127,11 @@ const ApiAppleNotificationsRoute = ApiAppleNotificationsRouteImport.update({
   path: '/api/apple/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiApplePurchaseRoute = ApiApplePurchaseRouteImport.update({
+  id: '/api/apple/purchase',
+  path: '/api/apple/purchase',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAppleRefreshRoute = ApiAppleRefreshRouteImport.update({
   id: '/api/apple/refresh',
   path: '/api/apple/refresh',
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/api/alexa/$': typeof ApiAlexaSplatRoute
   '/api/apple/account': typeof ApiAppleAccountRoute
   '/api/apple/notifications': typeof ApiAppleNotificationsRoute
+  '/api/apple/purchase': typeof ApiApplePurchaseRoute
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
   '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/api/alexa/$': typeof ApiAlexaSplatRoute
   '/api/apple/account': typeof ApiAppleAccountRoute
   '/api/apple/notifications': typeof ApiAppleNotificationsRoute
+  '/api/apple/purchase': typeof ApiApplePurchaseRoute
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
   '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/api/alexa/$': typeof ApiAlexaSplatRoute
   '/api/apple/account': typeof ApiAppleAccountRoute
   '/api/apple/notifications': typeof ApiAppleNotificationsRoute
+  '/api/apple/purchase': typeof ApiApplePurchaseRoute
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
   '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -273,6 +282,7 @@ export interface FileRouteTypes {
     | '/api/alexa/$'
     | '/api/apple/account'
     | '/api/apple/notifications'
+    | '/api/apple/purchase'
     | '/api/apple/refresh'
     | '/api/apple/transaction'
     | '/api/auth/$'
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/api/alexa/$'
     | '/api/apple/account'
     | '/api/apple/notifications'
+    | '/api/apple/purchase'
     | '/api/apple/refresh'
     | '/api/apple/transaction'
     | '/api/auth/$'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '/api/alexa/$'
     | '/api/apple/account'
     | '/api/apple/notifications'
+    | '/api/apple/purchase'
     | '/api/apple/refresh'
     | '/api/apple/transaction'
     | '/api/auth/$'
@@ -358,6 +370,7 @@ export interface RootRouteChildren {
   ApiAlexaSplatRoute: typeof ApiAlexaSplatRoute
   ApiAppleAccountRoute: typeof ApiAppleAccountRoute
   ApiAppleNotificationsRoute: typeof ApiAppleNotificationsRoute
+  ApiApplePurchaseRoute: typeof ApiApplePurchaseRoute
   ApiAppleRefreshRoute: typeof ApiAppleRefreshRoute
   ApiAppleTransactionRoute: typeof ApiAppleTransactionRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -496,6 +509,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAppleNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/apple/purchase': {
+      id: '/api/apple/purchase'
+      path: '/api/apple/purchase'
+      fullPath: '/api/apple/purchase'
+      preLoaderRoute: typeof ApiApplePurchaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/apple/refresh': {
       id: '/api/apple/refresh'
       path: '/api/apple/refresh'
@@ -574,6 +594,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAlexaSplatRoute: ApiAlexaSplatRoute,
   ApiAppleAccountRoute: ApiAppleAccountRoute,
   ApiAppleNotificationsRoute: ApiAppleNotificationsRoute,
+  ApiApplePurchaseRoute: ApiApplePurchaseRoute,
   ApiAppleRefreshRoute: ApiAppleRefreshRoute,
   ApiAppleTransactionRoute: ApiAppleTransactionRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

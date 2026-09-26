@@ -44,6 +44,10 @@ export function planForPriceId(priceId: string | null): BillingPlan | null {
   return null;
 }
 
+export function unfinishedStripeSubscription(sub: Stripe.Subscription) {
+  return sub.status !== "canceled" && sub.status !== "incomplete_expired";
+}
+
 export function billingConfigured() {
   return Boolean(
     process.env.STRIPE_SECRET_KEY?.trim() &&

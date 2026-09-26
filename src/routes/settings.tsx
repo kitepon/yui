@@ -40,18 +40,24 @@ export function SettingsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [billing, setBilling] = useState<{
     configured: boolean;
+    purchasePendingProvider: "stripe" | "apple" | null;
     entitlement: { writable: boolean; provider: "stripe" | "apple" | null; message: string; status: string };
     stripeEntitlement: { writable: boolean; provider: "stripe" | "apple" | null };
   } | null>(null);
 
   useEffect(() => {
-    const refresh = new URLSearchParams(window.location.search).get("checkout") === "completed";
-    void fetch(`/api/stripe/status${refresh ? "?refresh=1" : ""}`, { credentials: "include" })
+    const checkout = new URLSearchParams(window.location.search).get("checkout");
+    void (checkout === "canceled"
+      ? fetch("/api/stripe/checkout", { method: "DELETE", credentials: "include" }).then(async (res) => {
+          if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? "購入をキャンセルできません");
+        })
+      : Promise.resolve())
+      .then(() => fetch(`/api/stripe/status${checkout ? "?refresh=1" : ""}`, { credentials: "include" }))
       .then(async (res) => {
         if (!res.ok) return;
         setBilling((await res.json()) as typeof billing);
       })
-      .catch(() => undefined);
+      .catch((error) => toast.error(error instanceof Error ? error.message : "契約状態を確認できません"));
   }, []);
 
   async function startPlan(plan: "monthly" | "annual") {
@@ -68,6 +74,22 @@ export function SettingsPage() {
       window.location.assign(json.url);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Checkout を開けない");
+      setBusy(null);
+    }
+  }
+
+  async function cancelCheckout() {
+    setBusy("cancel-checkout");
+    try {
+      const res = await fetch("/api/stripe/checkout", { method: "DELETE", credentials: "include" });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(json.error || "購入をキャンセルできません");
+      const status = await fetch("/api/stripe/status?refresh=1", { credentials: "include" });
+      if (!status.ok) throw new Error("契約状態を確認できません");
+      setBilling((await status.json()) as typeof billing);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "購入をキャンセルできません");
+    } finally {
       setBusy(null);
     }
   }
@@ -161,7 +183,25 @@ export function SettingsPage() {
               <Button className="mt-3 w-full" disabled={busy === "portal"} onClick={() => void openPortal()}>
                 支払い方法の変更・解約
               </Button>
-            ) : billing.entitlement.writable ? null : (
+            ) : billing.entitlement.writable ? null : billing.purchasePendingProvider ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm text-muted">
+                  {billing.purchasePendingProvider === "apple"
+                    ? "App Storeの購入手続き中です。完了後に契約状態を更新してください。"
+                    : "Webの購入手続き中です。開いている決済画面で完了してください。"}
+                </p>
+                {billing.purchasePendingProvider === "apple" && (
+                  <a className="text-sm text-accent underline" href="mailto:kitepon@gmail.com">
+                    承認待ちが解決しない場合は問い合わせ
+                  </a>
+                )}
+                {billing.purchasePendingProvider === "stripe" && (
+                  <Button variant="outline" disabled={Boolean(busy)} onClick={() => void cancelCheckout()}>
+                    Webの購入手続きをキャンセルする
+                  </Button>
+                )}
+              </div>
+            ) : (
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button disabled={Boolean(busy)} onClick={() => void startPlan("monthly")}>月額ではじめる</Button>
                 <Button variant="outline" disabled={Boolean(busy)} onClick={() => void startPlan("annual")}>年額ではじめる</Button>
