@@ -5,6 +5,7 @@ export type BillingPlan = "monthly" | "annual";
 
 export type Entitlement = {
   writable: boolean;
+  provider: "stripe" | "apple" | null;
   status: "none" | "trialing" | "active" | "read_only";
   plan: BillingPlan | null;
   message: string;
@@ -65,6 +66,7 @@ export function exemptEmails() {
 export function exemptEntitlement(): Entitlement {
   return {
     writable: true,
+    provider: null,
     status: "active",
     plan: null,
     message: "契約なしで利用できるアカウントです。",
@@ -77,6 +79,7 @@ export function exemptEntitlement(): Entitlement {
 export function emptyEntitlement(message: string): Entitlement {
   return {
     writable: false,
+    provider: null,
     status: "none",
     plan: null,
     message,
@@ -102,6 +105,7 @@ export function entitlementFromSubscription(sub: Stripe.Subscription): Entitleme
   if (sub.status === "trialing" && details) {
     return {
       writable: true,
+      provider: "stripe",
       status: "trialing",
       plan,
       message: cancelAtPeriodEnd
@@ -115,6 +119,7 @@ export function entitlementFromSubscription(sub: Stripe.Subscription): Entitleme
   if (sub.status === "active" && details) {
     return {
       writable: true,
+      provider: "stripe",
       status: "active",
       plan,
       message: cancelAtPeriodEnd

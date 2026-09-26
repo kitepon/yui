@@ -28,7 +28,9 @@ extension SessionStore {
         store.user = AuthUser(id: "preview-user", email: "preview@example.com", name: "プレビュー")
         store.billingStatus = BillingStatus(
             configured: true,
-            entitlement: BillingEntitlement(writable: true, message: "契約中", status: "active"),
+            appleConfigured: true,
+            entitlement: BillingEntitlement(writable: true, provider: "apple", message: "Appleで契約中", status: "active"),
+            stripeEntitlement: nil,
             plans: BillingPlans(monthlyYen: 100, annualYen: 1000, trialDays: 30)
         )
         return store

@@ -47,8 +47,8 @@ Smart Life の初回同期と新しい機器の鍵取得には Tuya IoT Platform
 |            | 公式hosted版                                       | self-hosted版                        |
 | ---------- | -------------------------------------------------- | ------------------------------------ |
 | URL / 手順 | [yuihome.kitepon.dev](https://yuihome.kitepon.dev) | [deploy/README.md](deploy/README.md) |
-| 料金       | 月額100円または年額1,000円（税込）                 | 無料                                 |
-| 試用       | 初回30日間無料                                     | 制限なし                             |
+| 料金       | Webは月額100円または年額1,000円（税込）。iPhoneはApp Storeの購入画面に表示 | 無料                                 |
+| 試用       | Webは初回30日間無料。iPhoneはApp Storeの購入画面に表示 | 制限なし                             |
 | 運用       | kitepon.devが運用                                  | 自分のserverで運用                   |
 | 機能       | 同じ                                               | 同じ                                 |
 

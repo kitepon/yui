@@ -11,6 +11,7 @@ ENV VITE_PUBLIC_HOSTNAME=yuihome.kitepon.dev
 
 COPY .output /app/.output
 COPY package.json /app/package.json
+COPY certs/apple /app/certs/apple
 COPY scripts/hosted-metrics.mjs /app/scripts/hosted-metrics.mjs
 COPY src/lib/home/lan-udp.ts /app/src/lib/home/lan-udp.ts
 COPY src/lib/home/tuya-lan-forward.ts /app/src/lib/home/tuya-lan-forward.ts

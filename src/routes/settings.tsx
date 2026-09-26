@@ -40,7 +40,8 @@ export function SettingsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [billing, setBilling] = useState<{
     configured: boolean;
-    entitlement: { writable: boolean; message: string; status: string };
+    entitlement: { writable: boolean; provider: "stripe" | "apple" | null; message: string; status: string };
+    stripeEntitlement: { writable: boolean; provider: "stripe" | "apple" | null };
   } | null>(null);
 
   useEffect(() => {
@@ -141,24 +142,29 @@ export function SettingsPage() {
           <section className="rounded-lg border border-border bg-surface p-4">
             <p className="text-[11px] tracking-wide text-faint">契約</p>
             <h2 className="mt-0.5 text-lg font-medium text-fg">
-              月額{BILLING.monthlyYen}円 / 年額{BILLING.annualYen.toLocaleString("ja-JP")}円
+              Web契約: 月額{BILLING.monthlyYen}円 / 年額{BILLING.annualYen.toLocaleString("ja-JP")}円
             </h2>
             <p className="mt-2 text-sm text-muted">
               {billing.entitlement.message ??
                 `初回${BILLING.trialDays}日間は無料です。カード・Apple Pay・Google Pay。`}
             </p>
-            {billing.entitlement.writable ? (
+            {billing.entitlement.provider === "apple" ? (
+              <>
+                <p className="mt-3 text-sm text-muted">Appleで契約中です。iPhoneの「設定」からサブスクリプションを管理できます。</p>
+                {billing.stripeEntitlement.provider === "stripe" && billing.stripeEntitlement.writable && (
+                  <Button className="mt-3 w-full" disabled={busy === "portal"} onClick={() => void openPortal()}>
+                    Web契約の支払い方法・解約も管理する
+                  </Button>
+                )}
+              </>
+            ) : billing.entitlement.provider === "stripe" ? (
               <Button className="mt-3 w-full" disabled={busy === "portal"} onClick={() => void openPortal()}>
                 支払い方法の変更・解約
               </Button>
-            ) : (
+            ) : billing.entitlement.writable ? null : (
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button disabled={Boolean(busy)} onClick={() => void startPlan("monthly")}>
-                  月額ではじめる
-                </Button>
-                <Button variant="outline" disabled={Boolean(busy)} onClick={() => void startPlan("annual")}>
-                  年額ではじめる
-                </Button>
+                <Button disabled={Boolean(busy)} onClick={() => void startPlan("monthly")}>月額ではじめる</Button>
+                <Button variant="outline" disabled={Boolean(busy)} onClick={() => void startPlan("annual")}>年額ではじめる</Button>
               </div>
             )}
             <p className="mt-3 text-xs text-faint">

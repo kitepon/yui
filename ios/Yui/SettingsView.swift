@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var session: SessionStore
-    @Environment(\.openURL) private var openURL
     @State private var natureToken = ""
     @State private var switchbotToken = ""
     @State private var switchbotSecret = ""
@@ -180,19 +179,39 @@ struct SettingsView: View {
             Text("この結について")
                 .font(.system(size: 11, weight: .bold)).foregroundStyle(YuiTheme.muted)
             if let billing = session.billingStatus {
-                if billing.configured {
-                    Text("月額\(billing.plans.monthlyYen)円 / 年額\(billing.plans.annualYen)円")
+                if billing.entitlement.writable {
+                    Text(billing.entitlement.provider == "apple" ? "App Storeで契約中" : "契約中")
                         .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
-                    Text(billing.entitlement.message ?? "初回\(billing.plans.trialDays)日間は無料です")
+                    Text(billing.entitlement.message ?? "家を操作できます")
                         .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
-                    if billing.entitlement.writable {
-                        billingButton("支払い方法の変更・解約", action: "portal")
-                    } else {
+                    if billing.entitlement.provider == "apple" {
+                        Link("Appleのサブスクリプションを管理", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)
+                            .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
+                        if billing.stripeEntitlement?.provider == "stripe" && billing.stripeEntitlement?.writable == true {
+                            Text("Webの契約も有効です。Webのアカウント設定で確認してください")
+                                .font(.system(size: 12)).foregroundStyle(YuiTheme.warning)
+                        }
+                    } else if billing.entitlement.provider == "stripe" {
+                        Text("お支払い方法と解約はWebのアカウント設定で管理できます")
+                            .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    }
+                } else if billing.appleConfigured == true {
+                    Text("App Storeで利用を始める")
+                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+                    Text("購入前にApp Storeに表示される価格と無料体験の条件を確認してください")
+                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    if let monthly = session.appleProduct(plan: "monthly"),
+                       let annual = session.appleProduct(plan: "annual") {
                         HStack {
-                            billingButton("月額ではじめる", action: "checkout", plan: "monthly")
-                            billingButton("年額ではじめる", action: "checkout", plan: "annual")
+                            billingButton("月額 \(monthly.displayPrice)", plan: "monthly")
+                            billingButton("年額 \(annual.displayPrice)", plan: "annual")
                         }
                     }
+                } else if billing.configured {
+                    Text("App Storeでの購入は準備中です")
+                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+                    Text("すでにWebで契約している場合は、そのままこのアプリで利用できます")
+                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
                 } else {
                     Text("無料で使えます")
                         .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
@@ -202,8 +221,17 @@ struct SettingsView: View {
             } else if session.accountError == nil {
                 ProgressView("契約を確認しています").tint(YuiTheme.accent)
             }
-            Button("契約状態を更新") { Task { await session.loadAccount(refreshBilling: true) } }
+            Button(billingRestoreTitle) {
+                Task {
+                    if session.billingStatus?.appleConfigured == true {
+                        await session.restoreApplePurchases()
+                    } else {
+                        await session.loadAccount(refreshBilling: true)
+                    }
+                }
+            }
                 .font(.system(size: 11)).foregroundStyle(YuiTheme.accent)
+                .disabled(session.appleBusy)
             HStack(spacing: 12) {
                 helpLink("利用規約", path: "/terms")
                 helpLink("プライバシー", path: "/privacy")
@@ -215,11 +243,13 @@ struct SettingsView: View {
         .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 22))
     }
 
-    private func billingButton(_ title: String, action: String, plan: String? = nil) -> some View {
+    private var billingRestoreTitle: String {
+        session.billingStatus?.appleConfigured == true ? "購入を復元・契約状態を更新" : "契約状態を更新"
+    }
+
+    private func billingButton(_ title: String, plan: String) -> some View {
         Button {
-            Task {
-                if let url = await session.billingURL(action: action, plan: plan) { openURL(url) }
-            }
+            Task { await session.purchaseApple(plan: plan) }
         } label: {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
@@ -227,6 +257,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, minHeight: 45)
                 .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 13))
         }
+        .disabled(session.appleBusy)
     }
 
     private var smartLifeLanStatus: some View {

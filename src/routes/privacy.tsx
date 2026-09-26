@@ -8,7 +8,7 @@ function Privacy() {
     <LegalPage title="プライバシーポリシー">
       <section>
         <h2 className="font-medium text-fg">取得する情報</h2>
-        <p>アカウントのメールと名前、家の設定、家電クラウドへ接続するためのトークン、決済に必要な識別子、検証用のセンサー値と操作履歴です。トークンはサーバー上で暗号化して保存し、画面や API の応答に平文を出しません。カード番号は結に保存せず、決済は Stripe が扱います。センサー値と操作履歴は一定期間のあと消します。</p>
+        <p>アカウントのメールと名前、家の設定、家電クラウドへ接続するためのトークン、決済に必要な識別子、検証用のセンサー値と操作履歴です。トークンはサーバー上で暗号化して保存し、画面や API の応答に平文を出しません。カード番号は結に保存せず、Web決済はStripe、iPhoneアプリの課金はAppleが扱います。Apple契約の識別子と検証済みの状態を保存します。センサー値と操作履歴は一定期間のあと消します。</p>
       </section>
       <section>
         <h2 className="font-medium text-fg">利用目的</h2>
@@ -16,7 +16,7 @@ function Privacy() {
       </section>
       <section>
         <h2 className="font-medium text-fg">委託</h2>
-        <p>決済は Stripe、公開面の一部は Cloudflare を使います。Google でログインする場合は Google が認証を扱います。それぞれ必要な範囲だけ渡します。</p>
+        <p>Web決済はStripe、iPhoneアプリの課金はApple、公開面の一部はCloudflareを使います。Googleでログインする場合はGoogleが認証を扱います。それぞれ必要な範囲だけ渡します。</p>
       </section>
       <section>
         <h2 className="font-medium text-fg">削除</h2>

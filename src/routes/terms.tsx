@@ -15,11 +15,11 @@ function Terms() {
       </section>
       <section>
         <h2 className="font-medium text-fg">料金</h2>
-        <p>1つの家あたり月額{monthly}円または年額{annual}円（税込）です。Stripe Checkout で支払い方法を登録すると{BILLING.trialDays}日間無料で使え、終了後は選んだプランへ自動移行して課金します。</p>
+        <p>Webからの契約は1つの家あたり月額{monthly}円または年額{annual}円（税込）です。Stripe Checkoutで支払い方法を登録すると{BILLING.trialDays}日間無料で使え、終了後は選んだプランへ自動移行して課金します。iPhoneアプリからの契約はApp Storeで購入し、価格と無料体験の条件は購入画面に表示します。</p>
       </section>
       <section>
         <h2 className="font-medium text-fg">契約と解約</h2>
-        <p>Checkout 完了時点で無料体験が始まります。体験中に解約すれば課金はありません。有料期間の解約は期間末で終わります。未利用期間の日割りはしません。二重請求や運営の責任による利用不能は個別に対応します。</p>
+        <p>Web契約の無料体験はCheckout完了時点で始まります。体験中に解約すれば課金はありません。Stripeの契約はWebの契約管理、Appleの契約はiPhoneのサブスクリプション設定から解約できます。有料期間の解約は期間末で終わります。未利用期間の日割りはしません。二重請求や運営の責任による利用不能は個別に対応します。</p>
       </section>
       <section>
         <h2 className="font-medium text-fg">利用停止</h2>

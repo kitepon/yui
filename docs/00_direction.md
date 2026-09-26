@@ -22,9 +22,10 @@
 - 分析ページは `tickAllHomes()` と機器・場面の操作口が残す記録を見る面である。新しい起こし方は持たない。履歴は家のスナップショットと分け、14日で消す。
 - オートメーションと場面の操作は、画面に出ている項目を保存する。触っていない初期値も載せる。載せていない項目は送らない。
 - 秘密は環境変数だけに置く。リポジトリと image に入れない。必須は `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`、`HOME_SECRETS_KEY`。バックアップを使うなら `YUI_BACKUP_URL` と `YUI_BACKUP_SECRET` も。Google で入るなら `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET`。Echo なら `ALEXA_CLIENT_ID` と `ALEXA_CLIENT_SECRET`。
-- 公式hosted版は、1つの家あたり月額100円または年額1,000円（税込）、初回30日間無料で提供する。
-  Checkout、entitlement、解約はStripeを正とし、料金や契約条件は`src/lib/billing-plan.ts`、
-  `/terms`、`/legal`を一致させる。課金免除は`YUI_BILLING_EXEMPT`（カンマ区切りemail）だけで、
+- 公式hosted版のWeb契約は、1つの家あたり月額100円または年額1,000円（税込）、初回30日間無料で提供し、Stripeで購入・管理する。
+  iPhoneアプリの契約はApp Storeの自動更新サブスクリプションで購入・管理し、StoreKitが返す実際の価格・条件を表示する。
+  サーバーはStripeとAppleの有効契約を同じ家の利用権へ統合し、Appleの署名付き取引とサーバー通知を検証する。
+  Web料金は`src/lib/billing-plan.ts`、契約条件は`/terms`、`/legal`と一致させる。課金免除は`YUI_BILLING_EXEMPT`（カンマ区切りemail）だけで、
   用途はAlexa審査用アカウントなどの特例に限る。
 - self-hosted版はMITで無料、機能制限を設けない。`STRIPE_SECRET_KEY`を設定しなければ課金機能と
   課金ゲートは起動せず、登録した人はそのまま家を操作できる。
@@ -53,7 +54,7 @@
 ## 予備（R2）
 
 - 家の SQLite が正本。Cloudflare は家データ（ユーザー行と家。トークンは既に暗号化済み）の予備だけ。
-- Google と Stripe は吸わない。復旧後の身分は Google、課金は Stripe をその場で見る。
+- Google と Stripe は吸わない。Appleのアカウント識別子・検証済み契約状態はSQLiteの予備に含める。復旧後の身分は Google、Stripeの契約はStripeをその場で見る。
 - 家が 1 時間ごとに暗号化スナップショットを R2 へ押す。復旧は明示の `restore` だけ。壊れているとみなして自動では戻さない。
 
 ## Cloudflare 移転で変えてよいもの

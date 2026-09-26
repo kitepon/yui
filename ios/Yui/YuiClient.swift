@@ -36,12 +36,17 @@ struct YuiClient {
         try await send(path: refresh ? "/api/stripe/status?refresh=1" : "/api/stripe/status", method: "GET", token: token)
     }
 
-    func billingURL(token: String, action: String, plan: String? = nil) async throws -> URL {
-        let body = plan.map { ["plan": $0] }
-        let response: ExternalURLResponse = try await send(
-            path: "/api/stripe/\(action)", method: "POST", token: token, body: body
-        )
-        return response.url
+    func appleBillingAccount(token: String) async throws -> AppleBillingAccount {
+        try await send(path: "/api/apple/account", method: "GET", token: token)
+    }
+
+    func registerAppleTransaction(token: String, signedTransaction: String) async throws -> AppleBillingResult {
+        try await send(path: "/api/apple/transaction", method: "POST", token: token,
+                       body: ["signedTransaction": signedTransaction])
+    }
+
+    func refreshAppleSubscription(token: String) async throws -> AppleBillingResult {
+        try await send(path: "/api/apple/refresh", method: "POST", token: token)
     }
 
     func control(token: String, deviceId: String, patch: [String: Any]) async throws -> HomeSnapshot {

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { billingConfigured, forgetEntitlement, loadEntitlement, requireUser } from "@/lib/server/billing";
+import { billingConfigured, forgetEntitlement, loadEntitlement, loadStripeEntitlement, requireUser } from "@/lib/server/billing";
 import { BILLING } from "@/lib/billing-plan";
+import { appleBillingConfigured } from "@/lib/server/apple-billing";
 
 export const Route = createFileRoute("/api/stripe/status")({
   server: {
@@ -12,8 +13,10 @@ export const Route = createFileRoute("/api/stripe/status")({
         if (url.searchParams.get("refresh") === "1") forgetEntitlement(user.id);
         return Response.json({
           configured: billingConfigured(),
+          appleConfigured: appleBillingConfigured(),
           plans: BILLING,
           entitlement: await loadEntitlement(user.id),
+          stripeEntitlement: await loadStripeEntitlement(user.id),
         });
       },
     },

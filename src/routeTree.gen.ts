@@ -25,6 +25,10 @@ import { Route as HelpRemoRouteImport } from './routes/help/remo'
 import { Route as HelpSwitchbotRouteImport } from './routes/help/switchbot'
 import { Route as HelpTuyaRouteImport } from './routes/help/tuya'
 import { Route as ApiAlexaSplatRouteImport } from './routes/api/alexa/$'
+import { Route as ApiAppleAccountRouteImport } from './routes/api/apple/account'
+import { Route as ApiAppleNotificationsRouteImport } from './routes/api/apple/notifications'
+import { Route as ApiAppleRefreshRouteImport } from './routes/api/apple/refresh'
+import { Route as ApiAppleTransactionRouteImport } from './routes/api/apple/transaction'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiOpsBackupRouteImport } from './routes/api/ops/backup'
 import { Route as ApiStripeCheckoutRouteImport } from './routes/api/stripe/checkout'
@@ -112,6 +116,26 @@ const ApiAlexaSplatRoute = ApiAlexaSplatRouteImport.update({
   path: '/api/alexa/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAppleAccountRoute = ApiAppleAccountRouteImport.update({
+  id: '/api/apple/account',
+  path: '/api/apple/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAppleNotificationsRoute = ApiAppleNotificationsRouteImport.update({
+  id: '/api/apple/notifications',
+  path: '/api/apple/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAppleRefreshRoute = ApiAppleRefreshRouteImport.update({
+  id: '/api/apple/refresh',
+  path: '/api/apple/refresh',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAppleTransactionRoute = ApiAppleTransactionRouteImport.update({
+  id: '/api/apple/transaction',
+  path: '/api/apple/transaction',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -160,6 +184,10 @@ export interface FileRoutesByFullPath {
   '/help/switchbot': typeof HelpSwitchbotRoute
   '/help/tuya': typeof HelpTuyaRoute
   '/api/alexa/$': typeof ApiAlexaSplatRoute
+  '/api/apple/account': typeof ApiAppleAccountRoute
+  '/api/apple/notifications': typeof ApiAppleNotificationsRoute
+  '/api/apple/refresh': typeof ApiAppleRefreshRoute
+  '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ops/backup': typeof ApiOpsBackupRoute
   '/api/stripe/checkout': typeof ApiStripeCheckoutRoute
@@ -184,6 +212,10 @@ export interface FileRoutesByTo {
   '/help/switchbot': typeof HelpSwitchbotRoute
   '/help/tuya': typeof HelpTuyaRoute
   '/api/alexa/$': typeof ApiAlexaSplatRoute
+  '/api/apple/account': typeof ApiAppleAccountRoute
+  '/api/apple/notifications': typeof ApiAppleNotificationsRoute
+  '/api/apple/refresh': typeof ApiAppleRefreshRoute
+  '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ops/backup': typeof ApiOpsBackupRoute
   '/api/stripe/checkout': typeof ApiStripeCheckoutRoute
@@ -209,6 +241,10 @@ export interface FileRoutesById {
   '/help/switchbot': typeof HelpSwitchbotRoute
   '/help/tuya': typeof HelpTuyaRoute
   '/api/alexa/$': typeof ApiAlexaSplatRoute
+  '/api/apple/account': typeof ApiAppleAccountRoute
+  '/api/apple/notifications': typeof ApiAppleNotificationsRoute
+  '/api/apple/refresh': typeof ApiAppleRefreshRoute
+  '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ops/backup': typeof ApiOpsBackupRoute
   '/api/stripe/checkout': typeof ApiStripeCheckoutRoute
@@ -235,6 +271,10 @@ export interface FileRouteTypes {
     | '/help/switchbot'
     | '/help/tuya'
     | '/api/alexa/$'
+    | '/api/apple/account'
+    | '/api/apple/notifications'
+    | '/api/apple/refresh'
+    | '/api/apple/transaction'
     | '/api/auth/$'
     | '/api/ops/backup'
     | '/api/stripe/checkout'
@@ -259,6 +299,10 @@ export interface FileRouteTypes {
     | '/help/switchbot'
     | '/help/tuya'
     | '/api/alexa/$'
+    | '/api/apple/account'
+    | '/api/apple/notifications'
+    | '/api/apple/refresh'
+    | '/api/apple/transaction'
     | '/api/auth/$'
     | '/api/ops/backup'
     | '/api/stripe/checkout'
@@ -283,6 +327,10 @@ export interface FileRouteTypes {
     | '/help/switchbot'
     | '/help/tuya'
     | '/api/alexa/$'
+    | '/api/apple/account'
+    | '/api/apple/notifications'
+    | '/api/apple/refresh'
+    | '/api/apple/transaction'
     | '/api/auth/$'
     | '/api/ops/backup'
     | '/api/stripe/checkout'
@@ -308,6 +356,10 @@ export interface RootRouteChildren {
   HelpSwitchbotRoute: typeof HelpSwitchbotRoute
   HelpTuyaRoute: typeof HelpTuyaRoute
   ApiAlexaSplatRoute: typeof ApiAlexaSplatRoute
+  ApiAppleAccountRoute: typeof ApiAppleAccountRoute
+  ApiAppleNotificationsRoute: typeof ApiAppleNotificationsRoute
+  ApiAppleRefreshRoute: typeof ApiAppleRefreshRoute
+  ApiAppleTransactionRoute: typeof ApiAppleTransactionRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiOpsBackupRoute: typeof ApiOpsBackupRoute
   ApiStripeCheckoutRoute: typeof ApiStripeCheckoutRoute
@@ -430,6 +482,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAlexaSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/apple/account': {
+      id: '/api/apple/account'
+      path: '/api/apple/account'
+      fullPath: '/api/apple/account'
+      preLoaderRoute: typeof ApiAppleAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/apple/notifications': {
+      id: '/api/apple/notifications'
+      path: '/api/apple/notifications'
+      fullPath: '/api/apple/notifications'
+      preLoaderRoute: typeof ApiAppleNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/apple/refresh': {
+      id: '/api/apple/refresh'
+      path: '/api/apple/refresh'
+      fullPath: '/api/apple/refresh'
+      preLoaderRoute: typeof ApiAppleRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/apple/transaction': {
+      id: '/api/apple/transaction'
+      path: '/api/apple/transaction'
+      fullPath: '/api/apple/transaction'
+      preLoaderRoute: typeof ApiAppleTransactionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -492,6 +572,10 @@ const rootRouteChildren: RootRouteChildren = {
   HelpSwitchbotRoute: HelpSwitchbotRoute,
   HelpTuyaRoute: HelpTuyaRoute,
   ApiAlexaSplatRoute: ApiAlexaSplatRoute,
+  ApiAppleAccountRoute: ApiAppleAccountRoute,
+  ApiAppleNotificationsRoute: ApiAppleNotificationsRoute,
+  ApiAppleRefreshRoute: ApiAppleRefreshRoute,
+  ApiAppleTransactionRoute: ApiAppleTransactionRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiOpsBackupRoute: ApiOpsBackupRoute,
   ApiStripeCheckoutRoute: ApiStripeCheckoutRoute,

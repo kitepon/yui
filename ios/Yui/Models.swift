@@ -17,7 +17,9 @@ struct AuthSessionEnvelope: Decodable {
 
 struct BillingStatus: Decodable {
     let configured: Bool
+    let appleConfigured: Bool?
     let entitlement: BillingEntitlement
+    let stripeEntitlement: BillingEntitlement?
     let plans: BillingPlans
 }
 
@@ -29,8 +31,23 @@ struct BillingPlans: Decodable {
 
 struct BillingEntitlement: Decodable {
     let writable: Bool
+    let provider: String?
     let message: String?
     let status: String?
+}
+
+struct AppleBillingAccount: Decodable {
+    let appAccountToken: UUID
+    let productIds: AppleProductIds
+}
+
+struct AppleProductIds: Decodable {
+    let monthly: String
+    let annual: String
+}
+
+struct AppleBillingResult: Decodable {
+    let entitlement: BillingEntitlement
 }
 
 struct ExternalURLResponse: Decodable {

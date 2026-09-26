@@ -1,4 +1,5 @@
 import Foundation
+import StoreKit
 
 @MainActor
 final class SessionStore: ObservableObject {
@@ -13,11 +14,27 @@ final class SessionStore: ObservableObject {
     @Published var user: AuthUser?
     @Published var billingStatus: BillingStatus?
     @Published var accountError: String?
+    @Published var appleProducts: [String: Product] = [:]
+    @Published var appleBusy = false
+    private var appleAccount: AppleBillingAccount?
+    private var updatesTask: Task<Void, Never>?
 
     var isLoggedIn: Bool { token != nil }
 
     init() {
         token = Keychain.load()
+        updatesTask = Task { [weak self] in
+            for await result in Transaction.updates {
+                guard let self, let token = self.token else { continue }
+                do {
+                    try await self.registerAppleTransaction(result, token: token)
+                    self.billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+                    self.home = try await YuiClient.shared.home(token: token)
+                } catch {
+                    self.accountError = error.localizedDescription
+                }
+            }
+        }
     }
 
     func signIn(email: String, password: String) async {
@@ -61,19 +78,84 @@ final class SessionStore: ObservableObject {
         }
         do {
             billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: refreshBilling)
+            if billingStatus?.appleConfigured == true && billingStatus?.entitlement.writable != true {
+                try await prepareApplePurchases(token: token)
+            }
         } catch {
             accountError = error.localizedDescription
         }
     }
 
-    func billingURL(action: String, plan: String? = nil) async -> URL? {
-        guard let token else { return nil }
+    private func prepareApplePurchases(token: String) async throws {
+        if appleAccount == nil { appleAccount = try await YuiClient.shared.appleBillingAccount(token: token) }
+        guard let appleAccount else { throw YuiError.message("Appleの課金情報を取得できません") }
+        let ids = [appleAccount.productIds.monthly, appleAccount.productIds.annual]
+        let products = try await Product.products(for: ids)
+        appleProducts = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
+        if products.count != ids.count { throw YuiError.message("App Storeの商品がまだ利用できません") }
+    }
+
+    func appleProduct(plan: String) -> Product? {
+        guard let appleAccount else { return nil }
+        let id = plan == "monthly" ? appleAccount.productIds.monthly : appleAccount.productIds.annual
+        return appleProducts[id]
+    }
+
+    private func registerAppleTransaction(_ result: VerificationResult<Transaction>, token: String) async throws {
+        guard case .verified(let transaction) = result else {
+            throw YuiError.message("App Storeの取引を検証できません")
+        }
+        _ = try await YuiClient.shared.registerAppleTransaction(token: token, signedTransaction: result.jwsRepresentation)
+        await transaction.finish()
+    }
+
+    func purchaseApple(plan: String) async {
+        guard let token else { return }
+        appleBusy = true
         accountError = nil
+        defer { appleBusy = false }
         do {
-            return try await YuiClient.shared.billingURL(token: token, action: action, plan: plan)
+            let latest = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+            billingStatus = latest
+            if latest.entitlement.writable { throw YuiError.message("すでに契約中です") }
+            try await prepareApplePurchases(token: token)
+            guard let appleAccount else { throw YuiError.message("Appleの課金情報を取得できません") }
+            let id = plan == "monthly" ? appleAccount.productIds.monthly : appleAccount.productIds.annual
+            guard let product = appleProducts[id] else { throw YuiError.message("App Storeの商品が見つかりません") }
+            let result = try await product.purchase(options: [.appAccountToken(appleAccount.appAccountToken)])
+            switch result {
+            case .success(let verified):
+                try await registerAppleTransaction(verified, token: token)
+                billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+                home = try await YuiClient.shared.home(token: token)
+            case .pending:
+                accountError = "購入の承認を待っています。承認後に契約が反映されます。"
+            case .userCancelled:
+                break
+            @unknown default:
+                throw YuiError.message("App Storeの購入結果を確認できません")
+            }
         } catch {
             accountError = error.localizedDescription
-            return nil
+        }
+    }
+
+    func restoreApplePurchases() async {
+        guard let token else { return }
+        appleBusy = true
+        accountError = nil
+        defer { appleBusy = false }
+        do {
+            _ = try await YuiClient.shared.appleBillingAccount(token: token)
+            try await AppStore.sync()
+            for await result in Transaction.currentEntitlements {
+                try await registerAppleTransaction(result, token: token)
+            }
+            _ = try await YuiClient.shared.refreshAppleSubscription(token: token)
+            billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+            home = try await YuiClient.shared.home(token: token)
+        } catch {
+            accountError = error.localizedDescription
         }
     }
 
@@ -213,6 +295,8 @@ final class SessionStore: ObservableObject {
         analysis = nil
         user = nil
         billingStatus = nil
+        appleAccount = nil
+        appleProducts = [:]
         Keychain.clear()
     }
 

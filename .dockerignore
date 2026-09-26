@@ -2,6 +2,9 @@
 !.output
 !.output/**
 !package.json
+!certs
+!certs/apple
+!certs/apple/**
 !scripts
 !scripts/hosted-metrics.mjs
 !src

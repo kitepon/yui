@@ -3,6 +3,8 @@ import { auth } from "../auth/server.ts";
 import { HOSTED_PRICE_COPY } from "../billing-plan.ts";
 import { getSqlite } from "./sqlite.ts";
 import { publicOrigin } from "./origin.ts";
+import { appleEntitlement } from "./apple-billing-core.ts";
+import { appleSubscriptionRows } from "./apple-billing.ts";
 import {
   billingConfigured,
   emptyEntitlement,
@@ -74,6 +76,12 @@ export async function getOrCreateCustomer(userId: string, email: string, name?: 
 }
 
 export async function loadEntitlement(userId: string, now = Date.now()): Promise<Entitlement> {
+  const apple = appleEntitlement(appleSubscriptionRows(userId), now);
+  if (apple.writable) return apple;
+  return loadStripeEntitlement(userId, now);
+}
+
+export async function loadStripeEntitlement(userId: string, now = Date.now()): Promise<Entitlement> {
   const hit = cache.get(userId);
   if (hit && now - hit.at < CACHE_MS) return hit.value;
   const value = await fetchEntitlement(userId);

@@ -25,7 +25,7 @@ function Legal() {
         </div>
         <div>
           <dt className="text-xs text-faint">販売価格</dt>
-          <dd>1つの家あたり月額{monthly}円または年額{annual}円（税込）</dd>
+          <dd>Web契約は1つの家あたり月額{monthly}円または年額{annual}円（税込）。iPhoneアプリの契約価格はApp Storeの購入画面に表示します。</dd>
         </div>
         <div>
           <dt className="text-xs text-faint">価格以外に必要な費用</dt>
@@ -33,19 +33,19 @@ function Legal() {
         </div>
         <div>
           <dt className="text-xs text-faint">支払方法</dt>
-          <dd>クレジットカード、Apple Pay、Google Pay（決済は Stripe が扱います）</dd>
+          <dd>Web契約はStripe経由のクレジットカード、Apple Pay、Google Pay。iPhoneアプリの契約はAppleのアプリ内課金。</dd>
         </div>
         <div>
           <dt className="text-xs text-faint">支払時期</dt>
-          <dd>初回は支払い方法の登録後{BILLING.trialDays}日間無料。その後、選んだ月額または年額を決済し、以降は更新日に自動決済します。</dd>
+          <dd>Web契約は支払い方法の登録後{BILLING.trialDays}日間無料。その後、選んだ月額または年額を更新日に自動決済します。Apple契約の支払時期と無料体験はApp Storeの購入画面に表示します。</dd>
         </div>
         <div>
           <dt className="text-xs text-faint">提供時期</dt>
-          <dd>Checkout 完了の確認後。無料体験中は{BILLING.trialDays}日間0円です。</dd>
+          <dd>Web契約はCheckout完了の確認後、Apple契約はApp Storeの取引を確認後に利用できます。</dd>
         </div>
         <div>
           <dt className="text-xs text-faint">解約</dt>
-          <dd>Stripe の契約管理からいつでも手続きでき、現在の契約期間末に終了します。</dd>
+          <dd>Web契約はStripeの契約管理、Apple契約はiPhoneのサブスクリプション設定から手続きできます。現在の契約期間末に終了します。</dd>
         </div>
         <div>
           <dt className="text-xs text-faint">返品・返金</dt>
@@ -53,7 +53,7 @@ function Legal() {
         </div>
         <div>
           <dt className="text-xs text-faint">動作環境</dt>
-          <dd>最新のブラウザ（iOS Safari、Android Chrome、PC 各種）。操作したい家電のクラウドに接続できることが必要です。</dd>
+          <dd>最新のブラウザ（iOS Safari、Android Chrome、PC 各種）または対応するiPhone。操作したい家電のクラウドに接続できることが必要です。</dd>
         </div>
       </dl>
     </LegalPage>
