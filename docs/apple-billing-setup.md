@@ -11,6 +11,8 @@ Web契約はStripe、iPhoneアプリ内の契約はAppleの自動更新サブス
 - プライバシーポリシーURL: `https://yuihome.kitepon.dev/privacy`。
 - Sign in with Apple と In-App Purchase のApp ID能力は有効。
 - iPhone配布ビルドの`ITSAppUsesNonExemptEncryption`は`NO`。OS標準の暗号機能だけを使用するため、署名前のアーカイブ内でも値を確認した。
+- iPhone版1.0（ビルド1）はXcodeの検証とアップロードを通過した。App Store Connectでバイナリが「確認済み」、TestFlightが「提出準備完了」と表示され、App Store版1.0に紐付けて保存済み。ビルドのBundle IDは`dev.kitepon.yuihome`、暗号化の申告値は「いいえ」。
+- 本番サーバーのApple課金対応コードは公開済み。`/support`と`/privacy`を公開URLで確認済み。ただしApple用の秘密鍵は未設定のため、購入・通知・Appleログインの実運用確認は未完了。
 
 ## 提出までの残作業
 
@@ -23,9 +25,9 @@ Web契約はStripe、iPhoneアプリ内の契約はAppleの自動更新サブス
    | Apple取引の検証と契約状態照会 | `APPLE_APP_ID`, `APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY_BASE64` |
 
    `*_PRIVATE_KEY_BASE64`にはダウンロードした`.p8`全体をbase64化した値を設定する。`APPLE_APP_ID`は`6816410748`。鍵は再ダウンロードできないため、アクセスを限定して保管する。
-3. サーバーを更新し、App Store Server Notifications V2の本番・Sandbox送信先を`https://yuihome.kitepon.dev/api/apple/notifications`に設定する。
-4. 審査用の機器データを持つ専用アカウント、iPhoneの画面写真、サブスクリプション審査用の画面写真、審査担当者への説明を用意する。
-5. Xcode Organizerで既存のクラウド管理配布証明書を使い、署名付きiOSビルドをApp Store Connectへアップロードする。Sandboxで購入・復元・更新・解約・返金、WebとiPhoneの利用権、Stripe契約中の二重購入防止、Appleログイン・アカウント削除を実機で確認する。
+3. App Store Server Notifications V2の本番・Sandbox送信先を`https://yuihome.kitepon.dev/api/apple/notifications`に設定する。
+4. アプリのプライバシー回答を公開し、用意したiPhoneの画面写真を登録する。月額・年額サブスクリプションの審査用画面写真も登録する。
+5. 審査用の機器データを持つ専用アカウントと審査担当者への説明を用意する。Sandboxで購入・復元・更新・解約・返金、WebとiPhoneの利用権、Stripe契約中の二重購入防止、Appleログイン・アカウント削除を実機で確認する。
 6. iPhone版1.0と両サブスクリプションを審査へ提出する。
 
 本番にApple課金設定がなければ、iPhoneアプリは「App Storeでの購入は準備中です」と表示する。ビルド成功や商品登録だけでは、購入と通知の動作は確認できない。
