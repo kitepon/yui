@@ -26,8 +26,8 @@
 
 ## 公開前の作業
 
-- Sign in with Apple、アカウント削除、初回無料体験の表示を実装した。App Store ConnectにiPhone版1.0のビルドを登録した。審査への提出はまだ行っていない。
-- 月額・年額の商品、日本の価格、両プランの初回1か月無料、Appleの鍵、Server Notifications V2、アプリの画面写真を登録した。購入・通知・復元の実課金試験と審査の残作業は`docs/apple-billing-setup.md`に記録する。
+- Sign in with Apple、アカウント削除、初回無料体験の表示を実装した。App Store ConnectへiPhone版1.0のビルド3、サブスクリプショングループ、月額、年額を同じ提出として送信し、4項目とも「審査待ち」になった。承認後は手動でリリースする。
+- 月額・年額の商品、日本の価格、両プランの初回1か月無料、Appleの鍵、Server Notifications V2、アプリの画面写真を登録した。購入・通知・復元の実課金試験と審査中・公開後の作業は`docs/apple-billing-setup.md`に記録する。
 - StoreKitが例外終了した時にApple購入予約が残る欠陥を修正し、例外直後に再度予約できることをシミュレーターと本番APIで確認した。iOS 26.5シミュレーターではSandbox Apple Accountの保存に失敗するため、購入確定はTestFlightを導入した実機で確認する。
 - Web のデモ宅への切替は iPhone 版には未実装。
 
