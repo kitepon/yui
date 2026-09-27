@@ -16,12 +16,13 @@ Web契約はStripe、iPhoneアプリ内の契約はAppleの自動更新サブス
 - Sign in with Apple と In-App Purchase の鍵を作成し、秘密鍵をリポジトリ外に保管した。本番サーバーの設定とアプリの再起動が完了し、Apple課金の設定済み状態と通知APIの受信を確認した。
 - App Store Server Notifications V2 の本番・Sandbox送信先を登録した。
 - Apple公式の[通知テストAPI](https://developer.apple.com/documentation/appstoreserverapi/request-a-test-notification)でSandboxへの送信を要求し、Appleの送信結果`SUCCESS`と本番サーバーの通知履歴への保存を確認した。`TEST`通知の受信・署名検証・永続化は通過。本番通知テストAPIはHTTP 401を返したため、公開後に再確認する。公開前アプリで同じ挙動になり、公開後に解消した報告が[Apple Developer Forums](https://developer.apple.com/forums/thread/711801)にあるが、結での原因は未確定。
-- App Store ConnectにSandboxテスターを登録し、再読み込み後の一覧表示で確認した。iPhone 17 Pro Maxシミュレーターでは未契約の結アカウントでログインでき、購入ボタンからApple Accountサインイン画面へ到達した。Sandboxテスターの端末サインインはオーナーの入力待ち。
+- App Store ConnectにSandboxテスターを登録し、再読み込み後の一覧表示で確認した。iPhone 17 Pro Maxシミュレーターでは未契約の結アカウントでログインでき、購入ボタンからApple Accountサインイン画面へ到達した。Sandboxテスターは2ファクタ認証の設定まで完了したが、iOS 26.5シミュレーターのApple Media Servicesが資格情報の検証で`Authentication Failed Encountered an unrecognized authentication failure`を返し、Sandbox Apple Accountとして保存されなかった。結の通信とSandboxテスターのパスワード認証は通過しており、購入確定は実機で確認する。
 - iPhone 6.9インチ用の画面写真3枚を、家・場面・分析の順で登録した。
 - 月額と年額の両サブスクリプションに、未契約時の購入画面の審査用画像を登録した。サブスクリプショングループ、月額、年額の3項目を同じApp Review提出下書きに追加した。アプリ本体を追加する段階では、連絡先情報と公開済みプライバシー回答が必要と表示された。
 - 審査専用アカウントを作り、課金免除でデモ機器8台と場面4件を用意した。デモ照明の操作を確認した。未契約の購入試験用アカウントも別に用意した。認証情報はリポジトリ外に保管する。
-- iPhone 17 Pro Maxシミュレーターで未契約アカウントの購入画面を表示し、月額・年額の購入ボタンと復元導線を確認した。月額ボタンからStoreKitのApple Accountサインイン画面まで進んだ。Sandbox Apple Account未登録のため、購入確定と初回無料体験の表示は未検証。日本の価格設定は保存済みだが、未ログインのシミュレーターは米ドル表示だった。
+- iPhone 17 Pro Maxシミュレーターで未契約アカウントの購入画面を表示し、月額・年額の購入ボタンと復元導線を確認した。月額ボタンからStoreKitのApple Accountサインイン画面まで進んだ。Sandbox Apple Accountをシミュレーターへ保存できないため、購入確定と初回無料体験の表示は未検証。日本の価格設定は保存済みだが、未ログインのシミュレーターは米ドル表示だった。
 - シミュレーターでAppleログイン失敗時に英語の内部エラーが露出したため、日本語の操作案内へ修正して再現確認した。修正版はビルド2として提出する。
+- StoreKitが購入結果を返す前に例外終了すると、サーバーのApple購入予約が残り続ける欠陥を修正した。StoreKitサービスを停止して例外経路を再現し、修正版では直後に新しい購入予約を作成できることを本番APIで確認した。試験用予約と一時テストアカウントは確認後に削除した。この修正版はビルド3として提出する。
 
 Sandbox Apple AccountはApp Store Connectの「ユーザとアクセス > Sandbox」で作成する。開発署名アプリで最初の購入を試みると、テスト端末の「設定 > デベロッパ > Sandbox Apple Account」にサインイン欄が現れる。通常の端末用Apple Accountからサインアウトする必要はない。作成時のメールアドレスは既存のApple Accountに未使用のものを使う。出典: [AppleのSandboxアカウント作成手順](https://developer.apple.com/help/app-store-connect/test-in-app-purchases/create-a-sandbox-apple-account)、[StoreKitのSandbox試験手順](https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox)。
 
@@ -29,7 +30,7 @@ Sandbox Apple AccountはApp Store Connectの「ユーザとアクセス > Sandbo
 
 1. アプリのプライバシー回答を公開する。Appleの最終確認画面に正確性・規約遵守・更新義務への同意が表示されたため、オーナーの回答待ち。
 2. App Reviewの連絡先電話番号と審査用アカウントのパスワードを登録する。Appleへのパスワード送信確認と電話番号の回答待ち。氏名・メール・審査説明は入力したが、必須欄が空で保存できていない。
-3. Sandboxテスターで端末へサインインし、購入・復元・更新・解約・返金、WebとiPhoneの利用権、Stripe契約中の二重購入防止、Appleログイン・アカウント削除を実機で確認する。Sandboxの`TEST`通知だけでは実購入の通知や利用権更新は検証できない。
+3. Sandboxテスターを使い、購入・復元・更新・解約・返金、WebとiPhoneの利用権、Stripe契約中の二重購入防止、Appleログイン・アカウント削除を実機で確認する。iOS 26.5シミュレーターではApple Media Servicesの認証に失敗するため、Sandboxの`TEST`通知だけでは確認できない実購入の通知や利用権更新はTestFlightを導入した実機で確認する。
 4. iPhone版1.0を既存の提出下書きに追加し、グループ・月額・年額とともに審査へ提出する。
 
 ビルド成功や商品登録だけでは、購入と通知の動作は確認できない。審査承認後は手動でリリースする設定にしている。

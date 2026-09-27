@@ -131,6 +131,7 @@ final class SessionStore: ObservableObject {
         guard let token else { return }
         appleBusy = true
         accountError = nil
+        var cancellableAttemptId: String?
         defer { appleBusy = false }
         do {
             let latest = try await YuiClient.shared.billingStatus(token: token, refresh: true)
@@ -141,23 +142,36 @@ final class SessionStore: ObservableObject {
             let id = plan == "monthly" ? appleAccount.productIds.monthly : appleAccount.productIds.annual
             guard let product = appleProducts[id] else { throw YuiError.message("App Storeの商品が見つかりません") }
             let attempt = try await YuiClient.shared.beginApplePurchase(token: token)
+            cancellableAttemptId = attempt.attemptId
             let result = try await product.purchase(options: [.appAccountToken(attempt.appAccountToken)])
             switch result {
             case .success(let verified):
+                cancellableAttemptId = nil
                 try await registerAppleTransaction(verified, token: token)
                 billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
                 home = try await YuiClient.shared.home(token: token)
             case .pending:
+                cancellableAttemptId = nil
                 accountError = "購入の承認を待っています。承認後に契約が反映されます。"
                 billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
             case .userCancelled:
                 try await YuiClient.shared.cancelApplePurchase(token: token, attemptId: attempt.attemptId)
+                cancellableAttemptId = nil
                 billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
             @unknown default:
                 throw YuiError.message("App Storeの購入結果を確認できません")
             }
         } catch {
-            accountError = error.localizedDescription
+            let purchaseError = error
+            if let attemptId = cancellableAttemptId {
+                do {
+                    try await YuiClient.shared.cancelApplePurchase(token: token, attemptId: attemptId)
+                } catch {
+                    accountError = "\(purchaseError.localizedDescription)\n購入手続きの解除にも失敗しました: \(error.localizedDescription)"
+                    return
+                }
+            }
+            accountError = purchaseError.localizedDescription
         }
     }
 
