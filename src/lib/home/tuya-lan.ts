@@ -3,6 +3,7 @@ import { createConnection } from "node:net";
 import { crc32 } from "node:zlib";
 import type { DevicePatch } from "./device-patch.ts";
 import { listenLanUdp, relayLanTcp, type ListenLanUdp } from "./lan-udp.ts";
+import { SENSOR_TICK_SECONDS } from "./control-tick.ts";
 import { applyTuyaStatus, tuyaCommandsFromPatch } from "./tuya.ts";
 import { recentDeviceLan, TUYA_LAN_SEEN_TTL_MS, type Device, type TuyaLocalDevice } from "./types.ts";
 
@@ -168,11 +169,11 @@ function parseExchange(buf: Buffer): TuyaLanFrame {
 }
 
 /** 機器へ 1 回つなぎ、1 フレーム送って最初の応答フレームを返す。 */
-async function exchange(target: TuyaLanTarget, frame: Buffer): Promise<TuyaLanFrame> {
+async function exchange(target: TuyaLanTarget, frame: Buffer, signal?: AbortSignal): Promise<TuyaLanFrame> {
   const relay = process.env.YUI_TUYA_LAN_RELAY?.trim();
   const port = target.port ?? PORT;
   if (relay) {
-    return parseExchange(await relayLanTcp(relay, target.host, port, frame));
+    return parseExchange(await relayLanTcp(relay, target.host, port, frame, signal));
   }
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -180,9 +181,11 @@ async function exchange(target: TuyaLanTarget, frame: Buffer): Promise<TuyaLanFr
     const finish = (fn: () => void) => {
       if (done) return;
       done = true;
+      signal?.removeEventListener("abort", abort);
       socket.destroy();
       fn();
     };
+    const abort = () => finish(() => reject(new Error("Smart Life 直結: 定期読取を中止しました")));
     const socket = createConnection({ host: target.host, port }, () => {
       socket.write(frame);
     });
@@ -203,12 +206,14 @@ async function exchange(target: TuyaLanTarget, frame: Buffer): Promise<TuyaLanFr
       if (parsed) finish(() => resolve(parsed));
     });
     socket.on("close", () => finish(() => reject(new Error(`Smart Life 直結: ${target.host} が応答前に切断しました`))));
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
   });
 }
 
 /** 機器の dps を読む。 */
-export async function queryDps(target: TuyaLanTarget): Promise<Record<string, unknown>> {
-  const frame = await exchange(target, buildDpQuery(target));
+export async function queryDps(target: TuyaLanTarget, signal?: AbortSignal): Promise<Record<string, unknown>> {
+  const frame = await exchange(target, buildDpQuery(target), signal);
   return decodeDps(target.localKey, frame.data);
 }
 
@@ -363,6 +368,61 @@ function dpsFromCommands(commands: Array<{ code: string; value: unknown }>, map:
   return dps;
 }
 
+type LanActivity = {
+  pendingControls: number;
+  controlTail: Promise<void>;
+  poll?: { abort: AbortController; done: Promise<void> };
+  pollAfter: number;
+};
+
+const activity = new Map<string, LanActivity>();
+
+function activityFor(deviceId: string): LanActivity {
+  let lane = activity.get(deviceId);
+  if (!lane) {
+    lane = { pendingControls: 0, controlTail: Promise.resolve(), pollAfter: 0 };
+    activity.set(deviceId, lane);
+  }
+  return lane;
+}
+
+/** 同じ機器の定期読取を譲らせ、操作同士は順番に送る。 */
+async function prioritizeControl<T>(deviceId: string, run: () => Promise<T>): Promise<T> {
+  const lane = activityFor(deviceId);
+  const previous = lane.controlTail;
+  let release!: () => void;
+  lane.controlTail = new Promise<void>((resolve) => { release = resolve; });
+  lane.pendingControls++;
+  lane.poll?.abort.abort();
+  try {
+    await previous;
+    if (lane.poll) await lane.poll.done;
+    return await run();
+  } finally {
+    lane.pollAfter = Date.now() + SENSOR_TICK_SECONDS * 1000;
+    lane.pendingControls--;
+    release();
+  }
+}
+
+/** 操作が来たら読取を中止し、操作後の次の定期読取も一周期譲る。 */
+async function queryForRefresh(target: TuyaLanTarget): Promise<Record<string, unknown> | undefined> {
+  const lane = activityFor(target.deviceId);
+  if (lane.pendingControls || lane.poll || Date.now() < lane.pollAfter) return undefined;
+  const abort = new AbortController();
+  const read = queryDps(target, abort.signal);
+  lane.poll = { abort, done: read.then(() => undefined, () => undefined) };
+  try {
+    const dps = await read;
+    return abort.signal.aborted ? undefined : dps;
+  } catch (err) {
+    if (abort.signal.aborted) return undefined;
+    throw err;
+  } finally {
+    if (lane.poll?.abort === abort) lane.poll = undefined;
+  }
+}
+
 /**
  * 家の Smart Life 機器のうち LAN で読める機器を読み直し、`lan` に結果を残す。
  * センサーは温度・湿度、スイッチ類は入／切を LAN の実値で更新する。
@@ -396,7 +456,9 @@ export async function tuyaLanRefreshSensors(
       }
       attempted.add(device.id);
       try {
-        const status = statusFromDps(await queryDps(target), target.dps);
+        const dps = await queryForRefresh(target);
+        if (!dps) return;
+        const status = statusFromDps(dps, target.dps);
         applyTuyaStatus(device, status);
         const sw = status.find((s) => typeof s.value === "boolean" && /^switch/.test(s.code));
         if (sw) device.on = sw.value as boolean;
@@ -419,11 +481,13 @@ export async function tuyaLanControl(
   device: Device,
   cmd: DevicePatch,
 ): Promise<void> {
-  const status = statusFromDps(await queryDps(target), target.dps);
-  const commands = tuyaCommandsFromPatch(status, device, cmd);
-  const dps = dpsFromCommands(commands, target.dps);
-  if (!Object.keys(dps).length) {
-    throw new Error(`${device.name} に送れる操作がありません`);
-  }
-  await sendDps(target, dps);
+  await prioritizeControl(target.deviceId, async () => {
+    const status = statusFromDps(await queryDps(target), target.dps);
+    const commands = tuyaCommandsFromPatch(status, device, cmd);
+    const dps = dpsFromCommands(commands, target.dps);
+    if (!Object.keys(dps).length) {
+      throw new Error(`${device.name} に送れる操作がありません`);
+    }
+    await sendDps(target, dps);
+  });
 }

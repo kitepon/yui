@@ -2,6 +2,9 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:net";
 import { createHash } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   buildControl,
   buildDpQuery,
@@ -308,18 +311,89 @@ test("3.1 のコンセントは LAN で読んで、署名付きで操作を送�
 test("コンセントも毎回 LAN で読み、入／切を実値にして前回の失敗理由を消す", async () => {
   const dev = await fakePlug31({ "1": false, "2": 0 });
   servers.push(dev.close);
-  noteTuyaLanAnnouncement({ gwId: PLUG, ip: "127.0.0.1", version: "3.1", port: dev.port });
+  const id = `${PLUG}-refresh`;
+  noteTuyaLanAnnouncement({ gwId: id, ip: "127.0.0.1", version: "3.1", port: dev.port });
   const plug = sensor({
-    id: `smartlife:${PLUG}`,
-    nativeId: PLUG,
+    id: `smartlife:${id}`,
+    nativeId: id,
     kind: "plug",
     name: "90cm水槽の水流",
     on: true,
     lan: { host: "127.0.0.1", version: "3.1", error: "鍵がありません。接続タブで Smart Life を同期すると受け取ります" },
   });
-  const res = await tuyaLanRefreshSensors([plug], { [PLUG]: { localKey: PLUG_KEY, dps: { "1": "switch_1", "2": "countdown_1" } } });
+  const res = await tuyaLanRefreshSensors([plug], { [id]: { localKey: PLUG_KEY, dps: { "1": "switch_1", "2": "countdown_1" } } });
   assert.deepEqual(res.errors, []);
   assert.equal(plug.on, false);
   assert.equal(plug.lan?.error, undefined);
   assert.ok(plug.lan?.readAt);
+});
+
+test("3.1 の定期読取中に操作が来たら中継先の接続を閉じ、操作を先に通す", async () => {
+  const id = "priority-plug-31";
+  const received: Record<string, unknown>[] = [];
+  let queries = 0;
+  let active = 0;
+  let overlapped = false;
+  let queryStarted!: () => void;
+  const started = new Promise<void>((resolve) => { queryStarted = resolve; });
+  const device = createServer((socket) => {
+    active++;
+    if (active > 1) overlapped = true;
+    socket.on("close", () => active--);
+    socket.on("data", (buf) => {
+      const frame = parseFrame(buf);
+      if (!frame) return;
+      if (frame.cmd === 0x0a) {
+        queries++;
+        if (queries === 1) {
+          queryStarted();
+          return;
+        }
+        socket.write(buildFrame(frame.seq, 0x0a, Buffer.concat([
+          Buffer.alloc(4), Buffer.from(JSON.stringify({ devId: id, dps: { "1": true } })),
+        ])));
+      } else if (frame.cmd === 0x07) {
+        const body = buf.subarray(16, buf.length - 8).toString();
+        const command = JSON.parse(decryptPayload(PLUG_KEY, Buffer.from(body.slice(19), "base64")).toString()) as { dps: Record<string, unknown> };
+        received.push(command.dps);
+        socket.write(buildFrame(frame.seq, 0x07, Buffer.alloc(4)));
+      }
+    });
+  });
+  const port = await new Promise<number>((resolve) => device.listen(0, "127.0.0.1", () => resolve((device.address() as { port: number }).port)));
+  const dir = mkdtempSync(join(tmpdir(), "yui-priority-"));
+  const relay = startTuyaLanRelay(join(dir, "tuya.sock"));
+  assert.ok(relay);
+  await relay.ready;
+  const prev = process.env.YUI_TUYA_LAN_RELAY;
+  process.env.YUI_TUYA_LAN_RELAY = relay.url;
+  try {
+    noteTuyaLanAnnouncement({ gwId: id, ip: "127.0.0.1", version: "3.1", port });
+    const plug = sensor({ id: `smartlife:${id}`, nativeId: id, kind: "plug", name: "優先確認", on: true });
+    const local = { [id]: { localKey: PLUG_KEY, dps: { "1": "switch_1" } } };
+    const target = tuyaLanTargetOf(plug, local);
+    assert.ok(target);
+    const poll = tuyaLanRefreshSensors([plug], local);
+    await started;
+    const control = tuyaLanControl(target, { ...plug, on: false }, { on: false });
+    const [refreshed] = await Promise.all([poll, control]);
+    assert.deepEqual(refreshed.errors, []);
+    assert.equal(plug.lan?.error, undefined);
+    assert.deepEqual(received, [{ "1": false }]);
+    assert.equal(overlapped, false);
+    await tuyaLanRefreshSensors([plug], local);
+    assert.equal(queries, 2, "操作直後の定期読取は一周期譲る");
+    await Promise.all([
+      tuyaLanControl(target, { ...plug, on: false }, { on: false }),
+      tuyaLanControl(target, { ...plug, on: true }, { on: true }),
+    ]);
+    assert.deepEqual(received, [{ "1": false }, { "1": false }, { "1": true }]);
+    assert.equal(overlapped, false, "続けて来た操作も同時接続しない");
+  } finally {
+    if (prev === undefined) delete process.env.YUI_TUYA_LAN_RELAY;
+    else process.env.YUI_TUYA_LAN_RELAY = prev;
+    await relay.close();
+    await new Promise<void>((resolve) => device.close(() => resolve()));
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

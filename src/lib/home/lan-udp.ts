@@ -309,16 +309,18 @@ function readRequestJson(req: IncomingMessage): Promise<{ host: string; port: nu
   });
 }
 
-function exchangeOnce(host: string, port: number, frame: Buffer): Promise<Buffer> {
+function exchangeOnce(host: string, port: number, frame: Buffer, signal?: AbortSignal): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let done = false;
     const finish = (fn: () => void) => {
       if (done) return;
       done = true;
+      signal?.removeEventListener("abort", abort);
       socket.destroy();
       fn();
     };
+    const abort = () => finish(() => reject(new Error("Smart Life 直結: 定期読取を中止しました")));
     const socket = createConnection({ host, port }, () => {
       socket.write(frame);
     });
@@ -332,6 +334,8 @@ function exchangeOnce(host: string, port: number, frame: Buffer): Promise<Buffer
       if (total != null && buf.length >= total) finish(() => resolve(buf.subarray(0, total)));
     });
     socket.on("close", () => finish(() => reject(new Error(`Smart Life 直結: ${host} が応答前に切断しました`))));
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
   });
 }
 
@@ -421,7 +425,10 @@ export function startTuyaLanRelay(bind?: string): ListenLanRelay | undefined {
 }
 
 async function handleRelayRequest(req: IncomingMessage, res: ServerResponse) {
+  const abort = new AbortController();
+  res.on("close", () => abort.abort());
   const write = (status: number, body: unknown) => {
+    if (res.destroyed) return;
     res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(body));
   };
@@ -431,14 +438,14 @@ async function handleRelayRequest(req: IncomingMessage, res: ServerResponse) {
   }
   try {
     const body = await readRequestJson(req);
-    const frame = await exchangeOnce(body.host, body.port, Buffer.from(body.frame, "base64"));
+    const frame = await exchangeOnce(body.host, body.port, Buffer.from(body.frame, "base64"), abort.signal);
     write(200, { frame: frame.toString("base64") });
   } catch (err) {
     write(502, { error: err instanceof Error ? err.message : String(err) });
   }
 }
 
-function postExchange(options: { url?: string; socketPath?: string }, body: string): Promise<{ status: number; json: { frame?: string; error?: string } }> {
+function postExchange(options: { url?: string; socketPath?: string }, body: string, signal?: AbortSignal): Promise<{ status: number; json: { frame?: string; error?: string } }> {
   return new Promise((resolve, reject) => {
     const url = options.url ? new URL("/exchange", options.url) : undefined;
     const req = httpRequest(
@@ -462,18 +469,22 @@ function postExchange(options: { url?: string; socketPath?: string }, body: stri
       reject(new Error("Smart Life 直結: 受け役へ届きません（timeout）"));
     });
     req.on("error", (err) => reject(new Error(`Smart Life 直結: 受け役へ届きません（${err.message}）`)));
+    const abort = () => req.destroy(new Error("Smart Life 直結: 定期読取を中止しました"));
+    signal?.addEventListener("abort", abort, { once: true });
+    req.on("close", () => signal?.removeEventListener("abort", abort));
+    if (signal?.aborted) abort();
     req.end(body);
   });
 }
 
 /** 容器側。受け役へ 1 フレーム渡し、機器の応答フレームを返す。 */
-export async function relayLanTcp(relayUrl: string, host: string, port: number, frame: Buffer): Promise<Buffer> {
+export async function relayLanTcp(relayUrl: string, host: string, port: number, frame: Buffer, signal?: AbortSignal): Promise<Buffer> {
   const body = JSON.stringify({ host, port, frame: frame.toString("base64") });
   let res: { status: number; json: { frame?: string; error?: string } };
   try {
     res = isUnixBind(relayUrl)
-      ? await postExchange({ socketPath: unixPath(relayUrl) }, body)
-      : await postExchange({ url: relayUrl }, body);
+      ? await postExchange({ socketPath: unixPath(relayUrl) }, body, signal)
+      : await postExchange({ url: relayUrl }, body, signal);
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : `Smart Life 直結: 受け役へ届きません（${err}）`);
   }
