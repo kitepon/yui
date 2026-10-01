@@ -147,7 +147,12 @@ final class SessionStore: ObservableObject {
             switch result {
             case .success(let verified):
                 cancellableAttemptId = nil
-                try await registerAppleTransaction(verified, token: token)
+                do {
+                    try await registerAppleTransaction(verified, token: token)
+                } catch YuiError.appleAccountMismatch {
+                    cancellableAttemptId = attempt.attemptId
+                    throw YuiError.appleAccountMismatch
+                }
                 billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
                 home = try await YuiClient.shared.home(token: token)
             case .pending:

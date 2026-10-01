@@ -336,6 +336,7 @@ struct AutomationAction: Decodable {
 struct APIError: Decodable {
     let error: String?
     let message: String?
+    let code: String?
 }
 
 struct AnalysisData: Decodable {

@@ -14,6 +14,7 @@ const BUNDLE_ID = "dev.kitepon.yuihome";
 const roots = ["AppleIncRootCertificate.cer", "AppleRootCA-G2.cer", "AppleRootCA-G3.cer"];
 
 export class AppleBillingInputError extends Error {}
+export class AppleBillingAccountMismatchError extends AppleBillingInputError {}
 
 export function appleBillingConfigured() {
   return Boolean(
@@ -116,7 +117,7 @@ function saveTransaction(
     throw new AppleBillingInputError("Appleのサブスクリプション取引が不正です");
   }
   const userId = userForAppleTransaction(transaction, expectedUserId);
-  if (expectedUserId && userId !== expectedUserId) throw new AppleBillingInputError("Appleの契約は別の結アカウントに紐づいています");
+  if (expectedUserId && userId !== expectedUserId) throw new AppleBillingAccountMismatchError("Appleの契約は別の結アカウントに紐づいています");
   getSqlite().prepare(
     `INSERT INTO apple_subscriptions (
       original_transaction_id, user_id, transaction_id, product_id, environment, status,

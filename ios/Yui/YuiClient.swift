@@ -184,6 +184,8 @@ struct YuiClient {
             throw YuiError.message("URL が不正です")
         }
         var request = URLRequest(url: url)
+        // 認証はKeychainのBearerトークンで行い、別アカウントのCookieを送らない。
+        request.httpShouldHandleCookies = false
         // Better Auth の Origin 検査。ネイティブには Origin が無いので公開面を明示する。
         request.setValue(origin.absoluteString, forHTTPHeaderField: "Origin")
         request.httpMethod = method
@@ -204,6 +206,7 @@ struct YuiClient {
         }
         if code >= 400 {
             let err = try? JSONDecoder().decode(APIError.self, from: data)
+            if err?.code == "APPLE_ACCOUNT_MISMATCH" { throw YuiError.appleAccountMismatch }
             throw YuiError.message(err?.error ?? err?.message ?? "サーバーエラー \(code)")
         }
         return try JSONDecoder().decode(T.self, from: data)
@@ -213,10 +216,12 @@ struct YuiClient {
 enum YuiError: LocalizedError {
     case message(String)
     case unauthorized
+    case appleAccountMismatch
     var errorDescription: String? {
         switch self {
         case .message(let text): return text
         case .unauthorized: return "ログインの期限が切れました。もう一度ログインしてください"
+        case .appleAccountMismatch: return "Appleの契約は別の結アカウントに紐づいています。購入したときの結アカウントでログインしてください"
         }
     }
 }

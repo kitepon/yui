@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { acceptAppleTransaction, appleBillingConfigured, AppleBillingInputError } from "@/lib/server/apple-billing";
+import { acceptAppleTransaction, appleBillingConfigured, AppleBillingInputError, AppleBillingAccountMismatchError } from "@/lib/server/apple-billing";
 import { loadEntitlement, requireUser } from "@/lib/server/billing";
 import { VerificationException, VerificationStatus } from "@apple/app-store-server-library";
 
@@ -21,7 +21,10 @@ export const Route = createFileRoute("/api/apple/transaction")({
           const invalid = error instanceof AppleBillingInputError ||
             (error instanceof VerificationException && error.status !== VerificationStatus.RETRYABLE_VERIFICATION_FAILURE);
           console.error("[yui] Apple取引の検証に失敗", error instanceof VerificationException ? error.status : error);
-          return Response.json({ error: error instanceof AppleBillingInputError ? error.message : "Appleの取引を確認できませんでした" }, { status: invalid ? 400 : 503 });
+          return Response.json({
+            error: error instanceof AppleBillingInputError ? error.message : "Appleの取引を確認できませんでした",
+            code: error instanceof AppleBillingAccountMismatchError ? "APPLE_ACCOUNT_MISMATCH" : undefined,
+          }, { status: invalid ? 400 : 503 });
         }
       },
     },
