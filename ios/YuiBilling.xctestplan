@@ -1,0 +1,27 @@
+{
+  "configurations": [{
+    "id": "8F85D5B9-9E70-4669-A6F5-89A5D2117481",
+    "name": "購入と復元",
+    "options": {}
+  }],
+  "defaultOptions": {
+    "storeKitConfigurationFilePath": {
+      "containerPath": "container:Yui.xcodeproj",
+      "path": "YuiTests/Yui.storekit"
+    },
+    "targetForVariableExpansion": {
+      "containerPath": "container:Yui.xcodeproj",
+      "identifier": "AD12B570053425B9BBC24588",
+      "name": "Yui"
+    }
+  },
+  "testTargets": [{
+    "parallelizable": false,
+    "target": {
+      "containerPath": "container:Yui.xcodeproj",
+      "identifier": "6A3CBB051A2E91024F9C4377",
+      "name": "YuiTests"
+    }
+  }],
+  "version": 1
+}

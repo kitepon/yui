@@ -20,6 +20,7 @@
 		455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31E8B800857AAE16AA60AD2 /* HomeView.swift */; };
 		6C8BE160DA527E08122C17E7 /* RoomManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */; };
 		7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */; };
+		7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */; };
 		8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50400412CEFFD51B5BC7D8EE /* YuiApp.swift */; };
 		9101F37DCFBE713DE6C39E39 /* VisualPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */; };
 		99BD7746C2277352FD6AEF31 /* ScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077672F56CC8346B91EC670D /* ScenesView.swift */; };
@@ -32,9 +33,21 @@
 		D1FA8C157CE899B016630915 /* SceneEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5D8655E0BB39CAC86CDFF5 /* SceneEditorView.swift */; };
 		D87070E5AD02F25AF947EB4B /* DeviceActionDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D9B701B7A90ECB310633C70 /* DeviceActionDraft.swift */; };
 		E3E5BA36150D37B3370FA2AA /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60D12689F93763BBBF3345E /* SessionStore.swift */; };
+		FD67BD3552CD6671F1778EDD /* Yui.storekit in Resources */ = {isa = PBXBuildFile; fileRef = AFCF836AAD938F7F8497F33D /* Yui.storekit */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		80FFEEA4F9A7DE6F9225CA6C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A9B603DD12FD10DD419E02B2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AD12B570053425B9BBC24588;
+			remoteInfo = Yui;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		047F035B6146C78327BFEA9B /* YuiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = YuiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		077672F56CC8346B91EC670D /* ScenesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesView.swift; sourceTree = "<group>"; };
 		0C7E016594EA7B999DE01AB9 /* GoogleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignIn.swift; sourceTree = "<group>"; };
 		24FBCA5AB5822FD167D77B24 /* Yui.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Yui.entitlements; sourceTree = "<group>"; };
@@ -53,7 +66,9 @@
 		879A9FA71DEDFD5036C04FFC /* DeviceActionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActionEditor.swift; sourceTree = "<group>"; };
 		89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualPreview.swift; sourceTree = "<group>"; };
 		920858F0D3DE8419DB11F936 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiBillingTests.swift; sourceTree = "<group>"; };
 		A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManagementView.swift; sourceTree = "<group>"; };
+		AFCF836AAD938F7F8497F33D /* Yui.storekit */ = {isa = PBXFileReference; path = Yui.storekit; sourceTree = "<group>"; };
 		B322D79D0E6B3D87B60058C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BD5D8655E0BB39CAC86CDFF5 /* SceneEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneEditorView.swift; sourceTree = "<group>"; };
 		D60D12689F93763BBBF3345E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
@@ -70,6 +85,7 @@
 			isa = PBXGroup;
 			children = (
 				87C27E0D4ADDD6089559429D /* Yui */,
+				FCDC5C9A32D1788BB1C57FC8 /* YuiTests */,
 				96E378055F38DE8BF191AB0C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,13 +128,42 @@
 			isa = PBXGroup;
 			children = (
 				59A0440A5DB25F5D714E46B8 /* Yui.app */,
+				047F035B6146C78327BFEA9B /* YuiTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		FCDC5C9A32D1788BB1C57FC8 /* YuiTests */ = {
+			isa = PBXGroup;
+			children = (
+				AFCF836AAD938F7F8497F33D /* Yui.storekit */,
+				9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */,
+			);
+			path = YuiTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		6A3CBB051A2E91024F9C4377 /* YuiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8CE96043D295B8404A66D1A6 /* Build configuration list for PBXNativeTarget "YuiTests" */;
+			buildPhases = (
+				23AADC21B6A64D577CAF2265 /* Sources */,
+				B20717E39C1D0D8904FC9C7B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42AADE137A852755B42B3AF0 /* PBXTargetDependency */,
+			);
+			name = YuiTests;
+			packageProductDependencies = (
+			);
+			productName = YuiTests;
+			productReference = 047F035B6146C78327BFEA9B /* YuiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		AD12B570053425B9BBC24588 /* Yui */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4013CE293C978DBAD7E62C2F /* Build configuration list for PBXNativeTarget "Yui" */;
@@ -146,6 +191,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					6A3CBB051A2E91024F9C4377 = {
+						DevelopmentTeam = TPWX489GV4;
+					};
 					AD12B570053425B9BBC24588 = {
 						DevelopmentTeam = TPWX489GV4;
 						ProvisioningStyle = Automatic;
@@ -167,6 +215,7 @@
 			projectRoot = "";
 			targets = (
 				AD12B570053425B9BBC24588 /* Yui */,
+				6A3CBB051A2E91024F9C4377 /* YuiTests */,
 			);
 		};
 /* End PBXProject section */
@@ -180,9 +229,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B20717E39C1D0D8904FC9C7B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FD67BD3552CD6671F1778EDD /* Yui.storekit in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		23AADC21B6A64D577CAF2265 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		533246D3DC516EF63D974B24 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -215,6 +280,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		42AADE137A852755B42B3AF0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AD12B570053425B9BBC24588 /* Yui */;
+			targetProxy = 80FFEEA4F9A7DE6F9225CA6C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		183C03C90CB861A50FF41886 /* Debug */ = {
@@ -379,6 +452,46 @@
 			};
 			name = Debug;
 		};
+		836872A84122087D1D40C5AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/Developer/Library/Frameworks",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yui.app/Yui";
+			};
+			name = Release;
+		};
+		9356FD91ADC216B70473079B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/Developer/Library/Frameworks",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yui.app/Yui";
+			};
+			name = Debug;
+		};
 		E6FDDCA7649CB2FB56CD08E6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -417,6 +530,15 @@
 			buildConfigurations = (
 				183C03C90CB861A50FF41886 /* Debug */,
 				E6FDDCA7649CB2FB56CD08E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8CE96043D295B8404A66D1A6 /* Build configuration list for PBXNativeTarget "YuiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9356FD91ADC216B70473079B /* Debug */,
+				836872A84122087D1D40C5AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

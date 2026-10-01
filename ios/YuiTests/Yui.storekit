@@ -1,0 +1,75 @@
+{
+  "identifier": "YUI-LOCAL-BILLING-TESTS",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_locale": "ja_JP",
+    "_storefront": "JPN",
+    "_disableDialogs": true
+  },
+  "subscriptionGroups": [
+    {
+      "id": "21000001",
+      "localizations": [],
+      "name": "結",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "100",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "10000001",
+          "introductoryOffer": {
+            "internalID": "10000011",
+            "paymentMode": "free",
+            "subscriptionPeriod": "P1M",
+            "numberOfPeriods": 1
+          },
+          "localizations": [
+            {
+              "description": "結の機器操作と場面を利用できます",
+              "displayName": "結 月額プラン",
+              "locale": "ja"
+            }
+          ],
+          "productID": "dev.kitepon.yuihome.subscription.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "結 月額",
+          "subscriptionGroupID": "21000001",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "1000",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "10000002",
+          "introductoryOffer": {
+            "internalID": "10000012",
+            "paymentMode": "free",
+            "subscriptionPeriod": "P1M",
+            "numberOfPeriods": 1
+          },
+          "localizations": [
+            {
+              "description": "結の機器操作と場面を利用できます",
+              "displayName": "結 年額プラン",
+              "locale": "ja"
+            }
+          ],
+          "productID": "dev.kitepon.yuihome.subscription.annual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "結 年額",
+          "subscriptionGroupID": "21000001",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}

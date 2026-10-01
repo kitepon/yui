@@ -18,7 +18,7 @@ settings:
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "3"
+    CURRENT_PROJECT_VERSION: "4"
 targets:
   Yui:
     type: application
@@ -45,4 +45,29 @@ targets:
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "4"
+  YuiTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: YuiTests
+    dependencies:
+      - target: Yui
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.kitepon.yuihome.tests
+        FRAMEWORK_SEARCH_PATHS:
+          - $(inherited)
+          - $(SDKROOT)/Developer/Library/Frameworks
+schemes:
+  Yui:
+    build:
+      targets:
+        Yui: all
+    test:
+      targets:
+        - YuiTests
+      testPlans:
+        - path: YuiBilling.xctestplan
+          defaultPlan: true
+      parallelizeBuild: false
