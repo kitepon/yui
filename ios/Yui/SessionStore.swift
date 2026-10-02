@@ -19,6 +19,7 @@ final class SessionStore: ObservableObject {
     @Published var appleProducts: [String: Product] = [:]
     @Published var appleIntroEligible = false
     @Published var appleBusy = false
+    @Published var applePurchaseResumePlan: String?
     private var appleAccount: AppleBillingAccount?
     private var updatesTask: Task<Void, Never>?
 
@@ -32,6 +33,7 @@ final class SessionStore: ObservableObject {
                 do {
                     try await self.registerAppleTransaction(result, token: token)
                     self.billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+                    try self.updateApplePurchaseRecovery()
                     self.home = try await YuiClient.shared.home(token: token)
                 } catch {
                     self.accountError = error.localizedDescription
@@ -92,6 +94,7 @@ final class SessionStore: ObservableObject {
             if billingStatus?.appleConfigured == true && billingStatus?.entitlement.writable != true {
                 try await prepareApplePurchases(token: token)
             }
+            try updateApplePurchaseRecovery()
         } catch {
             accountError = error.localizedDescription
         }
@@ -119,6 +122,17 @@ final class SessionStore: ObservableObject {
         return appleProducts[id]
     }
 
+    private func updateApplePurchaseRecovery() throws {
+        applePurchaseResumePlan = nil
+        guard let appleAccount else { return }
+        if billingStatus?.purchasePendingProvider != "apple" {
+            try ApplePurchaseRecovery.remove(accountToken: appleAccount.appAccountToken)
+        } else if let record = try ApplePurchaseRecovery.load(accountToken: appleAccount.appAccountToken),
+                  record.stage == .presenting {
+            applePurchaseResumePlan = record.plan
+        }
+    }
+
     private func registerAppleTransaction(_ result: VerificationResult<Transaction>, token: String) async throws {
         guard case .verified(let transaction) = result else {
             throw YuiError.message("App Storeの取引を検証できません")
@@ -132,6 +146,7 @@ final class SessionStore: ObservableObject {
         appleBusy = true
         accountError = nil
         var cancellableAttemptId: String?
+        var purchaseRecord: ApplePurchaseRecovery.Record?
         defer { appleBusy = false }
         do {
             let latest = try await YuiClient.shared.billingStatus(token: token, refresh: true)
@@ -141,12 +156,27 @@ final class SessionStore: ObservableObject {
             guard let appleAccount else { throw YuiError.message("Appleの課金情報を取得できません") }
             let id = plan == "monthly" ? appleAccount.productIds.monthly : appleAccount.productIds.annual
             guard let product = appleProducts[id] else { throw YuiError.message("App Storeの商品が見つかりません") }
-            let attempt = try await YuiClient.shared.beginApplePurchase(token: token)
+            let attempt: ApplePurchaseAttempt
+            if latest.purchasePendingProvider == "apple" {
+                guard let saved = try ApplePurchaseRecovery.load(accountToken: appleAccount.appAccountToken),
+                      saved.stage == .presenting, saved.plan == plan else {
+                    throw YuiError.message("App Storeの購入手続き中です。契約状態を更新してください")
+                }
+                attempt = saved.attempt
+            } else {
+                attempt = try await YuiClient.shared.beginApplePurchase(token: token)
+            }
             cancellableAttemptId = attempt.attemptId
+            var record = ApplePurchaseRecovery.Record(attemptId: attempt.attemptId,
+                appAccountToken: attempt.appAccountToken, plan: plan, stage: .presenting)
+            purchaseRecord = record
+            try ApplePurchaseRecovery.save(record)
             let result = try await product.purchase(options: [.appAccountToken(attempt.appAccountToken)])
             switch result {
             case .success(let verified):
                 cancellableAttemptId = nil
+                record.stage = .registering
+                try ApplePurchaseRecovery.save(record)
                 do {
                     try await registerAppleTransaction(verified, token: token)
                 } catch YuiError.appleAccountMismatch {
@@ -154,15 +184,21 @@ final class SessionStore: ObservableObject {
                     throw YuiError.appleAccountMismatch
                 }
                 billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+                try updateApplePurchaseRecovery()
                 home = try await YuiClient.shared.home(token: token)
             case .pending:
                 cancellableAttemptId = nil
+                record.stage = .pending
+                try ApplePurchaseRecovery.save(record)
                 accountError = "購入の承認を待っています。承認後に契約が反映されます。"
                 billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+                try updateApplePurchaseRecovery()
             case .userCancelled:
                 try await YuiClient.shared.cancelApplePurchase(token: token, attemptId: attempt.attemptId)
                 cancellableAttemptId = nil
+                try ApplePurchaseRecovery.remove(accountToken: attempt.appAccountToken, attemptId: attempt.attemptId)
                 billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+                try updateApplePurchaseRecovery()
             @unknown default:
                 throw YuiError.message("App Storeの購入結果を確認できません")
             }
@@ -171,6 +207,10 @@ final class SessionStore: ObservableObject {
             if let attemptId = cancellableAttemptId {
                 do {
                     try await YuiClient.shared.cancelApplePurchase(token: token, attemptId: attemptId)
+                    if let purchaseRecord {
+                        try ApplePurchaseRecovery.remove(accountToken: purchaseRecord.appAccountToken, attemptId: attemptId)
+                    }
+                    try updateApplePurchaseRecovery()
                 } catch {
                     accountError = "\(purchaseError.localizedDescription)\n購入手続きの解除にも失敗しました: \(error.localizedDescription)"
                     return
@@ -186,13 +226,14 @@ final class SessionStore: ObservableObject {
         accountError = nil
         defer { appleBusy = false }
         do {
-            _ = try await YuiClient.shared.appleBillingAccount(token: token)
+            appleAccount = try await YuiClient.shared.appleBillingAccount(token: token)
             try await AppStore.sync()
             for await result in Transaction.currentEntitlements {
                 try await registerAppleTransaction(result, token: token)
             }
             _ = try await YuiClient.shared.refreshAppleSubscription(token: token)
             billingStatus = try await YuiClient.shared.billingStatus(token: token, refresh: true)
+            try updateApplePurchaseRecovery()
             home = try await YuiClient.shared.home(token: token)
         } catch {
             accountError = error.localizedDescription
@@ -338,6 +379,7 @@ final class SessionStore: ObservableObject {
         appleAccount = nil
         appleProducts = [:]
         appleIntroEligible = false
+        applePurchaseResumePlan = nil
         Keychain.clear()
     }
 

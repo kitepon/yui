@@ -29,4 +29,26 @@ xcodebuild -project Yui.xcodeproj -scheme Yui -testPlan YuiBilling \
 
 所属不一致後の予約解除と再購入、購入成功、キャンセル、承認待ちと承認後の反映、取引登録の通信失敗、セッション再作成後の復元、保存Cookieがある状態でのBearer認証を確認する。
 
-StoreKit設定はテストプランとテスト用bundleにだけ置く。通常の起動と配布アプリはApp Storeの商品を使う。HTTPは試験内で置き換えるため、本番の契約・予約・利用者情報は変更しない。Apple署名のサーバー検証と通知、アプリの強制終了からの復帰は、この試験の確認範囲に含めない。
+StoreKit設定はテストプランとテスト用bundleにだけ置く。通常の起動と配布アプリはApp Storeの商品を使う。HTTPは試験内で置き換えるため、本番の契約・予約・利用者情報は変更しない。Apple署名のサーバー検証と通知は、この試験の確認範囲に含めない。
+
+### 強制終了と別プロセスでの復帰
+
+`YuiRestart`は通常の7件から分けた専用プラン。次のコマンドの`試験名`を表の順に置き換え、同じシミュレーターで1件ずつ実行する。前半と後半の間にアプリのデータやStoreKit取引を消さない。
+
+```bash
+xcodebuild -project Yui.xcodeproj -scheme Yui -testPlan YuiRestart \
+  -only-testing:YuiTests/YuiRestartTests/試験名 \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
+```
+
+|順序|試験名|期待結果|
+|---|---|---|
+|1|`test購入登録前に強制終了する`|未登録の成功取引と予約を確認し、SIGKILLで終了する|
+|2|`test別プロセスで未完了取引を復元する`|同じ取引を復元し、利用権あり・予約なしになる|
+|3|`test購入承認前に強制終了する`|StoreKitの結果待ち・取引0件を確認し、SIGKILLで終了する|
+|4|`test承認前の中断から購入できる状態へ戻る`|元の予約を再利用して購入し、利用権あり・予約なしになる|
+
+前半2件は意図的なプロセス終了のためXCTestが失敗を返す。ログの`YUI_RESTART_READY`または`YUI_RESTART_CONFIRMATION_READY`とSIGKILLを確認し、対応する後半が別PIDで通過したことを合格条件とする。結果は[検証記録](../rag/ios-storekit-local-testing.md)に記載した。
+
+購入予約の再開記録はアカウントごとに端末へ保存する。保存記録のない旧版の予約は自動再開の対象外。承認待ちの購入は新しい購入へ進めず、承認後の取引更新を待つ。

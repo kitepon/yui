@@ -5,4 +5,4 @@
 - [iPhoneのApp Store課金](ios-app-store-billing.md) — StoreKitの購入・復元、署名検証、通知、契約状態の再取得（Appleの公式仕様）
 - [iPhone版の審査準備](ios-app-store-review.md) — 課金表示、無料体験、アカウント削除、Appleログイン解除、プライバシー申告（Appleの公式仕様と画面）
 - [iOSの配布署名とTestFlightの内部テスト](ios-testflight-distribution.md) — 手動プロファイル取得、内部配布、ビルド4での署名と配布の実測。原文抜粋: [Appleの配布手順](ios-testflight/raw/apple-distribution-excerpts.md)。
-- [StoreKitのローカル試験](ios-storekit-local-testing.md) — シミュレーターでの購入処理7件、StoreKit設定を持つテストプラン、Apple署名とプロセス再起動の未確認範囲。
+- [StoreKitのローカル試験](ios-storekit-local-testing.md) — 購入処理7件と強制終了後の復帰2ケース、購入予約の保存と再開、Apple署名と画面操作の確認範囲。

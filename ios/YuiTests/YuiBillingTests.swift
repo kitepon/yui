@@ -23,6 +23,7 @@ final class YuiBillingTests: XCTestCase {
     override func tearDown() async throws {
         storeKit.clearTransactions()
         storeKit.resetToDefaultState()
+        try ApplePurchaseRecovery.remove(accountToken: BillingProtocol.fixture.accountToken)
         URLProtocol.unregisterClass(BillingProtocol.self)
         try await super.tearDown()
     }
@@ -51,6 +52,7 @@ final class YuiBillingTests: XCTestCase {
         XCTAssertEqual(fixture.cancellations, 2)
         XCTAssertEqual(fixture.reservations, 2)
         XCTAssertFalse(session.appleBusy)
+        XCTAssertNil(try ApplePurchaseRecovery.load(accountToken: fixture.accountToken))
     }
 
     func test購入成功で利用権を更新する() async throws {
@@ -76,6 +78,7 @@ final class YuiBillingTests: XCTestCase {
         XCTAssertFalse(fixture.pending)
         XCTAssertEqual(fixture.cancellations, 1)
         XCTAssertEqual(fixture.registrations, 0)
+        XCTAssertNil(try ApplePurchaseRecovery.load(accountToken: fixture.accountToken))
     }
 
     func test承認待ちは予約を保持して承認後に更新する() async throws {
@@ -88,11 +91,17 @@ final class YuiBillingTests: XCTestCase {
         XCTAssertTrue(fixture.pending)
         XCTAssertEqual(fixture.cancellations, 0)
         XCTAssertEqual(session.billingStatus?.purchasePendingProvider, "apple")
+        XCTAssertEqual(try ApplePurchaseRecovery.load(accountToken: fixture.accountToken)?.stage, .pending)
+        XCTAssertNil(session.applePurchaseResumePlan)
+        await session.purchaseApple(plan: "monthly")
+        XCTAssertEqual(fixture.reservations, 1)
+        XCTAssertEqual(fixture.cancellations, 0)
         let transaction = try XCTUnwrap(storeKit.allTransactions().first)
         try storeKit.approveAskToBuyTransaction(identifier: transaction.identifier)
         try await waitForEntitlement(session)
         XCTAssertFalse(fixture.pending)
         XCTAssertEqual(fixture.cancellations, 0)
+        XCTAssertNil(try ApplePurchaseRecovery.load(accountToken: fixture.accountToken))
     }
 
     func test成功取引の登録通信失敗は予約を解除しない() async throws {
@@ -153,7 +162,7 @@ final class YuiBillingTests: XCTestCase {
 }
 
 // StoreKitは実際のローカル取引を作る。HTTPだけを試験用応答に差し替え、本番へ送らない。
-private final class BillingProtocol: URLProtocol, @unchecked Sendable {
+final class BillingProtocol: URLProtocol, @unchecked Sendable {
     static var fixture = BillingFixture()
 
     override class func canInit(with request: URLRequest) -> Bool {
@@ -178,7 +187,7 @@ private final class BillingProtocol: URLProtocol, @unchecked Sendable {
     override func stopLoading() {}
 }
 
-private final class BillingFixture: @unchecked Sendable {
+final class BillingFixture: @unchecked Sendable {
     enum Registration { case accepted, accountMismatch, networkFailure }
     private let lock = NSLock()
     var registration = Registration.accepted
@@ -188,8 +197,13 @@ private final class BillingFixture: @unchecked Sendable {
     private(set) var cancellations = 0
     private(set) var registrations = 0
     private(set) var requests: [URLRequest] = []
-    private let accountToken = UUID()
+    let accountToken: UUID
     private var attemptId = ""
+
+    init(pending: Bool = false, accountToken: UUID = UUID()) {
+        self.pending = pending
+        self.accountToken = accountToken
+    }
 
     func respond(to request: URLRequest) throws -> (Int, [String: Any]) {
         lock.lock()

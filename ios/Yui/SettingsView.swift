@@ -217,6 +217,9 @@ struct SettingsView: View {
                     Text("契約が確定したら状態を更新してください。別の購入は開始できません")
                         .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
                     if billing.purchasePendingProvider == "apple" {
+                        if let plan = session.applePurchaseResumePlan {
+                            billingButton("中断した購入を続ける", plan: plan)
+                        }
                         Link("承認待ちが解決しない場合は問い合わせ", destination: URL(string: "mailto:kitepon@gmail.com")!)
                             .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
                     }

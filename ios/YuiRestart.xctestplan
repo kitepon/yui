@@ -1,7 +1,7 @@
 {
   "configurations": [{
-    "id": "8F85D5B9-9E70-4669-A6F5-89A5D2117481",
-    "name": "購入と復元",
+    "id": "C68324AF-CC1F-40F7-BA70-3914116EE4A5",
+    "name": "強制終了と復元",
     "options": {}
   }],
   "defaultOptions": {
@@ -17,7 +17,7 @@
   },
   "testTargets": [{
     "parallelizable": false,
-    "selectedTests": ["YuiBillingTests"],
+    "selectedTests": ["YuiRestartTests"],
     "target": {
       "containerPath": "container:Yui.xcodeproj",
       "identifier": "6A3CBB051A2E91024F9C4377",

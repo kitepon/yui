@@ -16,10 +16,12 @@
 		3A0CAD2FFA118570598DD1CE /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2981A0E63D79A4D16EBE0BAA /* RootView.swift */; };
 		3BA97862956E8E2D53BC38BE /* AutomationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4288D7327FF06DEFCF6631D /* AutomationEditorView.swift */; };
 		3CECECE0844B4B3C287D1B18 /* AnalysisPlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62AEB133F7948548E3DF1105 /* AnalysisPlot.swift */; };
+		3D5D211F257B445DE59AEFC4 /* ApplePurchaseRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32473A1CF7609DD8D20E7922 /* ApplePurchaseRecovery.swift */; };
 		3E4FEE72B33923B3766C7BB2 /* DeviceActionEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 879A9FA71DEDFD5036C04FFC /* DeviceActionEditor.swift */; };
 		455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31E8B800857AAE16AA60AD2 /* HomeView.swift */; };
 		6C8BE160DA527E08122C17E7 /* RoomManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */; };
 		7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */; };
+		7E9976234C5CA1C97D6306B7 /* YuiRestartTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */; };
 		7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */; };
 		8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50400412CEFFD51B5BC7D8EE /* YuiApp.swift */; };
 		9101F37DCFBE713DE6C39E39 /* VisualPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */; };
@@ -53,6 +55,7 @@
 		24FBCA5AB5822FD167D77B24 /* Yui.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Yui.entitlements; sourceTree = "<group>"; };
 		24FFD4CDB4C8D61089E82B87 /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
 		2981A0E63D79A4D16EBE0BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		32473A1CF7609DD8D20E7922 /* ApplePurchaseRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePurchaseRecovery.swift; sourceTree = "<group>"; };
 		34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiClient.swift; sourceTree = "<group>"; };
 		3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		50400412CEFFD51B5BC7D8EE /* YuiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiApp.swift; sourceTree = "<group>"; };
@@ -63,6 +66,7 @@
 		670AF44B343B14DEBCB6D731 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		729E834245DED0CF1B4E9032 /* MainTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabs.swift; sourceTree = "<group>"; };
+		80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiRestartTests.swift; sourceTree = "<group>"; };
 		879A9FA71DEDFD5036C04FFC /* DeviceActionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActionEditor.swift; sourceTree = "<group>"; };
 		89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualPreview.swift; sourceTree = "<group>"; };
 		920858F0D3DE8419DB11F936 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -96,6 +100,7 @@
 				DD09C3B8DD95E9ECAC6EAEF0 /* AnalysisChartCard.swift */,
 				62AEB133F7948548E3DF1105 /* AnalysisPlot.swift */,
 				7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */,
+				32473A1CF7609DD8D20E7922 /* ApplePurchaseRecovery.swift */,
 				24FFD4CDB4C8D61089E82B87 /* AppleSignIn.swift */,
 				EE1BB3E8356695DF7DA421B3 /* Assets.xcassets */,
 				F4288D7327FF06DEFCF6631D /* AutomationEditorView.swift */,
@@ -138,6 +143,7 @@
 			children = (
 				AFCF836AAD938F7F8497F33D /* Yui.storekit */,
 				9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */,
+				80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */,
 			);
 			path = YuiTests;
 			sourceTree = "<group>";
@@ -245,6 +251,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */,
+				7E9976234C5CA1C97D6306B7 /* YuiRestartTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,6 +262,7 @@
 				B2B7B721A72A59EC50CF53E5 /* AnalysisChartCard.swift in Sources */,
 				3CECECE0844B4B3C287D1B18 /* AnalysisPlot.swift in Sources */,
 				7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */,
+				3D5D211F257B445DE59AEFC4 /* ApplePurchaseRecovery.swift in Sources */,
 				3982C8273D4F4E6B1C53982E /* AppleSignIn.swift in Sources */,
 				3BA97862956E8E2D53BC38BE /* AutomationEditorView.swift in Sources */,
 				D87070E5AD02F25AF947EB4B /* DeviceActionDraft.swift in Sources */,
@@ -297,7 +305,7 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -346,7 +354,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -413,7 +421,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -499,7 +507,7 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
