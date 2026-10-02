@@ -9,3 +9,9 @@
 - [App privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy): 収集するデータ種別、利用目的、個人との紐付け、追跡の有無を回答して公開する。結の申告は名前、メールアドレス、その他のユーザコンテンツ、ユーザID、デバイスID、購入履歴、製品の操作、その他のデータタイプの8種類。
 - [暗号化の輸出申告](https://developer.apple.com/documentation/Security/complying-with-encryption-export-regulations): OS標準のHTTPS通信など、輸出申告書類が不要な暗号機能だけを使うアプリは`ITSAppUsesNonExemptEncryption`を`NO`にする。結のiPhone版は`URLSession`、Keychain、CryptoKitのSHA-256などApple標準の機能を使い、独自の暗号実装を含まない。
 - [クラウド管理の配布証明書](https://developer.apple.com/help/account/certificates/cloud-managed-certificates): Xcode Organizerで配布すると、手元に配布証明書がない場合もAppleのクラウド管理証明書で署名できる。結のDeveloperチームには既存の`Distribution Managed`証明書がある。
+
+## 再提出APIの確認
+
+2026年10月2日、Apple公式の[審査項目の更新属性](https://developer.apple.com/documentation/appstoreconnectapi/reviewsubmissionitemupdaterequest/data-data.dictionary/attributes-data.dictionary)に`resolved`、[提出の更新属性](https://developer.apple.com/documentation/appstoreconnectapi/reviewsubmissionupdaterequest/data-data.dictionary/attributes-data.dictionary)に`submitted`があることを確認した。再拒絶を解決した同じ提出では、修正版のビルドと審査説明を保存してから、拒絶項目を解決済みにし、提出を再送する。App Store版、サブスクリプショングループ、月額・年額の4項目を同じ提出で保つ。
+
+Markdown版には属性一覧が省略されていたため、同じApple文書の`tutorials/data/documentation/appstoreconnectapi/`配下のJSONで属性名とboolean型を確認した。審査用パスワードを含む説明は公式APIにだけ送り、リポジトリやコマンドの出力へ記録しない。
