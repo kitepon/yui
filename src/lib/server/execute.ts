@@ -97,7 +97,8 @@ async function executeCurrentDevice(
         throw new Error("この機器は直接操作できません");
       }
     }
-    const saved = await saveDeviceState(homeId, device.id, { ...patch, ...deviceStateChanges(device, next) });
+    const applied = Object.fromEntries(Object.keys(patch).map((key) => [key, next[key as keyof Device]]));
+    const saved = await saveDeviceState(homeId, device.id, { ...applied, ...deviceStateChanges(device, next) });
     if (log) {
       recordEvent({
         homeId,

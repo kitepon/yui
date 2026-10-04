@@ -103,3 +103,11 @@ test("Webの設定保存に古い機器状態が含まれていても実状態�
   assert.equal(saved.devices[0].on, false);
   assert.deepEqual(saved.rooms, ["新しい部屋"]);
 });
+
+test("押すだけのボットは操作後もOFFを保存し、ONとして残さない", async () => {
+  seed();
+  await saveDeviceState("home", "a", { connector: "switchbot", brand: "switchbot", kind: "bot", botMode: "press", on: false });
+  const record = await loadHomeRecord("home");
+  await executeDevice("home", record.snap, record.snap.devices[0], { on: true });
+  assert.equal((await loadHomeRecord("home")).snap.devices[0].on, false);
+});
