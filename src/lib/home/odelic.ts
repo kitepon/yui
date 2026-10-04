@@ -78,7 +78,7 @@ export async function odelicSync(registered: Device[] = []): Promise<{ devices: 
   const observed = new Set(devices.map((device) => device.id));
   const missing = registered
     .filter((device) => device.connector === "odelec" && device.source === "live" && !observed.has(device.id))
-    .map((device) => ({ ...device, online: false, extra: "状態未取得" }));
+    .map((device) => ({ ...device, online: health.connected, extra: "状態未取得" }));
   const all = [...devices, ...missing].sort((a, b) => a.nativeId.localeCompare(b.nativeId));
   return { devices: all, rooms: [...new Set(all.map((d) => d.room))] };
 }
