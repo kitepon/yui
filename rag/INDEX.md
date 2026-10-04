@@ -1,5 +1,7 @@
 # 外部仕様の調査記録
 
+- [AlexaアカウントリンクのCookie結合](alexa-redirect-cookies.md) — セッション更新時の転送応答が500になる原因、TanStackの実処理による再現と修理。
+
 - [Alexa「結ホーム」の公開確認](alexa-skill-release.md) — Amazonの公開登録とストアページ、Web・iPhoneの正式スキル導入導線。
 
 - [Tuya Cloud API の機器一覧と DP 応答](tuya-api-response-fields.md) — LAN 鍵・DP番号のフィールド名、20台ページ上限、IoT Core の枠切れ（公式仕様・実測）

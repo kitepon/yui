@@ -378,7 +378,7 @@ export const Route = createFileRoute("/api/home")({
               return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
             }
             if (brand === "odelec") {
-              const res = await odelicSync();
+              const res = await odelicSync(snap.devices);
               const devices = [
                 ...snap.devices.filter((d) => d.connector !== "odelec" && d.source === "live"),
                 ...res.devices,

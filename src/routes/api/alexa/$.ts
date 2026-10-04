@@ -5,6 +5,7 @@ import type { AlexaEvent } from "@/lib/server/alexa-core";
 import { handleAlexaCustom } from "@/lib/server/alexa-custom";
 import { allowedAlexaRedirect } from "@/lib/server/alexa-core";
 import { publicOrigin } from "@/lib/server/origin";
+import { redirectResponse } from "@/lib/server/redirect-response";
 import {
   alexaOAuthConfigured,
   consumeAlexaCode,
@@ -45,13 +46,13 @@ async function authorize(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id) {
     const next = `/api/alexa/oauth/authorize${url.search}`;
-    return Response.redirect(new URL(`/login?next=${encodeURIComponent(next)}`, publicOrigin()), 302);
+    return redirectResponse(new URL(`/login?next=${encodeURIComponent(next)}`, publicOrigin()));
   }
   const code = issueAlexaCode(session.user.id, redirectUri);
   const dest = new URL(redirectUri);
   dest.searchParams.set("code", code);
   if (state) dest.searchParams.set("state", state);
-  return Response.redirect(dest, 302);
+  return redirectResponse(dest);
 }
 
 async function token(request: Request) {

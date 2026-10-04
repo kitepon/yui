@@ -65,6 +65,21 @@ test("照明がまだ繋がっていなければ同期を成功にしない", as
   await assert.rejects(odelicSync(), /繋がっていません/);
 });
 
+test("状態通知のない登録済み照明を同期で削除せず、未取得と表示する", async () => {
+  process.env.YUI_ODELIC_BRIDGE_URL = "http://ms-a2:8099";
+  stub({ ok: true, connected: true, authed: true, status: { "01 00 00 00": "0d 10", "09 00 00 00": "0d 10" } });
+  const registered = { ...light, name: "キッチン照明", room: "キッチン", on: false };
+  const { devices, rooms } = await odelicSync([registered]);
+  const kitchen = devices.find(device => device.id === registered.id);
+  assert.equal(devices.length, 3);
+  assert.equal(kitchen?.nativeId, registered.nativeId);
+  assert.equal(kitchen?.name, "キッチン照明");
+  assert.equal(kitchen?.room, "キッチン");
+  assert.equal(kitchen?.online, false);
+  assert.equal(kitchen?.extra, "状態未取得");
+  assert.ok(rooms.includes("キッチン"));
+});
+
 test("末尾のスラッシュがあっても口を正しく組む", async () => {
   process.env.YUI_ODELIC_BRIDGE_URL = "http://ms-a2:8099/";
   const calls = stub({ ok: true, connected: true, authed: true, status: { "01 00 00 00": "0d 10" } });

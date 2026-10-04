@@ -41,7 +41,7 @@ function shortAddressLabel(key: string): string {
   return String(parseInt(first, 16));
 }
 
-export async function odelicSync(): Promise<{ devices: Device[]; rooms: string[] }> {
+export async function odelicSync(registered: Device[] = []): Promise<{ devices: Device[]; rooms: string[] }> {
   const health = (await bridgeFetch("/health")) as BridgeHealth;
   if (!health.connected) {
     throw new Error(
@@ -74,7 +74,13 @@ export async function odelicSync(): Promise<{ devices: Device[]; rooms: string[]
     })
     .sort((a, b) => a.nativeId.localeCompare(b.nativeId));
 
-  return { devices, rooms: [...new Set(devices.map((d) => d.room))] };
+  // 状態通知は全機器の目録ではない。未通知の登録は残し、取得できていないことを示す。
+  const observed = new Set(devices.map((device) => device.id));
+  const missing = registered
+    .filter((device) => device.connector === "odelec" && device.source === "live" && !observed.has(device.id))
+    .map((device) => ({ ...device, online: false, extra: "状態未取得" }));
+  const all = [...devices, ...missing].sort((a, b) => a.nativeId.localeCompare(b.nativeId));
+  return { devices: all, rooms: [...new Set(all.map((d) => d.room))] };
 }
 
 /**
