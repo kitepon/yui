@@ -19,14 +19,13 @@
 - Xcodeの画面取得とJev Desktopの`Simulator`指定は時間切れになった。端末画面を持つアプリは`Device Hub`として見えており、デスクトップ操作APIで既存のAppleサインイン画面をキャンセルして確認を続けた。Appleのログイン情報は入力していない。
 - Jev Bookmarksは`no_entry`でブラウザを操作しなかったため、上流Jev Ultrafastへ公開URLを直接渡した。
 
-## 一般公開の判断待ち
+## 一般公開の保留
 
 同日のApp Store Connectでは、1.0（5）が`PENDING_DEVELOPER_RELEASE`・手動公開待ちになっていた。
 このビルドにはAlexaの導入ボタンと、ビルド6の画面自動更新が入っていない。
 今回のビルド7はTestFlight配信まで完了しており、一般公開の審査対象はまだ変更していない。
 
-Approval Boxの`K-89YLZD`で、審査済みビルド5をビルド7へ差し替えて再審査へ進めるか、
-5を先に一般公開するか、一般公開を保留するかを申請した。推奨は7への差し替えと再審査。
-回答が届いたら、その方針に従ってApp Store Connectで続行する。
+Approval Boxの`K-89YLZD`へ、所有者は「まだそう言う段階ではない。動くようにしろ」と回答した。
+一般公開は進めず、[操作の復旧](alexa-operation-recovery.md)を優先する。
 
 実機のTestFlight更新と導入ボタンの操作は未確認。既存Alexa連携の再リンクは不要である。
