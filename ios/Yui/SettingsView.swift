@@ -148,6 +148,8 @@ struct SettingsView: View {
             .padding(.horizontal, 22)
             .padding(.top, 20)
             .padding(.bottom, 36)
+            .frame(maxWidth: 840)
+            .frame(maxWidth: .infinity)
         }
         .background(YuiTheme.bg.ignoresSafeArea())
         .sheet(isPresented: $showRooms) {

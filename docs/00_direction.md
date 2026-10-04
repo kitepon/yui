@@ -6,7 +6,7 @@
 
 - 結の公式hosted版は Web（`https://yuihome.kitepon.dev`）でアカウントと家を持つ。iPhone では SwiftUI のネイティブアプリを日常の操作面とし、Web はブラウザと self-hosted 版の操作面として残す。どちらも同じ家を操作する。
 - サーバー口は `/api/auth/*` と `/api/home`。iPhone アプリの Google 認証中継は `/api/ios-auth`、分析は `/api/analysis`。Echo からは `/api/alexa`（中は同じ家の操作）。Web と iPhone アプリは同じ家のデータと操作口を使う。Echo の解釈は Alexa（Smart Home）。結は機器の実体と操作だけを持つ。
-- iPhone アプリは SwiftUI で開発し、Web と機能を照合する。分析・場所・場面・オートメーション・接続の操作をネイティブ画面で扱い、App Storeで配信する。
+- Apple向けアプリはSwiftUIで開発し、iPhone・iPad・Macから同じ家と利用権を扱う。MacはMac Catalystを使い、同じApp Storeのアプリ登録とサブスクリプションを共有する。分析・場所・場面・オートメーション・接続の操作をネイティブ画面で扱う。広い画面にはサイドバーと画面幅に応じた機器一覧を使い、狭い画面にはタブを使う。
 - サーバーは複数世帯を受け、家電トークンは結のインフラに置く。計算はいま自宅サーバーの Docker。
 
 ## 境界

@@ -69,6 +69,9 @@ final class YuiBillingTests: XCTestCase {
     }
 
     func testキャンセルは予約を解除する() async throws {
+        #if targetEnvironment(macCatalyst)
+        throw XCTSkip("Mac CatalystのStoreKitTestには購入キャンセルの注入APIがないため、iOSで確認する")
+        #else
         try await storeKit.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
         let fixture = BillingProtocol.fixture
         let session = session()
@@ -79,6 +82,7 @@ final class YuiBillingTests: XCTestCase {
         XCTAssertEqual(fixture.cancellations, 1)
         XCTAssertEqual(fixture.registrations, 0)
         XCTAssertNil(try ApplePurchaseRecovery.load(accountToken: fixture.accountToken))
+        #endif
     }
 
     func test承認待ちは予約を保持して承認後に更新する() async throws {

@@ -12,3 +12,6 @@
 - [StoreKitのローカル試験](ios-storekit-local-testing.md) — 購入処理7件と強制終了後の復帰2ケース、購入予約の保存と再開、Apple署名と画面操作の確認範囲。
 
 - [Smart LifeのLAN操作と状態反映](tuya-lan-state.md) — 3.1の受領応答・状態通知、TCP接続と状態保存の競合、実機の読取・操作時間、修理と検証。
+# Mac Catalyst
+
+- [mac-catalyst-launch-verification.md](mac-catalyst-launch-verification.md) — iPad・Macの同一アプリ登録、署名と画面写真の要件、SwiftインタープリターのDYLD環境で検証用起動が失敗する再現・比較。

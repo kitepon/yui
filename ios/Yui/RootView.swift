@@ -30,6 +30,16 @@ struct RootView: View {
         .task(id: HomeRefreshTask(token: session.token, active: scenePhase == .active)) {
             if scenePhase == .active && session.isLoggedIn { await session.refreshWhileActive() }
         }
+        #if DEBUG
+        .task {
+            // 実際の認証とKeychain保存を、配布物へ認証情報を含めずに確認する。
+            if ProcessInfo.processInfo.arguments.contains("-yui-test-login"),
+               let email = ProcessInfo.processInfo.environment["YUI_TEST_EMAIL"],
+               let password = ProcessInfo.processInfo.environment["YUI_TEST_PASSWORD"] {
+                await session.signIn(email: email, password: password)
+            }
+        }
+        #endif
     }
 }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selectedRoom = "すべて"
     @State private var selectedDevice: Device?
     @State private var showRooms = false
@@ -39,11 +40,14 @@ struct HomeView: View {
             .padding(.horizontal, 22)
             .padding(.top, 20)
             .padding(.bottom, 36)
+            .frame(maxWidth: 1200)
+            .frame(maxWidth: .infinity)
         }
         .background(YuiTheme.bg.ignoresSafeArea())
         .refreshable { await session.refresh() }
         .sheet(item: $selectedDevice) { device in
             DeviceDetailView(initialDevice: device)
+                .environmentObject(session)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -154,7 +158,9 @@ struct HomeView: View {
                                             .frame(height: 1)
                                     }
                                 }
-                                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                                LazyVGrid(columns: sizeClass == .regular
+                                    ? [GridItem(.adaptive(minimum: 240), spacing: 12)]
+                                    : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                                     ForEach(home.orderedDevices(in: room)) { device in
                                         DeviceTile(device: device, busy: session.busy) {
                                             selectedDevice = device

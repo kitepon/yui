@@ -152,6 +152,8 @@ struct LoginView: View {
             }
             .padding(.horizontal, 26)
             .padding(.bottom, 28)
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity)
         }
         .background(YuiTheme.bg.ignoresSafeArea())
     }

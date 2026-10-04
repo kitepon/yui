@@ -77,6 +77,8 @@ struct AnalysisView: View {
             .padding(.horizontal, 22)
             .padding(.top, 20)
             .padding(.bottom, 36)
+            .frame(maxWidth: 1400)
+            .frame(maxWidth: .infinity)
         }
         .background(YuiTheme.bg.ignoresSafeArea())
         .refreshable { await reload() }
