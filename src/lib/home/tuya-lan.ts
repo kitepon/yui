@@ -1,10 +1,9 @@
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
-import { createConnection } from "node:net";
 import { crc32 } from "node:zlib";
 import type { DevicePatch } from "./device-patch.ts";
-import { listenLanUdp, relayLanTcp, type ListenLanUdp } from "./lan-udp.ts";
+import { exchangeLanTcp, listenLanUdp, relayLanTcpSession, type ListenLanUdp } from "./lan-udp.ts";
 import { SENSOR_TICK_SECONDS } from "./control-tick.ts";
-import { applyTuyaStatus, tuyaCommandsFromPatch } from "./tuya.ts";
+import { applyTuyaStatus, tuyaCommandsFromPatch, tuyaSwitchCode } from "./tuya.ts";
 import { recentDeviceLan, TUYA_LAN_SEEN_TTL_MS, type Device, type TuyaLocalDevice } from "./types.ts";
 
 /**
@@ -29,7 +28,6 @@ import { recentDeviceLan, TUYA_LAN_SEEN_TTL_MS, type Device, type TuyaLocalDevic
 
 const PORT = 6668;
 const DISCOVERY_PORTS = [6666, 6667] as const;
-const TIMEOUT_MS = 5000;
 /**
  * 名乗りが途切れてからこの時間は居場所を信じる。3.3 は 5 秒ごとに名乗るが、3.1 の古い機器は
  * Smart Life アプリが LAN 接続を握っている間は名乗りを止める（実測で数分の空白）。
@@ -138,16 +136,20 @@ function stripVersionHeader(data: Buffer) {
   return data.subarray(0, 3).toString("latin1") === "3.3" ? data.subarray(15) : data;
 }
 
-/** 応答本文を dps に読む。3.1 は平文。3.3 は "3.3"+12byte の header 付きで返ることがある。 */
+/** 状態本文を読む。3.1 の状態通知は署名付き base64、通常の読取応答は平文。 */
 export function decodeDps(localKey: string, data: Buffer): Record<string, unknown> {
+  if (!data.length) throw new Error("Smart Life 直結: 受領応答には状態がありません");
   let text: string;
   if (data.subarray(0, 1).toString("latin1") === "{") {
     text = data.toString("utf8");
   } else {
     try {
-      text = decryptPayload(localKey, stripVersionHeader(data)).toString("utf8");
+      const encrypted = data.subarray(0, 3).toString("latin1") === "3.1"
+        ? Buffer.from(data.subarray(19).toString("ascii"), "base64")
+        : stripVersionHeader(data);
+      text = decryptPayload(localKey, encrypted).toString("utf8");
     } catch {
-      throw new Error("Smart Life 直結: 応答を復号できません。Local Key が変わった（再ペアリング）なら接続タブで同期してください");
+      throw new Error("Smart Life 直結: 状態の暗号文を復号できません。接続タブで機器の鍵を確認してください");
     }
   }
   let json: { dps?: Record<string, unknown> };
@@ -168,61 +170,38 @@ function parseExchange(buf: Buffer): TuyaLanFrame {
   return parsed;
 }
 
-/** 機器へ 1 回つなぎ、1 フレーム送って最初の応答フレームを返す。 */
-async function exchange(target: TuyaLanTarget, frame: Buffer, signal?: AbortSignal): Promise<TuyaLanFrame> {
+/** 中継の有無にかかわらず、一つの TCP 接続で要求を順番に完了する。 */
+async function exchange(target: TuyaLanTarget, frames: Buffer[], signal?: AbortSignal): Promise<TuyaLanFrame[]> {
   const relay = process.env.YUI_TUYA_LAN_RELAY?.trim();
   const port = target.port ?? PORT;
   if (relay) {
-    return parseExchange(await relayLanTcp(relay, target.host, port, frame, signal));
+    return (await relayLanTcpSession(relay, target.host, port, frames, signal)).map(parseExchange);
   }
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let done = false;
-    const finish = (fn: () => void) => {
-      if (done) return;
-      done = true;
-      signal?.removeEventListener("abort", abort);
-      socket.destroy();
-      fn();
-    };
-    const abort = () => finish(() => reject(new Error("Smart Life 直結: 定期読取を中止しました")));
-    const socket = createConnection({ host: target.host, port }, () => {
-      socket.write(frame);
-    });
-    socket.setTimeout(TIMEOUT_MS);
-    socket.on("timeout", () =>
-      finish(() => reject(new Error(`Smart Life 直結: ${target.host} が ${TIMEOUT_MS / 1000} 秒以内に応答しません`))),
-    );
-    socket.on("error", (err) => finish(() => reject(new Error(`Smart Life 直結: ${target.host} へ届きません（${err.message}）`))));
-    socket.on("data", (chunk) => {
-      chunks.push(chunk);
-      let parsed: TuyaLanFrame | undefined;
-      try {
-        parsed = parseFrame(Buffer.concat(chunks));
-      } catch (err) {
-        finish(() => reject(err));
-        return;
-      }
-      if (parsed) finish(() => resolve(parsed));
-    });
-    socket.on("close", () => finish(() => reject(new Error(`Smart Life 直結: ${target.host} が応答前に切断しました`))));
-    signal?.addEventListener("abort", abort, { once: true });
-    if (signal?.aborted) abort();
-  });
+  return (await exchangeLanTcp(target.host, port, frames, signal)).map(parseExchange);
 }
 
 /** 機器の dps を読む。 */
 export async function queryDps(target: TuyaLanTarget, signal?: AbortSignal): Promise<Record<string, unknown>> {
-  const frame = await exchange(target, buildDpQuery(target), signal);
+  const [frame] = await exchange(target, [buildDpQuery(target)], signal);
   return decodeDps(target.localKey, frame.data);
 }
 
 /** 機器へ dps を送る。機器は受け取ると retcode 0 の CONTROL 応答を返す。 */
 export async function sendDps(target: TuyaLanTarget, dps: Record<string, unknown>): Promise<void> {
-  const frame = await exchange(target, buildControl(target, dps));
+  const [frame] = await exchange(target, [buildControl(target, dps)]);
   if (frame.retcode !== 0) {
     throw new Error(`Smart Life 直結: 機器が操作を受け付けませんでした（code ${frame.retcode}）`);
   }
+}
+
+/** Alexa の状態照会も定期読取と接続を競合させず、実値を読む。 */
+export async function tuyaLanReadDevice(target: TuyaLanTarget & { dps: Record<string, string> }, device: Device): Promise<Device> {
+  return prioritizeControl(target.deviceId, async () => {
+    const next = applyTuyaStatus({ ...device }, statusFromDps(await queryDps(target), target.dps));
+    next.online = true;
+    next.lan = { host: target.host, version: target.version, readAt: new Date().toISOString() };
+    return next;
+  });
 }
 
 /* ---------- 居場所の探索（UDP 6667） ---------- */
@@ -460,8 +439,6 @@ export async function tuyaLanRefreshSensors(
         if (!dps) return;
         const status = statusFromDps(dps, target.dps);
         applyTuyaStatus(device, status);
-        const sw = status.find((s) => typeof s.value === "boolean" && /^switch/.test(s.code));
-        if (sw) device.on = sw.value as boolean;
         device.online = true;
         device.lan = { host: target.host, version: target.version, readAt: new Date().toISOString() };
         read.add(device.id);
@@ -475,19 +452,39 @@ export async function tuyaLanRefreshSensors(
   return { read, attempted, errors };
 }
 
-/** LAN で操作する。機器がいま持つ dp を読んでから、結の操作をその dp に写して送る。 */
+/** 入／切は同期済みの DP から直接送る。操作と実状態の確認は同じ接続で行う。 */
 export async function tuyaLanControl(
   target: TuyaLanTarget & { dps: Record<string, string> },
   device: Device,
   cmd: DevicePatch,
-): Promise<void> {
-  await prioritizeControl(target.deviceId, async () => {
-    const status = statusFromDps(await queryDps(target), target.dps);
-    const commands = tuyaCommandsFromPatch(status, device, cmd);
+): Promise<Device> {
+  return prioritizeControl(target.deviceId, async () => {
+    const onlyPower = cmd.on !== undefined && Object.entries(cmd).every(([key, value]) => key === "on" || value === undefined);
+    let commands: Array<{ code: string; value: unknown }>;
+    if (onlyPower) {
+      const code = tuyaSwitchCode(Object.values(target.dps), device.kind);
+      commands = code ? [{ code, value: cmd.on }] : [];
+    } else {
+      const status = statusFromDps(await queryDps(target), target.dps);
+      commands = tuyaCommandsFromPatch(status, device, cmd);
+    }
     const dps = dpsFromCommands(commands, target.dps);
     if (!Object.keys(dps).length) {
       throw new Error(`${device.name} に送れる操作がありません`);
     }
-    await sendDps(target, dps);
+    const [, confirmed] = await exchange(target, [buildControl(target, dps, 1), buildDpQuery(target, 2)]);
+    const actual = decodeDps(target.localKey, confirmed.data);
+    if (cmd.on !== undefined) {
+      const switchCode = tuyaSwitchCode(Object.values(target.dps), device.kind);
+      const switchId = Object.keys(target.dps).find((id) => target.dps[id] === switchCode);
+      if (!switchId || typeof actual[switchId] !== "boolean") throw new Error(`${device.name} の実際の入／切を確認できません`);
+    }
+    const next = applyTuyaStatus({ ...device }, statusFromDps(actual, target.dps));
+    next.online = true;
+    next.lan = { host: target.host, version: target.version, readAt: new Date().toISOString() };
+    if (cmd.on !== undefined && next.on !== cmd.on) {
+      throw new Error(`${device.name} の実状態が指定した入／切になっていません`);
+    }
+    return next;
   });
 }

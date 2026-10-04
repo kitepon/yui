@@ -449,8 +449,7 @@ function asStatusList(result: unknown): TuyaStatus[] {
   return [];
 }
 
-function pickSwitchStatus(status: TuyaStatus[], kind: Device["kind"]) {
-  const bools = status.filter((s) => typeof s.value === "boolean");
+export function tuyaSwitchCode(codes: string[], kind: Device["kind"]) {
   const preferred =
     kind === "light"
       ? ["switch_led", "switch_led_1", "light", "switch_1", "switch"]
@@ -458,10 +457,15 @@ function pickSwitchStatus(status: TuyaStatus[], kind: Device["kind"]) {
         ? ["switch", "switch_1"]
         : ["switch_1", "switch", "switch_led"];
   for (const code of preferred) {
-    const hit = bools.find((s) => s.code === code);
-    if (hit) return hit;
+    if (codes.includes(code)) return code;
   }
-  return bools.find((s) => s.code.startsWith("switch") || s.code === "light");
+  return codes.find((code) => code.startsWith("switch") || code === "light");
+}
+
+function pickSwitchStatus(status: TuyaStatus[], kind: Device["kind"]) {
+  const bools = status.filter((s) => typeof s.value === "boolean");
+  const code = tuyaSwitchCode(bools.map((s) => s.code), kind);
+  return bools.find((s) => s.code === code);
 }
 
 function pickStatus(status: TuyaStatus[], codes: string[]) {
@@ -536,6 +540,21 @@ function applyReadings(device: Device, status: TuyaStatus[]) {
 /** 一覧の古い値があっても、status の読み取りで上書きする。 */
 export function applyTuyaStatus(device: Device, status: TuyaStatus[]) {
   applyReadings(device, status);
+  const sw = pickSwitchStatus(status, device.kind);
+  if (sw) device.on = sw.value as boolean;
+  const map = statusByCode(status);
+  const bright = firstReading(map, BRIGHT_CODES);
+  const position = firstReading(map, POSITION_CODES);
+  const temp = firstReading(map, TEMP_SET_CODES);
+  if (device.kind === "light" && bright) device.brightness = brightnessFromDevice(bright.value);
+  if (device.kind === "curtain" && position) device.position = invertCurtainPercent((device.extra ?? "").toLowerCase(), position.value);
+  if (device.kind === "ac") {
+    if (temp) device.targetTemp = scaleTenths(temp.value);
+    const mode = tuyaModeToAc(pickStatus(status, MODE_CODES)?.value);
+    const fan = tuyaFanToSpeed(pickStatus(status, FAN_CODES)?.value);
+    if (mode) device.mode = mode;
+    if (fan) device.fanSpeed = fan;
+  }
   return device;
 }
 

@@ -9,7 +9,15 @@ import {
   isSceneEndpoint,
   parseAlexaIntent,
   patchFromIntent,
+  propertyContext,
 } from "./alexa-core.ts";
+
+test("LAN の保存状態は最後の実読取時刻と経過時間を Alexa へ返す", () => {
+  const readAt = new Date(Date.now() - 5000).toISOString();
+  const properties = propertyContext({ ...light, lan: { host: "127.0.0.1", version: "3.1", readAt } });
+  assert.ok(properties.every((property) => property.timeOfSample === readAt));
+  assert.ok(properties.every((property) => Number(property.uncertaintyInMilliseconds) >= 5000));
+});
 
 const light: Device = {
   id: "nature:abc",

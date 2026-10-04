@@ -10,7 +10,7 @@ import { startTuyaLanDiscovery, tuyaLanRefreshSensors } from "@/lib/home/tuya-la
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import { heldSkipReason } from "@/lib/home/analysis-series";
 import { homeBelongsToLanOwner } from "./lan-owner";
-import { listAutomationHomeIds, loadHomeRecord, saveHomeRecord } from "./home-db";
+import { listAutomationHomeIds, loadHomeRecord, saveDeviceReadings, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
 import { startBackupRunner } from "./home-backup";
 import { billingConfigured, loadEntitlement } from "./billing";
@@ -200,13 +200,10 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
   if (cred.trim()) {
     try {
       const res = await remoSync(cred);
-      cur = await saveHomeRecord(homeId, {
-        climate: res.climate,
-        devices: cur.devices.map((d) => {
+      cur = await saveDeviceReadings(homeId, cur.devices, cur.devices.map((d) => {
           const live = res.devices.find((n) => n.id === d.id);
           return live ? { ...d, ...live, name: d.name, room: d.room } : d;
-        }),
-      });
+        }), { climate: res.climate });
     } catch {
       /* keep last */
     }
@@ -225,7 +222,7 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
           incoming.delete(d.id);
           return { ...d, ...live, name: d.name, room: d.room };
         });
-      cur = await saveHomeRecord(homeId, { devices: [...merged, ...incoming.values()] });
+      cur = await saveDeviceReadings(homeId, cur.devices, [...merged, ...incoming.values()]);
     } catch {
       /* keep last */
     }
@@ -240,7 +237,7 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
     try {
       const devices = cur.devices.map((d) => ({ ...d }));
       await switchbotRefreshSensors(sbToken, sbSecret, devices);
-      cur = await saveHomeRecord(homeId, { devices });
+      cur = await saveDeviceReadings(homeId, cur.devices, devices);
     } catch {
       /* keep last */
     }
@@ -251,7 +248,7 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
     const devices = cur.devices.map((d) => ({ ...d }));
     const lan = await tuyaLanRefreshSensors(devices, cur.credentials.tuyaLocal);
     for (const err of lan.errors) console.error("[yui] smartlife lan", homeId, err.message);
-    cur = await saveHomeRecord(homeId, { devices });
+    cur = await saveDeviceReadings(homeId, cur.devices, devices);
     const tuya = cur.credentials;
     const viaCloud = cur.devices.filter((d) => !lan.attempted.has(d.id));
     if (
@@ -266,7 +263,7 @@ async function refreshSensorReadings(homeId: string, snap: HomeSnapshot) {
         const cloud = await tuyaRefreshSensors(tuya.tuyaAccessId, tuya.tuyaSecret, tuya.tuyaRegion, copy);
         for (const err of cloud.errors) console.error("[yui] smartlife cloud", homeId, err.message);
         const byId = new Map(copy.map((d) => [d.id, d]));
-        cur = await saveHomeRecord(homeId, { devices: cur.devices.map((d) => byId.get(d.id) ?? d) });
+        cur = await saveDeviceReadings(homeId, cur.devices, cur.devices.map((d) => byId.get(d.id) ?? d));
       } catch (err) {
         console.error("[yui] smartlife cloud", homeId, err instanceof Error ? err.message : err);
       }

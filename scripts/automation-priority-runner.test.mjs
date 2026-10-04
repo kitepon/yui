@@ -7,6 +7,7 @@ const fixtureUrl = `data:text/javascript,${encodeURIComponent(`
   export const state = { snap: null, sent: [], events: [] };
   export const loadHomeRecord = async () => ({ snap: state.snap });
   export const saveHomeRecord = async (_id, patch) => Object.assign(state.snap, patch);
+  export const saveDeviceReadings = async (_id, _before, devices, extra = {}) => Object.assign(state.snap, extra, { devices });
   export const listAutomationHomeIds = () => ['home'];
   export const daikinConfigured = () => false;
   export const billingConfigured = () => false;

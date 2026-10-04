@@ -9,7 +9,7 @@ import { patchFromAction } from "@/lib/home/device-patch";
 import { isMomentaryBot, type AutoAction, type Device } from "@/lib/home/types";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import type { AnalysisSource } from "@/lib/home/analysis-series";
-import { loadHomeRecord, saveHomeRecord } from "./home-db";
+import { deviceStateChanges, loadHomeRecord, saveDeviceState, saveHomeRecord } from "./home-db";
 import { homeBelongsToLanOwner } from "./lan-owner";
 import { newWaveId, patchDetail, recordEvent, recordOnSample, type DeviceLog } from "./analysis";
 
@@ -25,7 +25,34 @@ function failReason(err: unknown) {
   return msg.slice(0, 200);
 }
 
+const deviceOperations = new Map<string, Promise<void>>();
+
 export async function executeDevice(
+  homeId: string,
+  _snap: HomeSnapshot,
+  device: Device,
+  patch: Partial<Device>,
+  log?: DeviceLog,
+) {
+  const key = `${homeId}:${device.id}`;
+  const previous = deviceOperations.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const tail = new Promise<void>((resolve) => { release = resolve; });
+  deviceOperations.set(key, tail);
+  try {
+    await previous;
+    const latest = await loadHomeRecord(homeId);
+    if (!latest) throw new Error("家が無い");
+    const current = latest.snap.devices.find((d) => d.id === device.id);
+    if (!current) throw new Error("機器が無い");
+    return await executeCurrentDevice(homeId, latest.snap, current, patch, log);
+  } finally {
+    release();
+    if (deviceOperations.get(key) === tail) deviceOperations.delete(key);
+  }
+}
+
+async function executeCurrentDevice(
   homeId: string,
   snap: HomeSnapshot,
   device: Device,
@@ -52,8 +79,7 @@ export async function executeDevice(
         // 同じ LAN に居て鍵を持つ機器は LAN で送る。居ない機器だけクラウドへ。
         const lan = tuyaLanTargetOf(device, snap.credentials.tuyaLocal);
         if (lan) {
-          await tuyaLanControl(lan, next, patch);
-          next.lan = { host: lan.host, version: lan.version, readAt: new Date().toISOString() };
+          Object.assign(next, await tuyaLanControl(lan, device, patch));
         } else {
           await tuyaControl(
             snap.credentials.tuyaAccessId,
@@ -71,8 +97,7 @@ export async function executeDevice(
         throw new Error("この機器は直接操作できません");
       }
     }
-    const devices = snap.devices.map((d) => (d.id === device.id ? next : d));
-    const saved = await saveHomeRecord(homeId, { devices });
+    const saved = await saveDeviceState(homeId, device.id, { ...patch, ...deviceStateChanges(device, next) });
     if (log) {
       recordEvent({
         homeId,

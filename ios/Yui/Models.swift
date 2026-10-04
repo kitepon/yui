@@ -228,6 +228,7 @@ struct HomeSnapshot: Decodable {
     var deviceOrder: [String: [String]]?
     var lastScene: String?
     var savedAt: String?
+    var refreshSeconds: Int?
     var pairPin: String?
     var credentialFlags: CredentialFlags?
     var tuyaRegion: String?

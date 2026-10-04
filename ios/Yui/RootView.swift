@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var session = SessionStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -21,8 +22,18 @@ struct RootView: View {
         } message: {
             Text(session.error ?? "")
         }
-        .task {
-            if session.isLoggedIn { await session.refresh() }
+        .safeAreaInset(edge: .bottom) {
+            if let message = session.homeRefreshError, session.isLoggedIn {
+                Text(message).font(.footnote).padding(12).frame(maxWidth: .infinity).background(YuiTheme.surface)
+            }
+        }
+        .task(id: HomeRefreshTask(token: session.token, active: scenePhase == .active)) {
+            if scenePhase == .active && session.isLoggedIn { await session.refreshWhileActive() }
         }
     }
+}
+
+private struct HomeRefreshTask: Equatable {
+    let token: String?
+    let active: Bool
 }

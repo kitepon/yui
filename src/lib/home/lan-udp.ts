@@ -3,6 +3,7 @@ import { createConnection } from "node:net";
 import { createSocket, type Socket } from "node:dgram";
 import { chmodSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
+import { crc32 } from "node:zlib";
 
 /**
  * Smart Life の名乗りを受ける UDP。
@@ -288,19 +289,19 @@ export function tuyaFrameTotal(buf: Buffer): number | undefined {
   return 16 + buf.readUInt32BE(12);
 }
 
-function readRequestJson(req: IncomingMessage): Promise<{ host: string; port: number; frame: string }> {
+function readRequestJson(req: IncomingMessage): Promise<{ host: string; port: number; frames: string[] }> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => {
       try {
-        const json = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { host?: unknown; port?: unknown; frame?: unknown };
+        const json = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { host?: unknown; port?: unknown; frames?: unknown };
         if (typeof json.host !== "string" || !json.host) throw new Error("host");
         if (typeof json.port !== "number" || !Number.isInteger(json.port) || json.port < 1 || json.port > 65535) {
           throw new Error("port");
         }
-        if (typeof json.frame !== "string" || !json.frame) throw new Error("frame");
-        resolve({ host: json.host, port: json.port, frame: json.frame });
+        if (!Array.isArray(json.frames) || !json.frames.length || json.frames.some((frame) => typeof frame !== "string" || !frame)) throw new Error("frames");
+        resolve({ host: json.host, port: json.port, frames: json.frames });
       } catch {
         reject(new Error("Smart Life 直結: 受け役の要求が読めません"));
       }
@@ -309,31 +310,61 @@ function readRequestJson(req: IncomingMessage): Promise<{ host: string; port: nu
   });
 }
 
-function exchangeOnce(host: string, port: number, frame: Buffer, signal?: AbortSignal): Promise<Buffer> {
+/** 一つの接続で要求を順番に送り、各要求の応答を受けてから次へ進む。 */
+export function exchangeLanTcp(host: string, port: number, frames: Buffer[], signal?: AbortSignal): Promise<Buffer[]> {
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
+    const replies: Buffer[] = [];
+    let buffer: Buffer = Buffer.alloc(0);
+    let complete = false;
+    let failure: Error | undefined;
     let done = false;
     const finish = (fn: () => void) => {
       if (done) return;
       done = true;
       signal?.removeEventListener("abort", abort);
+      clearTimeout(deadline);
       socket.destroy();
       fn();
     };
-    const abort = () => finish(() => reject(new Error("Smart Life 直結: 定期読取を中止しました")));
+    const fail = (error: Error) => { failure = error; socket.destroy(); };
+    const abort = () => fail(new Error("Smart Life 直結: 定期読取を中止しました"));
     const socket = createConnection({ host, port }, () => {
-      socket.write(frame);
+      socket.write(frames[0]);
     });
-    socket.setTimeout(RELAY_TIMEOUT_MS);
-    socket.on("timeout", () => finish(() => reject(new Error(`Smart Life 直結: ${host} が ${RELAY_TIMEOUT_MS / 1000} 秒以内に応答しません`))));
-    socket.on("error", (err) => finish(() => reject(new Error(`Smart Life 直結: ${host} へ届きません（${err.message}）`))));
+    const deadline = setTimeout(() => fail(new Error(`Smart Life 直結: ${host} が ${RELAY_TIMEOUT_MS / 1000} 秒以内に応答しません`)), RELAY_TIMEOUT_MS);
+    socket.on("error", (err) => {
+      if (!complete && !failure) failure = new Error(`Smart Life 直結: ${host} へ届きません（${err.message}）`);
+    });
     socket.on("data", (chunk) => {
-      chunks.push(chunk);
-      const buf = Buffer.concat(chunks);
-      const total = tuyaFrameTotal(buf);
-      if (total != null && buf.length >= total) finish(() => resolve(buf.subarray(0, total)));
+      buffer = Buffer.concat([buffer, chunk]);
+      while (!complete) {
+        const total = tuyaFrameTotal(buffer);
+        if (total == null || buffer.length < total) return;
+        const reply = buffer.subarray(0, total);
+        buffer = buffer.subarray(total);
+        if (total < 28 || reply.readUInt32BE(0) !== 0x55aa || reply.readUInt32BE(total - 4) !== 0xaa55 || crc32(reply.subarray(0, total - 8)) !== reply.readUInt32BE(total - 8)) {
+          fail(new Error("Smart Life 直結: 応答フレームが壊れています"));
+          return;
+        }
+        const command = frames[replies.length].readUInt32BE(8);
+        // 操作後の STATUS 通知や、状態を含まない受領応答は次の要求の状態として使わない。
+        if (reply.readUInt32BE(8) !== command) continue;
+        const retcode = reply.readUInt32BE(16);
+        if (retcode !== 0) {
+          fail(new Error(`Smart Life 直結: 機器が要求を受け付けませんでした（code ${retcode}）`));
+          return;
+        }
+        if (command === 0x0a && total === 28) continue;
+        replies.push(reply);
+        if (replies.length === frames.length) {
+          complete = true;
+          socket.end();
+        } else {
+          socket.write(frames[replies.length]);
+        }
+      }
     });
-    socket.on("close", () => finish(() => reject(new Error(`Smart Life 直結: ${host} が応答前に切断しました`))));
+    socket.on("close", () => finish(() => failure ? reject(failure) : complete ? resolve(replies) : reject(new Error(`Smart Life 直結: ${host} が応答前に切断しました`))));
     signal?.addEventListener("abort", abort, { once: true });
     if (signal?.aborted) abort();
   });
@@ -438,14 +469,14 @@ async function handleRelayRequest(req: IncomingMessage, res: ServerResponse) {
   }
   try {
     const body = await readRequestJson(req);
-    const frame = await exchangeOnce(body.host, body.port, Buffer.from(body.frame, "base64"), abort.signal);
-    write(200, { frame: frame.toString("base64") });
+    const frames = await exchangeLanTcp(body.host, body.port, body.frames.map((frame) => Buffer.from(frame, "base64")), abort.signal);
+    write(200, { frames: frames.map((frame) => frame.toString("base64")) });
   } catch (err) {
     write(502, { error: err instanceof Error ? err.message : String(err) });
   }
 }
 
-function postExchange(options: { url?: string; socketPath?: string }, body: string, signal?: AbortSignal): Promise<{ status: number; json: { frame?: string; error?: string } }> {
+function postExchange(options: { url?: string; socketPath?: string }, body: string, signal?: AbortSignal): Promise<{ status: number; json: { frames?: string[]; error?: string } }> {
   return new Promise((resolve, reject) => {
     const url = options.url ? new URL("/exchange", options.url) : undefined;
     const req = httpRequest(
@@ -457,7 +488,7 @@ function postExchange(options: { url?: string; socketPath?: string }, body: stri
         res.on("data", (chunk) => chunks.push(chunk));
         res.on("end", () => {
           try {
-            resolve({ status: res.statusCode ?? 0, json: JSON.parse(Buffer.concat(chunks).toString("utf8")) as { frame?: string; error?: string } });
+            resolve({ status: res.statusCode ?? 0, json: JSON.parse(Buffer.concat(chunks).toString("utf8")) as { frames?: string[]; error?: string } });
           } catch {
             reject(new Error("Smart Life 直結: 受け役の応答が JSON ではありません"));
           }
@@ -479,8 +510,13 @@ function postExchange(options: { url?: string; socketPath?: string }, body: stri
 
 /** 容器側。受け役へ 1 フレーム渡し、機器の応答フレームを返す。 */
 export async function relayLanTcp(relayUrl: string, host: string, port: number, frame: Buffer, signal?: AbortSignal): Promise<Buffer> {
-  const body = JSON.stringify({ host, port, frame: frame.toString("base64") });
-  let res: { status: number; json: { frame?: string; error?: string } };
+  return (await relayLanTcpSession(relayUrl, host, port, [frame], signal))[0];
+}
+
+/** 容器側。操作と状態確認を、ホスト側の同じ TCP 接続で完了する。 */
+export async function relayLanTcpSession(relayUrl: string, host: string, port: number, frames: Buffer[], signal?: AbortSignal): Promise<Buffer[]> {
+  const body = JSON.stringify({ host, port, frames: frames.map((frame) => frame.toString("base64")) });
+  let res: { status: number; json: { frames?: string[]; error?: string } };
   try {
     res = isUnixBind(relayUrl)
       ? await postExchange({ socketPath: unixPath(relayUrl) }, body, signal)
@@ -488,8 +524,8 @@ export async function relayLanTcp(relayUrl: string, host: string, port: number, 
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : `Smart Life 直結: 受け役へ届きません（${err}）`);
   }
-  if (res.status !== 200 || !res.json.frame) {
+  if (res.status !== 200 || !res.json.frames || res.json.frames.length !== frames.length) {
     throw new Error(res.json.error || `Smart Life 直結: 受け役が HTTP ${res.status}`);
   }
-  return Buffer.from(res.json.frame, "base64");
+  return res.json.frames.map((frame) => Buffer.from(frame, "base64"));
 }

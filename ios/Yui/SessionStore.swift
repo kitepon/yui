@@ -10,6 +10,7 @@ final class SessionStore: ObservableObject {
     @Published var home: HomeSnapshot?
     @Published var error: String?
     @Published var busy = false
+    @Published var homeRefreshError: String?
     @Published var analysis: AnalysisData?
     @Published var analysisLoading = false
     @Published var analysisError: String?
@@ -22,6 +23,7 @@ final class SessionStore: ObservableObject {
     @Published var applePurchaseResumePlan: String?
     private var appleAccount: AppleBillingAccount?
     private var updatesTask: Task<Void, Never>?
+    private var homeRevision = 0
 
     var isLoggedIn: Bool { token != nil }
 
@@ -78,6 +80,33 @@ final class SessionStore: ObservableObject {
         guard let token else { return }
         await run {
             self.home = try await YuiClient.shared.home(token: token)
+        }
+    }
+
+    func refreshWhileActive() async {
+        while !Task.isCancelled {
+            await refreshHomeIfIdle()
+            guard let seconds = home?.refreshSeconds, seconds > 0 else {
+                if home != nil { homeRefreshError = "家の更新間隔を受信できません" }
+                return
+            }
+            do { try await Task.sleep(for: .seconds(seconds)) }
+            catch { return }
+        }
+    }
+
+    func refreshHomeIfIdle() async {
+        guard !busy, let token else { return }
+        let revision = homeRevision
+        do {
+            let snapshot = try await YuiClient.shared.home(token: token)
+            guard !Task.isCancelled, self.token == token, !busy, homeRevision == revision else { return }
+            home = snapshot
+            homeRefreshError = nil
+        } catch {
+            guard !Task.isCancelled, self.token == token, homeRevision == revision else { return }
+            if case YuiError.unauthorized = error { signOut() }
+            homeRefreshError = "家の状態を更新できません: \(error.localizedDescription)"
         }
     }
 
@@ -371,6 +400,8 @@ final class SessionStore: ObservableObject {
     }
 
     func signOut() {
+        homeRevision += 1
+        homeRefreshError = nil
         token = nil
         home = nil
         analysis = nil
@@ -407,6 +438,7 @@ final class SessionStore: ObservableObject {
     }
 
     private func run(_ work: () async throws -> Void) async {
+        homeRevision += 1
         busy = true
         error = nil
         defer { busy = false }

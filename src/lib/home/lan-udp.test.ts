@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir, type NetworkInterfaceInfo } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { buildFrame } from "./tuya-lan.ts";
 import {
   assembleLanSnapshot,
   lanSnapshotChanged,
@@ -185,10 +186,7 @@ test("受け役は Unix ソケットでも同じ中継をする", async () => {
   const { join } = await import("node:path");
   const { tmpdir } = await import("node:os");
   const payload = Buffer.from("UNIXOK!!!");
-  const reply = Buffer.alloc(16 + payload.length);
-  reply.writeUInt32BE(0x000055aa, 0);
-  reply.writeUInt32BE(payload.length, 12);
-  payload.copy(reply, 16);
+  const reply = buildFrame(1, 10, Buffer.concat([Buffer.alloc(4), payload]));
   const device = createServer((socket) => {
     socket.on("data", () => socket.end(reply));
   });
@@ -201,7 +199,7 @@ test("受け役は Unix ソケットでも同じ中継をする", async () => {
   assert.ok(relay);
   try {
     await relay.ready;
-    const got = await relayLanTcp(relay.url, "127.0.0.1", devicePort, Buffer.from("QUERY"));
+    const got = await relayLanTcp(relay.url, "127.0.0.1", devicePort, buildFrame(1, 10, Buffer.from("QUERY")));
     assert.deepEqual(got, reply);
   } finally {
     await relay.close();
@@ -213,10 +211,7 @@ test("受け役は Unix ソケットでも同じ中継をする", async () => {
 test("受け役は容器の代わりに機器へ TCP して応答フレームを返す", async () => {
   const { createServer } = await import("node:net");
   const payload = Buffer.from("REPLYOK!!");
-  const reply = Buffer.alloc(16 + payload.length);
-  reply.writeUInt32BE(0x000055aa, 0);
-  reply.writeUInt32BE(payload.length, 12);
-  payload.copy(reply, 16);
+  const reply = buildFrame(1, 10, Buffer.concat([Buffer.alloc(4), payload]));
   const device = createServer((socket) => {
     socket.on("data", () => socket.end(reply));
   });
@@ -227,7 +222,7 @@ test("受け役は容器の代わりに機器へ TCP して応答フレームを
   assert.ok(relay);
   try {
     await relay.ready;
-    const got = await relayLanTcp(relay.url, "127.0.0.1", devicePort, Buffer.from("QUERY"));
+    const got = await relayLanTcp(relay.url, "127.0.0.1", devicePort, buildFrame(1, 10, Buffer.from("QUERY")));
     assert.deepEqual(got, reply);
   } finally {
     await relay.close();

@@ -5,3 +5,5 @@
  * サーバー専用の依存を持たない（画面からも読むため）。
  */
 export const SENSOR_TICK_SECONDS = 60;
+/** 画面は保存済みの家を読む。機器へのポーリング周期とは別にする。 */
+export const HOME_REFRESH_SECONDS = 2;

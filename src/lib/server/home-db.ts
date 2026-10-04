@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { emptySnapshot, type HomeSnapshot } from "@/lib/home/snapshot";
 import { migrateAutomation } from "@/lib/home/types";
+import type { Device } from "@/lib/home/types";
 import { applyOverrides } from "@/lib/home/overrides";
 import { daikinConfigured, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import { tuyaLanDiscoveryStatus } from "@/lib/home/tuya-lan";
@@ -15,6 +17,7 @@ import {
   secretsKeyFromEnv,
 } from "./home-secrets";
 import { getSqlite } from "./sqlite";
+import { HOME_REFRESH_SECONDS } from "@/lib/home/control-tick";
 
 type HomeRow = {
   id: string;
@@ -122,6 +125,7 @@ export function clientHome(snap: HomeSnapshot, host?: string | null, isOwner = f
     credentialFlags: credentialFlags(snap.credentials),
     host: host ?? snap.host,
     runner: true,
+    refreshSeconds: HOME_REFRESH_SECONDS,
     odelicBridge: isOwner && Boolean(process.env.YUI_ODELIC_BRIDGE_URL),
     daikinDirect: isOwner && daikinConfigured(),
     tuyaLan: tuyaLanDiscoveryStatus(),
@@ -191,11 +195,16 @@ function keepLan(prev: HomeSnapshot["devices"], next: HomeSnapshot["devices"]) {
 }
 
 export async function replaceHome(ownerUserId: string, next: HomeSnapshot): Promise<HomeSnapshot> {
-  const cur = await ensureHome(ownerUserId);
+  const home = await ensureHome(ownerUserId);
+  const cur = readHomeRecord(home.id);
+  if (!cur) throw new Error("家が無い");
   const prevById = new Map(cur.snap.automations.map((a) => [a.id, a]));
   const snap: HomeSnapshot = {
     ...next,
-    devices: keepLan(cur.snap.devices, next.devices),
+    devices: keepLan(cur.snap.devices, next.devices).map((device) => {
+      const live = cur.snap.devices.find((d) => d.id === device.id && d.source === "live");
+      return live ? { ...device, ...deviceStateOf(live) } : device;
+    }),
     credentials: mergeIncomingCredentials(cur.snap.credentials, next.credentials),
     pairPin: cur.snap.pairPin,
     lastRanAutomationId: next.lastRanAutomationId ?? cur.snap.lastRanAutomationId ?? null,
@@ -214,13 +223,17 @@ export async function replaceHome(ownerUserId: string, next: HomeSnapshot): Prom
   return saved;
 }
 
-export async function loadHomeRecord(homeId: string) {
+function readHomeRecord(homeId: string) {
   const row = getSqlite().prepare("SELECT * FROM homes WHERE id = ?").get(homeId) as HomeRow | undefined;
   return row ? decodeRow(row) : null;
 }
 
+export async function loadHomeRecord(homeId: string) {
+  return readHomeRecord(homeId);
+}
+
 export async function saveHomeRecord(homeId: string, patch: Partial<HomeSnapshot>): Promise<HomeSnapshot> {
-  const cur = await loadHomeRecord(homeId);
+  const cur = readHomeRecord(homeId);
   if (!cur) throw new Error("家が無い");
   const next: HomeSnapshot = {
     ...cur.snap,
@@ -231,6 +244,44 @@ export async function saveHomeRecord(homeId: string, patch: Partial<HomeSnapshot
     savedAt: new Date().toISOString(),
   };
   const saved = withOverrides(next);
+  persistRow(homeId, cur.ownerUserId, saved);
+  return saved;
+}
+
+const DEVICE_STATE_KEYS = ["on", "brightness", "temperature", "targetTemp", "targetHumidity", "fanSpeed", "fanSwing", "mode", "humidity", "outdoorTemp", "lux", "position", "online", "lan", "kind", "extra", "acModes", "botMode"] as const;
+
+function deviceStateOf(device: Device): Partial<Device> {
+  return Object.fromEntries(DEVICE_STATE_KEYS.map((key) => [key, device[key]]));
+}
+
+export function deviceStateChanges(before: Device, after: Device): Partial<Device> {
+  return Object.fromEntries(DEVICE_STATE_KEYS.filter((key) => !isDeepStrictEqual(before[key], after[key])).map((key) => [key, after[key]]));
+}
+
+/** 操作した機器の項目だけを、最新の家へ保存する。読取と書込の間に await を置かない。 */
+export async function saveDeviceState(homeId: string, deviceId: string, patch: Partial<Device>): Promise<HomeSnapshot> {
+  const cur = readHomeRecord(homeId);
+  if (!cur) throw new Error("家が無い");
+  if (!cur.snap.devices.some((device) => device.id === deviceId)) throw new Error("機器が無い");
+  const saved = withOverrides({ ...cur.snap, devices: cur.snap.devices.map((device) => device.id === deviceId ? { ...device, ...patch } : device), savedAt: new Date().toISOString() });
+  persistRow(homeId, cur.ownerUserId, saved);
+  return saved;
+}
+
+/** 読取開始後に状態が更新された機器と、読み飛ばした機器の実状態を上書きしない。 */
+export async function saveDeviceReadings(homeId: string, before: Device[], after: Device[], extra: Partial<Pick<HomeSnapshot, "climate">> = {}): Promise<HomeSnapshot> {
+  const cur = readHomeRecord(homeId);
+  if (!cur) throw new Error("家が無い");
+  const baseline = new Map(before.map((device) => [device.id, device]));
+  const incoming = new Map(after.map((device) => [device.id, device]));
+  const devices = cur.snap.devices.map((device) => {
+    const prev = baseline.get(device.id);
+    const read = incoming.get(device.id);
+    if (!prev || !read || !isDeepStrictEqual(deviceStateOf(device), deviceStateOf(prev))) return device;
+    return { ...device, ...deviceStateChanges(prev, read) };
+  });
+  const additions = after.filter((device) => !baseline.has(device.id) && !cur.snap.devices.some((current) => current.id === device.id));
+  const saved = withOverrides({ ...cur.snap, ...extra, devices: [...devices, ...additions], savedAt: new Date().toISOString() });
   persistRow(homeId, cur.ownerUserId, saved);
   return saved;
 }

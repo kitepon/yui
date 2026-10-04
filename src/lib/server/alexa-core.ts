@@ -333,7 +333,8 @@ export function discoverEndpoints(devices: Device[], scenes: Scene[]) {
 }
 
 export function propertyContext(device: Device) {
-  const now = new Date().toISOString();
+  const now = device.lan?.readAt ?? new Date().toISOString();
+  const uncertainty = device.lan?.readAt ? Math.max(0, Date.now() - Date.parse(device.lan.readAt)) : 0;
   const props: Array<Record<string, unknown>> = [];
   if (device.kind === "curtain") {
     props.push({
@@ -342,7 +343,7 @@ export function propertyContext(device: Device) {
       name: "rangeValue",
       value: device.position ?? 0,
       timeOfSample: now,
-      uncertaintyInMilliseconds: 0,
+      uncertaintyInMilliseconds: uncertainty,
     });
   } else if (device.kind === "lock") {
     props.push({
@@ -350,7 +351,7 @@ export function propertyContext(device: Device) {
       name: "lockState",
       value: device.on ? "LOCKED" : "UNLOCKED",
       timeOfSample: now,
-      uncertaintyInMilliseconds: 0,
+      uncertaintyInMilliseconds: uncertainty,
     });
   } else {
     props.push({
@@ -358,7 +359,7 @@ export function propertyContext(device: Device) {
       name: "powerState",
       value: device.on ? "ON" : "OFF",
       timeOfSample: now,
-      uncertaintyInMilliseconds: 0,
+      uncertaintyInMilliseconds: uncertainty,
     });
   }
   if (device.kind === "light") {
@@ -367,7 +368,7 @@ export function propertyContext(device: Device) {
       name: "brightness",
       value: device.brightness ?? 100,
       timeOfSample: now,
-      uncertaintyInMilliseconds: 0,
+      uncertaintyInMilliseconds: uncertainty,
     });
   }
   if (device.kind === "ac") {
@@ -376,14 +377,14 @@ export function propertyContext(device: Device) {
       name: "targetSetpoint",
       value: { value: device.targetTemp ?? 26, scale: "CELSIUS" },
       timeOfSample: now,
-      uncertaintyInMilliseconds: 0,
+      uncertaintyInMilliseconds: uncertainty,
     });
     props.push({
       namespace: "Alexa.ThermostatController",
       name: "thermostatMode",
       value: alexaThermostatMode(device),
       timeOfSample: now,
-      uncertaintyInMilliseconds: 0,
+      uncertaintyInMilliseconds: uncertainty,
     });
   }
   props.push({
@@ -391,7 +392,7 @@ export function propertyContext(device: Device) {
     name: "connectivity",
     value: { value: device.online ? "OK" : "UNREACHABLE" },
     timeOfSample: now,
-    uncertaintyInMilliseconds: 0,
+    uncertaintyInMilliseconds: uncertainty,
   });
   return props;
 }

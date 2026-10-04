@@ -15,7 +15,8 @@ import {
 } from "./alexa-core";
 import { userIdForAlexaAccess } from "./alexa-oauth";
 import { executeDevice, executeScene } from "./execute";
-import { loadHome } from "./home-db";
+import { loadHome, saveDeviceReadings } from "./home-db";
+import { tuyaLanReadDevice, tuyaLanTargetOf } from "@/lib/home/tuya-lan";
 import { fireDeviceOnServer, fireSceneOnServer } from "./runner";
 import { newWaveId } from "./analysis";
 
@@ -72,6 +73,17 @@ export async function handleAlexaEvent(event: AlexaEvent) {
   if (!device) return alexaError(event.directive, "NO_SUCH_ENDPOINT", "機器が無い");
 
   if (intent.type === "report") {
+    const lan = tuyaLanTargetOf(device, snap.credentials.tuyaLocal);
+    if (lan) {
+      try {
+        const actual = await tuyaLanReadDevice(lan, device);
+        const saved = await saveDeviceReadings(homeId, [device], [actual]);
+        const current = saved.devices.find((d) => d.id === device.id) ?? actual;
+        return alexaOk(event.directive, { name: "StateReport", context: { properties: propertyContext(current) } });
+      } catch (err) {
+        return alexaError(event.directive, "ENDPOINT_UNREACHABLE", err instanceof Error ? err.message : "機器の状態を確認できません");
+      }
+    }
     // ReportState への応答名は Response ではなく StateReport（Alexa 仕様）。
     return alexaOk(event.directive, { name: "StateReport", context: { properties: propertyContext(device) } });
   }
@@ -84,7 +96,8 @@ export async function handleAlexaEvent(event: AlexaEvent) {
     const next = await executeDevice(homeId, snap, device, patch, { source: "alexa", waveId: newWaveId() });
     // 指で押したときと同じにする。機器トリガーのオートメーションは入口で差を付けない。
     if (patch.on !== undefined) await fireDeviceOnServer(homeId, device.id, patch.on, "alexa");
-    const updated = next.devices.find((d) => d.id === device.id) ?? { ...device, ...patch };
+    const latest = patch.on !== undefined ? (await loadHome(userId)).snap : next;
+    const updated = latest.devices.find((d) => d.id === device.id) ?? { ...device, ...patch };
     return alexaOk(event.directive, { context: { properties: propertyContext(updated) } });
   } catch (err) {
     return alexaError(

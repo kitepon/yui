@@ -141,6 +141,7 @@ function fakeDevice(dps: Record<string, unknown>) {
       } else if (frame.cmd === 0x07) {
         const json = JSON.parse(decodeDpsRaw(KEY, frame.data.subarray(11)).toString()) as { dps: Record<string, unknown> };
         received.push(json.dps);
+        Object.assign(dps, json.dps);
         socket.write(buildFrame(frame.seq, 0x07, Buffer.alloc(4)));
       }
     });
@@ -220,7 +221,7 @@ test("届かない機器は lan.error に理由が残り、値は前のまま。
   assert.match(d.lan?.error ?? "", /届きません|応答/);
 });
 
-test("LAN の操作は機器の dp を読んでから、結の操作をその dp 番号で送る", async () => {
+test("LAN の操作は同期済みの dp 番号で送り、操作後の実値を確認する", async () => {
   const dev = await fakeDevice({ "1": false, "9": 0 });
   servers.push(dev.close);
   const plugId = "plug1";
@@ -266,6 +267,51 @@ test("3.1 の CONTROL は \"3.1\" + md5 署名 16 文字 + base64 暗号文", ()
   assert.deepEqual(json.dps, { "1": false });
 });
 
+test("3.1 の暗号化された状態通知を正しい鍵で読み、空の受領応答は鍵違いと扱わない", () => {
+  const body = buildControl({ ...TARGET, version: "3.1" }, { "1": false }).subarray(16, -8);
+  assert.deepEqual(decodeDps(KEY, body), { "1": false });
+  assert.throws(() => decodeDps(KEY, Buffer.alloc(0)), /状態がありません/);
+});
+
+test("スイッチは1接続で操作と実状態の確認を行い、受領応答と3.1通知を読み分ける", async () => {
+  let connections = 0;
+  let on = true;
+  const commands: number[] = [];
+  const server = createServer((socket) => {
+    connections++;
+    socket.on("data", (buf) => {
+      const frame = parseFrame(buf);
+      assert.ok(frame);
+      commands.push(frame.cmd);
+      if (frame.cmd === 7) {
+        const data = buf.subarray(16, -8).toString().slice(19);
+        on = JSON.parse(decryptPayload(KEY, Buffer.from(data, "base64")).toString()).dps["1"];
+        const notice = buildControl({ ...TARGET, version: "3.1" }, { "1": on }).subarray(16, -8);
+        socket.write(Buffer.concat([
+          buildFrame(frame.seq, 7, Buffer.alloc(4)),
+          buildFrame(frame.seq, 8, Buffer.concat([Buffer.alloc(4), notice])),
+        ]));
+      } else if (frame.cmd === 10) {
+        socket.write(Buffer.concat([
+          buildFrame(frame.seq, 10, Buffer.alloc(4)),
+          buildFrame(frame.seq, 10, Buffer.concat([Buffer.alloc(4), Buffer.from(JSON.stringify({ dps: { "1": on } }))])),
+        ]));
+      }
+    });
+  });
+  const port = await new Promise<number>((resolve) => server.listen(0, "127.0.0.1", () => resolve((server.address() as { port: number }).port)));
+  try {
+    const result = await tuyaLanControl({ ...TARGET, deviceId: "single-session", host: "127.0.0.1", port, version: "3.1", dps: { "1": "switch_1" } }, sensor({ kind: "plug", on: true }), { on: false });
+    assert.equal(result.on, false);
+    assert.equal(result.online, true);
+    assert.ok(result.lan?.readAt);
+    assert.deepEqual(commands, [7, 10]);
+    assert.equal(connections, 1);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 /** 3.1 の擬似コンセント。DP_QUERY に平文で答え、CONTROL は署名を検証してから dps を控える。 */
 function fakePlug31(dps: Record<string, unknown>) {
   const received: Record<string, unknown>[] = [];
@@ -284,7 +330,9 @@ function fakePlug31(dps: Record<string, unknown>) {
           socket.write(buildFrame(frame.seq, 0x07, Buffer.from([0, 0, 0, 1])));
           return;
         }
-        received.push((JSON.parse(decryptPayload(PLUG_KEY, Buffer.from(data, "base64")).toString()) as { dps: Record<string, unknown> }).dps);
+        const sent = (JSON.parse(decryptPayload(PLUG_KEY, Buffer.from(data, "base64")).toString()) as { dps: Record<string, unknown> }).dps;
+        received.push(sent);
+        Object.assign(dps, sent);
         socket.write(buildFrame(frame.seq, 0x07, Buffer.alloc(4)));
       }
     });
@@ -332,6 +380,7 @@ test("3.1 の定期読取中に操作が来たら中継先の接続を閉じ、�
   const id = "priority-plug-31";
   const received: Record<string, unknown>[] = [];
   let queries = 0;
+  let on = true;
   let active = 0;
   let overlapped = false;
   let queryStarted!: () => void;
@@ -350,12 +399,13 @@ test("3.1 の定期読取中に操作が来たら中継先の接続を閉じ、�
           return;
         }
         socket.write(buildFrame(frame.seq, 0x0a, Buffer.concat([
-          Buffer.alloc(4), Buffer.from(JSON.stringify({ devId: id, dps: { "1": true } })),
+          Buffer.alloc(4), Buffer.from(JSON.stringify({ devId: id, dps: { "1": on } })),
         ])));
       } else if (frame.cmd === 0x07) {
         const body = buf.subarray(16, buf.length - 8).toString();
         const command = JSON.parse(decryptPayload(PLUG_KEY, Buffer.from(body.slice(19), "base64")).toString()) as { dps: Record<string, unknown> };
         received.push(command.dps);
+        on = command.dps["1"] as boolean;
         socket.write(buildFrame(frame.seq, 0x07, Buffer.alloc(4)));
       }
     });

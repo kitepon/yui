@@ -19,6 +19,7 @@
 		3D5D211F257B445DE59AEFC4 /* ApplePurchaseRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32473A1CF7609DD8D20E7922 /* ApplePurchaseRecovery.swift */; };
 		3E4FEE72B33923B3766C7BB2 /* DeviceActionEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 879A9FA71DEDFD5036C04FFC /* DeviceActionEditor.swift */; };
 		455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31E8B800857AAE16AA60AD2 /* HomeView.swift */; };
+		63588C117195B3CE5EF2F3E9 /* YuiHomeRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1270AEFDE0BA89A1223BFAD4 /* YuiHomeRefreshTests.swift */; };
 		6C8BE160DA527E08122C17E7 /* RoomManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */; };
 		7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */; };
 		7E9976234C5CA1C97D6306B7 /* YuiRestartTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */; };
@@ -52,6 +53,7 @@
 		047F035B6146C78327BFEA9B /* YuiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = YuiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		077672F56CC8346B91EC670D /* ScenesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesView.swift; sourceTree = "<group>"; };
 		0C7E016594EA7B999DE01AB9 /* GoogleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignIn.swift; sourceTree = "<group>"; };
+		1270AEFDE0BA89A1223BFAD4 /* YuiHomeRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiHomeRefreshTests.swift; sourceTree = "<group>"; };
 		24FBCA5AB5822FD167D77B24 /* Yui.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Yui.entitlements; sourceTree = "<group>"; };
 		24FFD4CDB4C8D61089E82B87 /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
 		2981A0E63D79A4D16EBE0BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -143,6 +145,7 @@
 			children = (
 				AFCF836AAD938F7F8497F33D /* Yui.storekit */,
 				9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */,
+				1270AEFDE0BA89A1223BFAD4 /* YuiHomeRefreshTests.swift */,
 				80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */,
 			);
 			path = YuiTests;
@@ -251,6 +254,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */,
+				63588C117195B3CE5EF2F3E9 /* YuiHomeRefreshTests.swift in Sources */,
 				7E9976234C5CA1C97D6306B7 /* YuiRestartTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -305,7 +309,7 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -354,7 +358,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -421,7 +425,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -507,7 +511,7 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
