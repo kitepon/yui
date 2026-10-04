@@ -42,6 +42,7 @@ struct SettingsView: View {
                 }
 
                 accountCard
+                alexaCard
                 billingCard
                 serverCard
 
@@ -171,6 +172,32 @@ struct SettingsView: View {
         .onChange(of: session.home?.tuyaRegion) { _, region in
             if let region { tuyaRegion = region }
         }
+    }
+
+    private var alexaCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Alexa", systemImage: "waveform")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(YuiTheme.fg)
+            Text("公式スキル「\(AlexaSkill.official.name)」で、結の機器と場面を声で操作できます。")
+                .font(.system(size: 12))
+                .foregroundStyle(YuiTheme.muted)
+            Link(destination: AlexaSkill.official.storeURL) {
+                Label("\(AlexaSkill.official.name)を有効にする", systemImage: "arrow.up.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 13))
+                    .foregroundStyle(YuiTheme.bg)
+            }
+            .accessibilityIdentifier("alexa-enable-skill")
+            Text("1. Amazonのページでスキルを有効にします。\n2. この結と同じアカウントでログインします。\n3. Alexaでデバイスを検出します。")
+                .font(.system(size: 12))
+                .foregroundStyle(YuiTheme.muted)
+                .lineSpacing(4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 22))
     }
 
     private var accountCard: some View {

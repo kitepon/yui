@@ -18,7 +18,7 @@ settings:
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "6"
+    CURRENT_PROJECT_VERSION: "7"
 targets:
   Yui:
     type: application
@@ -33,6 +33,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
     sources:
       - path: Yui
+      - path: ../src/lib/alexa-skill.json
+        buildPhase: resources
     entitlements:
       path: Yui/Yui.entitlements
       properties:
@@ -45,7 +47,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "6"
+        CURRENT_PROJECT_VERSION: "7"
   YuiTests:
     type: bundle.unit-test
     platform: iOS

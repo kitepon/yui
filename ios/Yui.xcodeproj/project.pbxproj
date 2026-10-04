@@ -24,6 +24,7 @@
 		7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */; };
 		7E9976234C5CA1C97D6306B7 /* YuiRestartTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */; };
 		7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */; };
+		8C831F3E9C44475BD32772D3 /* alexa-skill.json in Resources */ = {isa = PBXBuildFile; fileRef = 8F3EB45990EEF5E684C40A9A /* alexa-skill.json */; };
 		8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50400412CEFFD51B5BC7D8EE /* YuiApp.swift */; };
 		9101F37DCFBE713DE6C39E39 /* VisualPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */; };
 		99BD7746C2277352FD6AEF31 /* ScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077672F56CC8346B91EC670D /* ScenesView.swift */; };
@@ -36,6 +37,7 @@
 		D1FA8C157CE899B016630915 /* SceneEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5D8655E0BB39CAC86CDFF5 /* SceneEditorView.swift */; };
 		D87070E5AD02F25AF947EB4B /* DeviceActionDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D9B701B7A90ECB310633C70 /* DeviceActionDraft.swift */; };
 		E3E5BA36150D37B3370FA2AA /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60D12689F93763BBBF3345E /* SessionStore.swift */; };
+		F4DBBCEA926AB4093BC3E58A /* AlexaSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5087F606F0BFC5FD983C458F /* AlexaSkill.swift */; };
 		FD67BD3552CD6671F1778EDD /* Yui.storekit in Resources */ = {isa = PBXBuildFile; fileRef = AFCF836AAD938F7F8497F33D /* Yui.storekit */; };
 /* End PBXBuildFile section */
 
@@ -61,6 +63,7 @@
 		34B39069B3E3CEC2C69C7A7C /* YuiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiClient.swift; sourceTree = "<group>"; };
 		3EFBFA1245AFFBD2717E99D6 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		50400412CEFFD51B5BC7D8EE /* YuiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiApp.swift; sourceTree = "<group>"; };
+		5087F606F0BFC5FD983C458F /* AlexaSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlexaSkill.swift; sourceTree = "<group>"; };
 		59A0440A5DB25F5D714E46B8 /* Yui.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Yui.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D9B701B7A90ECB310633C70 /* DeviceActionDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActionDraft.swift; sourceTree = "<group>"; };
 		61E1A18ED7FFD2F2A66A753A /* DeviceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDetailView.swift; sourceTree = "<group>"; };
@@ -71,6 +74,7 @@
 		80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiRestartTests.swift; sourceTree = "<group>"; };
 		879A9FA71DEDFD5036C04FFC /* DeviceActionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActionEditor.swift; sourceTree = "<group>"; };
 		89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualPreview.swift; sourceTree = "<group>"; };
+		8F3EB45990EEF5E684C40A9A /* alexa-skill.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "alexa-skill.json"; sourceTree = "<group>"; };
 		920858F0D3DE8419DB11F936 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiBillingTests.swift; sourceTree = "<group>"; };
 		A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManagementView.swift; sourceTree = "<group>"; };
@@ -91,14 +95,24 @@
 			isa = PBXGroup;
 			children = (
 				87C27E0D4ADDD6089559429D /* Yui */,
+				9CD7A1A1B069CF96350606A3 /* YuiHome */,
 				FCDC5C9A32D1788BB1C57FC8 /* YuiTests */,
 				96E378055F38DE8BF191AB0C /* Products */,
 			);
 			sourceTree = "<group>";
 		};
+		2B5F023577126A6EC3D91E73 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				8F3EB45990EEF5E684C40A9A /* alexa-skill.json */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
 		87C27E0D4ADDD6089559429D /* Yui */ = {
 			isa = PBXGroup;
 			children = (
+				5087F606F0BFC5FD983C458F /* AlexaSkill.swift */,
 				DD09C3B8DD95E9ECAC6EAEF0 /* AnalysisChartCard.swift */,
 				62AEB133F7948548E3DF1105 /* AnalysisPlot.swift */,
 				7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */,
@@ -138,6 +152,23 @@
 				047F035B6146C78327BFEA9B /* YuiTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9CD7A1A1B069CF96350606A3 /* YuiHome */ = {
+			isa = PBXGroup;
+			children = (
+				B8BCBAB0767027FE30EAEDD3 /* src */,
+			);
+			name = YuiHome;
+			path = ..;
+			sourceTree = "<group>";
+		};
+		B8BCBAB0767027FE30EAEDD3 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				2B5F023577126A6EC3D91E73 /* lib */,
+			);
+			path = src;
 			sourceTree = "<group>";
 		};
 		FCDC5C9A32D1788BB1C57FC8 /* YuiTests */ = {
@@ -235,6 +266,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1CB53EE8A78B450D420DECD5 /* Assets.xcassets in Resources */,
+				8C831F3E9C44475BD32772D3 /* alexa-skill.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -263,6 +295,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F4DBBCEA926AB4093BC3E58A /* AlexaSkill.swift in Sources */,
 				B2B7B721A72A59EC50CF53E5 /* AnalysisChartCard.swift in Sources */,
 				3CECECE0844B4B3C287D1B18 /* AnalysisPlot.swift in Sources */,
 				7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */,
@@ -309,7 +342,7 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -358,7 +391,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -425,7 +458,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -511,7 +544,7 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -44,15 +44,19 @@ Custom `/api/alexa/custom` は残してあるが本線ではない。
 
 上記はすべて設定済みで、クオの Echo で実運用している（シークレット登録・アカウントリンク・デバイス検出まで完了）。
 
-## 公開審査（2026-08-23 提出）
+## 公式スキルの導入
 
-公式スキル「結ホーム」を Amazon の認定審査へ提出した（ステータス: 審査中）。
+WebとiPhoneの「接続」画面で、Alexaの「結ホームを有効にする」を開く。
+Amazonのページで有効化し、結で使っている同じアカウントでログインして、デバイスを検出する。
+ボタンを開くだけではアカウント連携は完了しない。
 
-- 提出物（説明文・発話例・テスト手順）の正本は [alexa-store-listing.md](alexa-store-listing.md)
-- 審査用アカウント: `alexa-review@kitepon.dev`。課金はサーバー `.env` の `YUI_BILLING_EXEMPT` で免除
-- 審査用デバイスはクオ家の SwitchBot プラグ1台（名前「電気」）。審査中は負荷を抜き、
-  審査期間中オンラインを維持する（Amazon の要件）
-- 審査が通ったら: kitepon.dev と README に Echo 対応の記載を戻す。落ちたら指摘へ対応して再提出
+公式スキルは公式hosted版のアカウントへつながる。self-hosted版は、上記の手順で自分のホストへ
+接続する専用スキルを用意する。
+
+スキル名・正式なストアURL・公式hosted版の接続先は [alexa-skill.json](../src/lib/alexa-skill.json) が正本。
+Webは直接読み、iPhoneは同じファイルを配布アプリへ同梱する。
+公開状態の確認記録は [調査記録](../rag/alexa-skill-release.md)、
+提出物の文言は [alexa-store-listing.md](alexa-store-listing.md) を参照する。
 
 Lambda のタイムアウトは **8 秒**（Alexa の上限）。Smart Life のクラウド経路はトークン→状態→コマンドの 3 往復があり、既定の 3 秒では入りきらない。LAN スイッチは保存済みの DP 対応から直接操作を送り、同じ TCP 接続で実状態を確認する。LAN の状態照会も実機を読み、古い保存値に現在時刻を付けて返さない。
 

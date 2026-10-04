@@ -14,6 +14,7 @@ import type { HomeSnapshot } from "@/lib/home/snapshot";
 import { recentDeviceLan, type Device } from "@/lib/home/types";
 import { useHomeHydrated } from "@/lib/home/use-hydrated";
 import { authClient } from "@/lib/auth/client";
+import alexaSkill from "@/lib/alexa-skill.json";
 
 export const Route = createFileRoute("/settings")({
   component: () => (
@@ -266,6 +267,34 @@ export function SettingsPage() {
           </section>
         )}
 
+        <section className="rounded-lg border border-border bg-surface p-4">
+          <p className="text-[11px] tracking-wide text-faint">声で操作</p>
+          <h2 className="mt-0.5 text-lg font-medium text-fg">Alexa</h2>
+          <p className="mt-2 text-sm text-muted">
+            公式スキル「{alexaSkill.name}」で、結の機器と場面を声で操作できます。
+          </p>
+          <a
+            className="mt-4 flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-fg"
+            href={alexaSkill.storeURL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {alexaSkill.name}を有効にする ↗
+          </a>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted">
+            <li>Amazonのページでスキルを有効にします。</li>
+            <li>公式版の結で使っているアカウントでログインします。</li>
+            <li>Alexaでデバイスを検出します。</li>
+          </ol>
+          <p className="mt-3 text-xs text-faint">
+            このスキルは
+            <a className="underline" href={alexaSkill.hostedOrigin}>
+              公式版の結
+            </a>
+            用です。 自分のサーバーで使う場合は、専用スキルの設定が必要です。
+          </p>
+        </section>
+
         <ConnectorCard
           title="Nature Remo"
           badge="直結"
@@ -421,14 +450,6 @@ export function SettingsPage() {
             discovery={tuyaLan}
           />
         </ConnectorCard>
-
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <p className="text-[11px] tracking-wide text-faint">その他</p>
-          <h2 className="mt-0.5 text-lg font-medium text-fg">Alexa</h2>
-          <p className="mt-2 text-sm text-muted">
-            Alexa 専用の機器は未対応です。Echo は耳だけ。意味は結が見ます。「アレクサ、ゆいでシーリング消して」のように言います。
-          </p>
-        </section>
 
         <section className="rounded-lg border border-border bg-surface p-4">
           <p className="text-[11px] tracking-wide text-faint">ホーム画面</p>
