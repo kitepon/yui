@@ -375,6 +375,7 @@ struct SettingsView: View {
 
     private func connectionCard<Content: View>(_ title: String, id: String, symbol: String, @ViewBuilder content: () -> Content) -> some View {
         let status = session.home?.connectors?[id]
+        let phase = session.syncPhases[id]
         return VStack(alignment: .leading, spacing: 15) {
             HStack(spacing: 13) {
                 Image(systemName: symbol)
@@ -394,17 +395,38 @@ struct SettingsView: View {
                 Button {
                     Task { await session.sync(id) }
                 } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(YuiTheme.accent)
-                        .frame(width: 42, height: 42)
-                        .background(YuiTheme.surfaceRaised, in: Circle())
+                    Group {
+                        if phase == .syncing {
+                            ProgressView().tint(YuiTheme.accent)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(YuiTheme.accent)
+                        }
+                    }
+                    .frame(width: 42, height: 42)
+                    .background(YuiTheme.surfaceRaised, in: Circle())
                 }
-                .accessibilityLabel("\(title)を同期")
+                .accessibilityLabel(phase == .syncing ? "\(title)を同期中" : "\(title)を同期")
                 .disabled(session.busy)
             }
+            if let phase {
+                switch phase {
+                case .syncing:
+                    Text(id == "odelec" ? "照明を探索中… しばらくお待ちください" : "同期中…")
+                        .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
+                        .accessibilityIdentifier("sync-progress-\(id)")
+                case .completed:
+                    Label("同期が完了しました", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 12)).foregroundStyle(YuiTheme.mint)
+                        .accessibilityIdentifier("sync-complete-\(id)")
+                case .failed(let message):
+                    Text(message).font(.system(size: 12)).foregroundStyle(YuiTheme.warning)
+                        .accessibilityIdentifier("sync-error-\(id)")
+                }
+            }
             content()
-            if let error = status?.error, !error.isEmpty {
+            if phase == nil, let error = status?.error, !error.isEmpty {
                 Text(error).font(.system(size: 11)).foregroundStyle(YuiTheme.warning)
             }
         }

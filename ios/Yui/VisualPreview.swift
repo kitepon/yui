@@ -34,6 +34,15 @@ extension SessionStore {
             stripeEntitlement: nil,
             plans: BillingPlans(monthlyYen: 100, annualYen: 1000, trialDays: 30)
         )
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-yui-preview-sync-loading") {
+            store.syncPhases = Dictionary(uniqueKeysWithValues: ["nature", "switchbot", "smartlife", "daikin", "odelec"].map { ($0, .syncing) })
+            store.busy = true
+        } else if arguments.contains("-yui-preview-sync-completed") {
+            store.syncPhases = ["nature": .completed, "switchbot": .completed]
+        } else if arguments.contains("-yui-preview-sync-failed") {
+            store.syncPhases = ["nature": .failed("接続に失敗しました（表示確認用）")]
+        }
         return store
     }
 

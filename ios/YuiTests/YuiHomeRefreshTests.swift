@@ -63,6 +63,71 @@ final class YuiHomeRefreshTests: XCTestCase {
     }
 }
 
+@MainActor
+final class YuiConnectionSyncTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        URLProtocol.registerClass(ConnectionSyncProtocol.self)
+        ConnectionSyncProtocol.pending = nil
+        ConnectionSyncProtocol.statusCode = 200
+    }
+
+    override func tearDown() {
+        URLProtocol.unregisterClass(ConnectionSyncProtocol.self)
+        ConnectionSyncProtocol.pending = nil
+        super.tearDown()
+    }
+
+    func test全サービスが同期中から完了へ変わる() async throws {
+        let session = SessionStore()
+        session.token = "local-test-token"
+        for brand in ["nature", "switchbot", "smartlife", "daikin", "odelec"] {
+            ConnectionSyncProtocol.started = expectation(description: "同期POSTを受信")
+            let task = Task { await session.sync(brand) }
+            await fulfillment(of: [ConnectionSyncProtocol.started], timeout: 2)
+            XCTAssertEqual(session.syncPhases[brand], .syncing)
+            XCTAssertTrue(session.busy)
+            try XCTUnwrap(ConnectionSyncProtocol.pending).complete()
+            await task.value
+            XCTAssertEqual(session.syncPhases[brand], .completed)
+            XCTAssertFalse(session.busy)
+        }
+    }
+
+    func test失敗は完了と表示せずそのサービスに残す() async throws {
+        let session = SessionStore()
+        session.token = "local-test-token"
+        ConnectionSyncProtocol.statusCode = 400
+        ConnectionSyncProtocol.started = expectation(description: "同期POSTを受信")
+        let task = Task { await session.sync("switchbot") }
+        await fulfillment(of: [ConnectionSyncProtocol.started], timeout: 2)
+        try XCTUnwrap(ConnectionSyncProtocol.pending).complete()
+        await task.value
+        XCTAssertEqual(session.syncPhases["switchbot"], .failed("同期に失敗しました"))
+        XCTAssertFalse(session.busy)
+    }
+}
+
+private final class ConnectionSyncProtocol: URLProtocol {
+    static var pending: ConnectionSyncProtocol?
+    static var started: XCTestExpectation!
+    static var statusCode = 200
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.path == "/api/home" && request.httpMethod == "POST"
+    }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() { Self.pending = self; Self.started.fulfill() }
+    override func stopLoading() {}
+    func complete() {
+        let data = Data((Self.statusCode == 200 ? "{\"devices\":[],\"scenes\":[]}" : "{\"error\":\"同期に失敗しました\"}").utf8)
+        let response = HTTPURLResponse(url: request.url!, statusCode: Self.statusCode, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+}
+
 final class YuiDeviceStatusTests: XCTestCase {
     func test未受信の照明を消灯と表示しない() throws {
         let data = Data("""

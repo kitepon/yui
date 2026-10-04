@@ -2,6 +2,12 @@ import AuthenticationServices
 import Foundation
 import StoreKit
 
+enum ConnectionSyncPhase: Equatable {
+    case syncing
+    case completed
+    case failed(String)
+}
+
 @MainActor
 final class SessionStore: ObservableObject {
     private let googleSignIn = GoogleSignIn()
@@ -10,6 +16,7 @@ final class SessionStore: ObservableObject {
     @Published var home: HomeSnapshot?
     @Published var error: String?
     @Published var busy = false
+    @Published var syncPhases: [String: ConnectionSyncPhase] = [:]
     @Published var homeRefreshError: String?
     @Published var analysis: AnalysisData?
     @Published var analysisLoading = false
@@ -379,8 +386,12 @@ final class SessionStore: ObservableObject {
 
     func sync(_ brand: String) async {
         guard let token else { return }
+        syncPhases[brand] = .syncing
         await run {
             self.home = try await YuiClient.shared.sync(token: token, brand: brand)
+        }
+        if self.token != nil {
+            syncPhases[brand] = error.map(ConnectionSyncPhase.failed) ?? .completed
         }
     }
 
@@ -404,6 +415,7 @@ final class SessionStore: ObservableObject {
         homeRefreshError = nil
         token = nil
         home = nil
+        syncPhases = [:]
         analysis = nil
         user = nil
         billingStatus = nil

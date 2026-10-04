@@ -3,6 +3,11 @@ import { Check, LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "./ui/button";
 
+export type ConnectorSyncPhase =
+  | { type: "syncing" }
+  | { type: "completed" }
+  | { type: "failed"; message: string };
+
 export function ConnectorCard({
   title,
   badge,
@@ -11,7 +16,8 @@ export function ConnectorCard({
   connected,
   deviceCount,
   error,
-  busy,
+  phase,
+  busyLabel = "同期中…",
   onSync,
   children,
 }: {
@@ -22,12 +28,14 @@ export function ConnectorCard({
   connected: boolean;
   deviceCount: number;
   error?: string;
-  busy?: boolean;
+  phase?: ConnectorSyncPhase;
+  busyLabel?: string;
   onSync: () => void;
   children?: ReactNode;
 }) {
+  const busy = phase?.type === "syncing";
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
+    <section className="rounded-lg border border-border bg-surface p-4" aria-busy={busy}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] tracking-wide text-faint">{badge}</p>
@@ -49,10 +57,14 @@ export function ConnectorCard({
         </Link>
       ) : null}
       {children}
-      {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+      {phase?.type === "completed" ? (
+        <p className="mt-3 flex items-center gap-1 text-sm text-ok" role="status"><Check className="size-4" />同期が完了しました</p>
+      ) : phase?.type === "failed" ? (
+        <p className="mt-3 text-sm text-danger" role="alert">{phase.message}</p>
+      ) : !busy && error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
       <Button className="mt-4 w-full" variant="outline" onClick={onSync} disabled={busy}>
         {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
-        同期する
+        {busy ? busyLabel : "同期する"}
       </Button>
     </section>
   );

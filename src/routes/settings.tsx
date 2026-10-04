@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/lib/auth/gates";
-import { ConnectorCard, Field } from "@/components/connector-card";
+import { ConnectorCard, Field, type ConnectorSyncPhase } from "@/components/connector-card";
 import { Button } from "@/components/ui/button";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -11,7 +11,7 @@ import { saveCredentials, serverSync } from "@/lib/home/control-client";
 import { BILLING } from "@/lib/billing-plan";
 import { useHome } from "@/lib/home/store";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
-import { recentDeviceLan, type Device } from "@/lib/home/types";
+import { recentDeviceLan, type Brand, type Device } from "@/lib/home/types";
 import { useHomeHydrated } from "@/lib/home/use-hydrated";
 import { authClient } from "@/lib/auth/client";
 import alexaSkill from "@/lib/alexa-skill.json";
@@ -40,6 +40,7 @@ export function SettingsPage() {
   const devices = useHome((s) => s.devices);
   const applySnapshot = useHome((s) => s.applySnapshot);
   const [busy, setBusy] = useState<string | null>(null);
+  const [syncPhases, setSyncPhases] = useState<Partial<Record<Brand, ConnectorSyncPhase>>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [billing, setBilling] = useState<{
     configured: boolean;
@@ -128,13 +129,16 @@ export function SettingsPage() {
     }
   }
 
-  async function run(id: string, fn: () => Promise<void>) {
+  async function run(id: Brand, fn: () => Promise<void>) {
     setBusy(id);
+    setSyncPhases((current) => ({ ...current, [id]: { type: "syncing" } }));
     try {
       await fn();
+      setSyncPhases((current) => ({ ...current, [id]: { type: "completed" } }));
     } catch (err) {
       const message = err instanceof Error ? err.message : "同期に失敗しました";
-      setConnector(id as "nature", { error: message, connected: false });
+      setConnector(id, { error: message, connected: false });
+      setSyncPhases((current) => ({ ...current, [id]: { type: "failed", message } }));
       toast.error(message);
     } finally {
       setBusy(null);
@@ -303,7 +307,7 @@ export function SettingsPage() {
           connected={connectors.nature.connected}
           deviceCount={connectors.nature.deviceCount}
           error={connectors.nature.error}
-          busy={busy === "nature"}
+          phase={syncPhases.nature}
           onSync={() =>
             run("nature", async () => {
               await saveCredentials(useHome.getState().credentials);
@@ -330,7 +334,7 @@ export function SettingsPage() {
           connected={connectors.switchbot.connected}
           deviceCount={connectors.switchbot.deviceCount}
           error={connectors.switchbot.error}
-          busy={busy === "switchbot"}
+          phase={syncPhases.switchbot}
           onSync={() =>
             run("switchbot", async () => {
               await saveCredentials(useHome.getState().credentials);
@@ -364,7 +368,7 @@ export function SettingsPage() {
             connected={connectors.daikin.connected}
             deviceCount={connectors.daikin.deviceCount}
             error={connectors.daikin.error}
-            busy={busy === "daikin"}
+            phase={syncPhases.daikin}
             onSync={() =>
               run("daikin", async () => {
                 const snap = await serverSync("daikin");
@@ -383,7 +387,8 @@ export function SettingsPage() {
             connected={connectors.odelec.connected}
             deviceCount={connectors.odelec.deviceCount}
             error={connectors.odelec.error}
-            busy={busy === "odelec"}
+            phase={syncPhases.odelec}
+            busyLabel="照明を探索中…"
             onSync={() =>
               run("odelec", async () => {
                 const snap = await serverSync("odelec");
@@ -402,7 +407,7 @@ export function SettingsPage() {
           connected={connectors.smartlife.connected}
           deviceCount={connectors.smartlife.deviceCount}
           error={connectors.smartlife.error}
-          busy={busy === "smartlife"}
+          phase={syncPhases.smartlife}
           onSync={() =>
             run("smartlife", async () => {
               await saveCredentials(useHome.getState().credentials);
