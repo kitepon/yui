@@ -11,7 +11,7 @@ import { patchFromAction } from "@/lib/home/device-patch";
 import { parseNativeAutomation, parseNativeSceneSteps } from "@/lib/server/native-edit";
 import type { Brand, Device, Scene } from "@/lib/home/types";
 import { auth } from "@/lib/auth/server";
-import { clientHome, loadHome, replaceHome, saveHome } from "@/lib/server/home-db";
+import { clientHome, loadHome, replaceHome, saveDeviceReadings, saveHome } from "@/lib/server/home-db";
 import { executeDevice, executeScene } from "@/lib/server/execute";
 import { fireDeviceOnServer, fireSceneOnServer, startControlRunner } from "@/lib/server/runner";
 import { newWaveId } from "@/lib/server/analysis";
@@ -379,18 +379,15 @@ export const Route = createFileRoute("/api/home")({
             }
             if (brand === "odelec") {
               const res = await odelicSync(snap.devices);
-              const devices = [
-                ...snap.devices.filter((d) => d.connector !== "odelec" && d.source === "live"),
-                ...res.devices,
-              ];
+              const current = await saveDeviceReadings(homeId, snap.devices, res.devices);
               const saved = await saveHome(userId, {
-                devices,
+                rooms: [...new Set([...current.rooms, ...current.devices.map((device) => device.room)])],
                 connectors: {
-                  ...snap.connectors,
+                  ...current.connectors,
                   odelec: {
                     id: "odelec",
                     connected: true,
-                    deviceCount: res.devices.length,
+                    deviceCount: current.devices.filter((device) => device.connector === "odelec").length,
                     lastSync: new Date().toISOString(),
                   },
                 },

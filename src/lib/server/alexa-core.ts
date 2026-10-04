@@ -1,4 +1,5 @@
-import type { AcMode, Device, DeviceKind, Scene } from "@/lib/home/types";
+import type { AcMode, Device, DeviceKind, DeviceOverride, Scene } from "@/lib/home/types";
+import { applyOverrides } from "../home/overrides.ts";
 
 export type AlexaDirective = {
   header: {
@@ -300,8 +301,8 @@ function alexaThermostatMode(device: Device) {
   return "AUTO";
 }
 
-export function discoverEndpoints(devices: Device[], scenes: Scene[]) {
-  const endpoints = devices.filter(deviceDiscoverable).map((device) => ({
+export function discoverEndpoints(devices: Device[], scenes: Scene[], overrides: Record<string, DeviceOverride> = {}) {
+  const endpoints = applyOverrides(devices, overrides).filter(deviceDiscoverable).map((device) => ({
     endpointId: device.id,
     manufacturerName: "結",
     friendlyName: device.name,

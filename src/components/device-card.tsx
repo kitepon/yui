@@ -51,6 +51,7 @@ function statusLine(device: Device) {
 }
 
 function detailLine(device: Device) {
+  if (device.connector === "odelec" && device.extra === "状態未取得") return device.extra;
   return [stripConnectorFromExtra(device.extra, device.connector) || null, statusLine(device)]
     .filter(Boolean)
     .join(" · ");

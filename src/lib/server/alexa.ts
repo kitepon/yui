@@ -47,7 +47,7 @@ export async function handleAlexaEvent(event: AlexaEvent) {
 
   const { id: homeId, snap } = await loadHome(userId);
   if (intent.type === "discover") {
-    return discoverResponse(event.directive, discoverEndpoints(snap.devices, snap.scenes));
+    return discoverResponse(event.directive, discoverEndpoints(snap.devices, snap.scenes, snap.overrides));
   }
 
   const endpointId = event.directive.endpoint?.endpointId;

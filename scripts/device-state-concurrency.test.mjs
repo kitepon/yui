@@ -39,7 +39,7 @@ const hooks = registerHooks({ resolve(specifier, context, next) {
 } });
 const { emptySnapshot } = await import("../src/lib/home/snapshot.ts");
 const { encryptJson } = await import("../src/lib/server/home-secrets.ts");
-const { loadHomeRecord, saveDeviceState, saveDeviceReadings, replaceHome } = await import("../src/lib/server/home-db.ts");
+const { loadHomeRecord, saveHome, saveDeviceState, saveDeviceReadings, replaceHome } = await import("../src/lib/server/home-db.ts");
 const { executeDevice } = await import("../src/lib/server/execute.ts");
 hooks.deregister();
 
@@ -54,6 +54,38 @@ function seed() {
   return snap;
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
+
+test("登録0台の家へスキャン結果を全部保存し、再登録で重複させない", async () => {
+  seed();
+  const empty = await saveHome("owner", { devices: [] });
+  const lights = [1, 2, 3].map((index) => ({ id: `odelec:02000000000${index}`, nativeId: `02000000000${index}`, name: `照明${index}`, room: "部屋", brand: "odelec", connector: "odelec", kind: "light", source: "live", online: true, extra: "状態未取得" }));
+  const first = await saveDeviceReadings("home", empty.devices, lights);
+  await saveDeviceReadings("home", first.devices, lights);
+  const stored = (await loadHomeRecord("home")).snap;
+  assert.equal(stored.devices.length, 3);
+  assert.equal(new Set(stored.devices.map((device) => device.id)).size, 3);
+  assert.ok(stored.devices.every((device) => device.on === undefined));
+});
+
+test("照明スキャン中の操作と改名を保ち、未登録の照明だけを追加する", async () => {
+  const original = seed();
+  await saveHome("owner", { devices: original.devices.map((device) => device.id === "a" ? { ...device, connector: "odelec", brand: "odelec", kind: "light" } : device) });
+  const before = (await loadHomeRecord("home")).snap;
+  await saveDeviceState("home", "a", { on: false });
+  await saveDeviceState("home", "b", { on: true });
+  await saveHome("owner", { overrides: { a: { name: "料理の灯り", room: "キッチン" } } });
+  const scan = [
+    { ...before.devices[0], on: true, name: "メーカーの初期名", room: "リビング" },
+    { ...before.devices[0], id: "odelec:new-fixed-id", nativeId: "new-fixed-id", name: "新しい照明", on: false },
+  ];
+  const saved = await saveDeviceReadings("home", before.devices, scan);
+  assert.equal(saved.devices.length, 3);
+  assert.equal(saved.devices.find((device) => device.id === "a").on, false);
+  assert.equal(saved.devices.find((device) => device.id === "a").name, "料理の灯り");
+  assert.equal(saved.devices.find((device) => device.id === "a").room, "キッチン");
+  assert.equal(saved.devices.find((device) => device.id === "b").on, true);
+  assert.equal(saved.devices.find((device) => device.id === "odelec:new-fixed-id").on, false);
+});
 
 test("別の機器への操作が後から完了しても、先に保存したOFFは戻らない", async () => {
   const snap = seed();

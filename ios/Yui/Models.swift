@@ -137,6 +137,7 @@ struct Device: Decodable, Identifiable {
 
     var status: String {
         if !online { return "接続できません" }
+        if connector == "odelec", extra == "状態未取得" { return "状態未取得" }
         switch kind {
         case "ac":
             let modes = ["cool": "冷房", "heat": "暖房", "dry": "除湿", "fan": "送風", "auto": "自動", "humidify": "加湿"]

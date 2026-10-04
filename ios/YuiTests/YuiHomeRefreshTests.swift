@@ -63,6 +63,22 @@ final class YuiHomeRefreshTests: XCTestCase {
     }
 }
 
+final class YuiDeviceStatusTests: XCTestCase {
+    func test未受信の照明を消灯と表示しない() throws {
+        let data = Data("""
+        {"id":"odelec:020000000001","name":"照明","room":"部屋","connector":"odelec","kind":"light","source":"live","online":true,"extra":"状態未取得"}
+        """.utf8)
+        var device = try JSONDecoder().decode(Device.self, from: data)
+        XCTAssertNil(device.on)
+        XCTAssertEqual(device.status, "状態未取得")
+        device.on = true
+        XCTAssertEqual(device.status, "状態未取得")
+        device.extra = nil
+        device.on = false
+        XCTAssertEqual(device.status, "消灯")
+    }
+}
+
 private final class HomeRefreshProtocol: URLProtocol {
     static var pending: HomeRefreshProtocol?
     static var delay = false

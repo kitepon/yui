@@ -10,12 +10,10 @@ import type { Device } from "./types";
 
 const NOT_CONFIGURED = "オーデリックのブリッジ（YUI_ODELIC_BRIDGE_URL）が未設定です。";
 
-interface BridgeHealth {
+interface BridgeScan {
   ok: boolean;
   connected: boolean;
-  authed: boolean;
-  /** 短アドレス（"01 00 00 00" 形式）→ "明るさ 色" */
-  status: Record<string, string>;
+  lights: Array<{ id: string; online: boolean; on?: boolean; brightness?: number }>;
 }
 
 function bridgeUrl(): string {
@@ -27,7 +25,7 @@ function bridgeUrl(): string {
 async function bridgeFetch(path: string, init?: RequestInit): Promise<unknown> {
   const res = await fetch(`${bridgeUrl()}${path}`, {
     ...init,
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(path === "/lights/scan" ? 60000 : 8000),
   });
   if (!res.ok) {
     throw new Error(`オーデリック: ブリッジが HTTP ${res.status} を返しました`);
@@ -35,50 +33,46 @@ async function bridgeFetch(path: string, init?: RequestInit): Promise<unknown> {
   return res.json();
 }
 
-/** 短アドレス "05 00 00 00" を、人が読める並び順の番号にする。 */
-function shortAddressLabel(key: string): string {
-  const first = key.split(" ")[0] ?? key;
-  return String(parseInt(first, 16));
-}
-
-export async function odelicSync(registered: Device[] = []): Promise<{ devices: Device[]; rooms: string[] }> {
-  const health = (await bridgeFetch("/health")) as BridgeHealth;
-  if (!health.connected) {
-    throw new Error(
-      "オーデリック: ブリッジは動いていますが照明がまだ繋がっていません。数十秒おいて再同期してください。",
-    );
-  }
-
-  const entries = Object.entries(health.status);
-  if (!entries.length) {
-    throw new Error("オーデリック: 照明の状態がまだ届いていません。少し待って再同期してください。");
-  }
-
-  const devices: Device[] = entries
-    .map(([key, value]) => {
-      const number = shortAddressLabel(key);
-      const brightness = parseInt((value.split(" ")[0] ?? "0"), 16);
+export async function odelicSync(
+  registered: Device[] = [],
+): Promise<{ devices: Device[]; rooms: string[] }> {
+  const scan = (await bridgeFetch("/lights/scan", { method: "POST" })) as BridgeScan;
+  const known = new Map(
+    registered
+      .filter((device) => device.connector === "odelec")
+      .map((device) => [device.id, device]),
+  );
+  const devices: Device[] = [...scan.lights]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((light, index) => {
+      const id = `odelec:${light.id}`;
+      const previous = known.get(id);
       return {
-        id: `odelec:${key.replace(/ /g, "")}`,
-        name: `オーデリック照明 ${number}`,
-        room: "リビング",
+        ...previous,
+        id,
+        name: previous?.name ?? `オーデリック照明 ${index + 1}`,
+        room: previous?.room ?? "リビング",
         brand: "odelec" as const,
         kind: "light" as const,
-        online: true,
+        online: light.online,
         source: "live" as const,
-        nativeId: key.replace(/ /g, ""),
+        nativeId: light.id,
         connector: "odelec" as const,
-        on: brightness > 0,
-        brightness,
+        on: light.on ?? previous?.on,
+        brightness: light.brightness ?? previous?.brightness,
+        extra: light.on === undefined ? "状態未取得" : undefined,
       };
     })
     .sort((a, b) => a.nativeId.localeCompare(b.nativeId));
 
-  // 状態通知は全機器の目録ではない。未通知の登録は残し、取得できていないことを示す。
+  // 今回受信できなかった既存登録も残し、未検出と明示する。
   const observed = new Set(devices.map((device) => device.id));
   const missing = registered
-    .filter((device) => device.connector === "odelec" && device.source === "live" && !observed.has(device.id))
-    .map((device) => ({ ...device, online: health.connected, extra: "状態未取得" }));
+    .filter(
+      (device) =>
+        device.connector === "odelec" && device.source === "live" && !observed.has(device.id),
+    )
+    .map((device) => ({ ...device, online: false, extra: "今回のスキャンでは未検出" }));
   const all = [...devices, ...missing].sort((a, b) => a.nativeId.localeCompare(b.nativeId));
   return { devices: all, rooms: [...new Set(all.map((d) => d.room))] };
 }
@@ -86,7 +80,7 @@ export async function odelicSync(registered: Device[] = []): Promise<{ devices: 
 /**
  * オーデリック照明の操作。
  *
- * 宛先はその照明の mesh アドレス（`nativeId`）で、1 台だけが動く。
+ * 宛先はブリッジが発行した固定ID（`nativeId`）で、1 台だけが動く。
  * 宛先を持たない機器は無いはずだが、万一空なら全灯へ送らず断る——
  * 押した覚えのない照明が動くほうが害が大きい。
  */

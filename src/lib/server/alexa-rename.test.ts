@@ -40,3 +40,17 @@ test("場所の変更も Alexa の説明に出る", () => {
   const endpoints = discoverEndpoints(devices, []);
   assert.match(endpoints.find((e) => e.endpointId === "a")!.description, /寝室/);
 });
+
+test("検出時に現在の改名を適用し、名前を変えても同じ機器IDを返す", () => {
+  const raw = [plug("odelec:05000000", "メーカーの初期名")];
+  const before = discoverEndpoints(raw, [], {
+    "odelec:05000000": { name: "キッチン照明", room: "キッチン" },
+  });
+  const after = discoverEndpoints(raw, [], {
+    "odelec:05000000": { name: "料理の灯り", room: "キッチン" },
+  });
+  assert.equal(before[0].friendlyName, "キッチン照明");
+  assert.equal(after[0].friendlyName, "料理の灯り");
+  assert.equal(after[0].endpointId, before[0].endpointId);
+  assert.equal(after.length, 1);
+});
