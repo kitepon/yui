@@ -163,4 +163,10 @@ WebとiPhoneのNature Remo・SwitchBot・Smart Life・ダイキン・オーデ�
 
 Webの表示2試験とiPhoneの同期・状態更新5試験が成功した。最終のlint・型検査・Node295試験・開発ビルドも成功した。1.0（9）の配布用アーカイブとIPA書き出しは成功し、試験用StoreKit設定とXCTest bundleが含まれないことを確認した。
 
-画面確認と本番Web・TestFlight内部配信は継続中。
+コミット`e36af32`をmainへpushし、`origin/main`の祖先であることを確認して本番へ配備した。公開URLの正常応答と、公開の接続画面からオーデリックを同期し、処理中の回転表示・「照明を探索中」・無効ボタン、探索後の「同期が完了しました」・ボタンの再有効化を確認した。照明の登録は3台のまま保たれた。
+
+iPhoneシミュレーターでは、表示確認用データで5サービスすべての処理中、完了、失敗を確認した。画面記録は[処理中](images/sync-feedback/ios-loading.jpg)、[完了](images/sync-feedback/ios-completed.jpg)、[失敗](images/sync-feedback/ios-failed.jpg)。通信処理から表示への遷移は既存の5試験に含まれる。
+
+Jev Bookmarksは`no_entry`で操作しなかった。Jev Ultrafastは公開の接続画面を開けたが、同期ボタンを操作できずに停止した。Jev DesktopとXcodeの画面読取は時間切れとなった。これらの失敗を明示し、公開Webはブラウザの操作API、iPhoneはDevice Hubの画面操作とスクリーンショットで確認を終えた。
+
+1.0（9）はAppleのIPA検証・altoolアップロードが成功し、`VALID`、既存の「結 内部テスト」への割当、`IN_BETA_TESTING`を確認した。App Store一般公開と再審査は行っていない。所有者のiPhoneへのTestFlight更新と、その端末での表示は未確認。
