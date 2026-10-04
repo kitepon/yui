@@ -77,6 +77,15 @@ Apple署名を本番サーバーで検証する経路は、以前の実機によ
 
 ビルド成功や商品登録だけでは、購入と通知の動作は確認できない。Sandboxの月額購入、サーバーへの利用権反映、復元は実機で確認した。所属不一致後に購入予約が残る欠陥は再現できたが、審査時の失敗が同じ経路だったかは未確定。
 
+## 2026年10月4日の配布確認
+
+App Store Connectで1.0（5）の審査通過と`PENDING_DEVELOPER_RELEASE`を確認した。
+一般公開はまだ実行していない。
+
+Alexaの導入ボタンを追加した1.0（7）は、Appleの検証・アップロードとTestFlight内部配信が完了した。
+審査済みの5を7へ差し替えて再審査に進むかは、Approval Boxで公開方針を申請した。
+配布・検証の結果と待機点は[Alexa導入の実施記録](alexa-skill-install-status.md)を参照する。
+
 ## App Store Connectの自動化
 
 Apple公式の[App Store Connect API](https://developer.apple.com/documentation/appstoreconnectapi)は、ビルド、App Storeバージョン、サブスクリプション、[審査提出](https://developer.apple.com/documentation/appstoreconnectapi/review-submissions)を扱える。次回から対応する登録・更新・状態確認は、リポジトリ外で保管する個人APIキーによるJWT認証を正規経路にする。APIで扱えない申告項目だけApp Store Connectの画面で操作する。

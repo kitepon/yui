@@ -15,3 +15,6 @@
 WebとiPhoneからはAmazonのHTTPSストアページを開く。
 有効化・アカウントリンク・デバイス検出はAmazonの画面で利用者が行う。
 iPhoneのリンクは[SwiftUIのLink](https://developer.apple.com/documentation/swiftui/link)を使う。
+
+導入ボタンの公開後確認、iPhoneのTestFlight配布、一般公開の判断待ちは
+[実施記録](../docs/alexa-skill-install-status.md)にまとめた。

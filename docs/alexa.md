@@ -57,6 +57,7 @@ Amazonのページで有効化し、結で使っている同じアカウント�
 Webは直接読み、iPhoneは同じファイルを配布アプリへ同梱する。
 公開状態の確認記録は [調査記録](../rag/alexa-skill-release.md)、
 提出物の文言は [alexa-store-listing.md](alexa-store-listing.md) を参照する。
+導入ボタンの配布と実機確認の現在地は [実施記録](alexa-skill-install-status.md) に記載する。
 
 Lambda のタイムアウトは **8 秒**（Alexa の上限）。Smart Life のクラウド経路はトークン→状態→コマンドの 3 往復があり、既定の 3 秒では入りきらない。LAN スイッチは保存済みの DP 対応から直接操作を送り、同じ TCP 接続で実状態を確認する。LAN の状態照会も実機を読み、古い保存値に現在時刻を付けて返さない。
 
