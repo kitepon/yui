@@ -34,3 +34,13 @@ Mac版1.0は同じアプリ登録へ追加し、ビルド11を割り当てた。
 どちらも公開方式は`MANUAL`。審査通過後の一般公開は実行していない。両ビルドを既存の「結 内部テスト」へ割り当て、`IN_BETA_TESTING`を確認した。iPhone・iPad・Macの実機でのTestFlight更新後の確認は未完了。
 
 Jev BookmarksはApp Store Connectのログイン画面で停止し、Jev Desktopも読み取りの時間切れで操作できなかった。画面操作はコンピューター操作API、Macの画像寸法の調整はagent-desktopのウィンドウID指定、原寸保存はOSの標準キャプチャで進めた。提出はApple APIを使い、ログイン待ちやツールの失敗を成功とは扱っていない。
+
+## ログイン表示の拒絶への対応
+
+2026年10月5日のApple審査で、iOS版1.0（10）がGuideline 4（Design）により拒絶された。審査端末はiPad Air 11インチ（M3）とiPhone 17 Pro Max。本文はAppleの通知メールで同じ提出IDと照合した。指摘は、Appleログインを他のログイン方法と同等の選択肢として表示し、ボタンのデザインを同等にすること。色・寸法のどれを問題にしたかは本文に書かれていない。
+
+Appleの独自ボタンを白い`ASAuthorizationAppleIDButton`へ替え、既存の認証処理を呼ぶ。Googleの`g.circle.fill`も公式の多色GとGoogle Sansへ替え、Googleが指定する白い配色にした。どちらも幅と高さ57ptを揃え、アプリの開発言語を日本語にした。根拠は[表示基準の確認](../rag/ios-app-store-review.md)。
+
+iPhone 18 ProとiPad Air 11インチ（M4）のiOS 27.0シミュレーターで、日本語表示、同じ幅と高さ、初期画面内での視認性を画面画像で確認した。iPhoneの操作APIはAppleボタンのタップ成功を返したが、認証画面への遷移は確認できなかった。iPadのアクセシビリティ取得は接続の時間切れで失敗した。今回の確認をApple認証の成功とは扱わない。
+
+lint、typecheck、既存295試験、開発用Webビルドは通過。iOSとMac Catalystのビルドで、公式ボタン・ロゴ・フォントを組み込めることを確認した。

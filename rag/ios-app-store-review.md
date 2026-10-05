@@ -15,3 +15,14 @@
 2026年10月2日、Apple公式の[審査項目の更新属性](https://developer.apple.com/documentation/appstoreconnectapi/reviewsubmissionitemupdaterequest/data-data.dictionary/attributes-data.dictionary)に`resolved`、[提出の更新属性](https://developer.apple.com/documentation/appstoreconnectapi/reviewsubmissionupdaterequest/data-data.dictionary/attributes-data.dictionary)に`submitted`があることを確認した。再拒絶を解決した同じ提出では、修正版のビルドと審査説明を保存してから、拒絶項目を解決済みにし、提出を再送する。App Store版、サブスクリプショングループ、月額・年額の4項目を同じ提出で保つ。
 
 Markdown版には属性一覧が省略されていたため、同じApple文書の`tutorials/data/documentation/appstoreconnectapi/`配下のJSONで属性名とboolean型を確認した。審査用パスワードを含む説明は公式APIにだけ送り、リポジトリやコマンドの出力へ記録しない。
+
+## ログインボタンの表示基準
+
+出典: [Apple HIG](https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple)、[Appleの公式ボタン](https://developer.apple.com/documentation/authenticationservices/asauthorizationappleidbutton)、[Google Identity](https://developers.google.com/identity/branding-guidelines)。取得日: 2026-10-06。確度: 公式仕様。短い原文は[抜粋](ios-storekit/raw/sign-in-branding-excerpts.md)へ保存した。
+
+- Appleのボタンは他のログインボタンより小さくせず、スクロールせず見える位置に置く。黒いスタイルは明るい背景、白いスタイルは暗い背景で使う。
+- 独自のAppleボタンも許されるが、公式のロゴ素材・色・表示名と文字／高さの比率を守る。システムフォントでは文字サイズがボタン高さの約43%。公式部品ではこの描画をOSへ任せられる。
+- Googleのボタンには公式の多色Gを使う。自作・単色・古いGで代用しない。白い背景の指定色は文字`#1F1F1F`、枠`#747775`、指定フォントはGoogle Sans Medium。拡大時もロゴの縦横比を保持する。
+- 結の旧Appleボタンは暗い背景に黒を置き、高さ57ptに文字16ptだった。Googleは`g.circle.fill`を使っていた。Appleの拒絶メッセージは「同等のログイン選択肢として表示されていない」とだけ述べており、これらのどれを審査員が問題にしたかは未確定。
+
+公式素材の取得元は[ロゴ](https://developers.google.com/static/identity/images/g-logo.png)、[フォント](https://github.com/google/fonts/tree/main/ofl/googlesans)。元ファイルを使い、フォントのOFLを同梱する。画面の日本語表示に合わせてアプリの開発言語を日本語にする。

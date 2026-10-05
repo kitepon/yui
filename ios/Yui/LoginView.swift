@@ -32,44 +32,35 @@ struct LoginView: View {
                     .foregroundStyle(YuiTheme.muted)
                     .padding(.top, 8)
 
-                Button {
+                AppleSignInButton {
                     Task { await session.signInWithApple() }
-                } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: "apple.logo")
-                            .font(.system(size: 23))
-                        Spacer()
-                        Text("Appleでログイン")
-                            .font(.system(size: 16, weight: .semibold))
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 13, weight: .semibold))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 20)
-                    .frame(height: 57)
-                    .background(.black, in: RoundedRectangle(cornerRadius: 17))
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 57)
                 .disabled(session.busy)
                 .padding(.top, 29)
 
                 Button {
                     Task { await session.signInWithGoogle() }
                 } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: "g.circle.fill")
-                            .font(.system(size: 24))
-                        Spacer()
+                    HStack(spacing: 12) {
+                        Image("GoogleLogo")
+                            .renderingMode(.original)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 26, height: 26)
                         Text("Googleでログイン")
-                            .font(.system(size: 16, weight: .semibold))
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.custom("GoogleSans-Regular", size: 20).weight(.medium))
                     }
-                    .foregroundStyle(YuiTheme.bg)
-                    .padding(.horizontal, 20)
+                    .foregroundStyle(Color(red: 31 / 255, green: 31 / 255, blue: 31 / 255))
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
                     .frame(height: 57)
-                    .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 17))
+                    .background(.white, in: RoundedRectangle(cornerRadius: 17))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 17)
+                            .strokeBorder(Color(red: 116 / 255, green: 119 / 255, blue: 117 / 255), lineWidth: 1)
+                    }
                 }
                 .disabled(session.busy)
                 .padding(.top, 12)

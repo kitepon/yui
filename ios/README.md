@@ -23,6 +23,12 @@ Debugだけの`-yui-test-login`は`YUI_TEST_EMAIL`と`YUI_TEST_PASSWORD`を起�
 アカウントはその入力欄でも入れる。認証結果は iOS 標準の認証画面からアプリへ戻り、
 一度だけ使えるコードをサーバーでセッションに引き換える。
 
+## ログインボタンの素材
+
+Appleは`ASAuthorizationAppleIDButton`の白い標準ボタンを使う。Googleは[Google Identityの公式ロゴ](https://developers.google.com/static/identity/images/g-logo.png)と[Google FontsのGoogle Sans](https://github.com/google/fonts/tree/main/ofl/googlesans)を使い、白い背景・指定色の文字と枠で表示する。ロゴの縦横比と色を保持し、両ボタンの幅と高さを揃える。[表示基準の確認](../rag/ios-app-store-review.md)。
+
+GoogleのロゴはGoogleのブランド素材で、使用は[Googleの表示基準](https://developers.google.com/identity/branding-guidelines)に従う。Google Sansのライセンスは`Yui/Fonts/OFL.txt`に収める。
+
 実機へのビルドと導入は [INSTALL-DEVICE.md](INSTALL-DEVICE.md)。App Store提出とTestFlight配布の現在地は [課金設定と審査記録](../docs/apple-billing-setup.md) を参照する。
 
 ## 購入処理の自動試験
