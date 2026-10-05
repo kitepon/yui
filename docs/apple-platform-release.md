@@ -44,3 +44,13 @@ Appleの独自ボタンを白い`ASAuthorizationAppleIDButton`へ替え、既存
 iPhone 18 ProとiPad Air 11インチ（M4）のiOS 27.0シミュレーターで、日本語表示、同じ幅と高さ、初期画面内での視認性を画面画像で確認した。iPhoneの操作APIはAppleボタンのタップ成功を返したが、認証画面への遷移は確認できなかった。iPadのアクセシビリティ取得は接続の時間切れで失敗した。今回の確認をApple認証の成功とは扱わない。
 
 lint、typecheck、既存295試験、開発用Webビルドは通過。iOSとMac Catalystのビルドで、公式ボタン・ロゴ・フォントを組み込めることを確認した。
+
+修正コミット`35b9e7b`をmainへpushし、`origin/main`の祖先であることを確認して、iOS版1.0（12）のReleaseアーカイブを作成した。署名、暗号化申告`NO`、日本語の開発言語、公式Googleロゴとフォント、試験素材の除外を配布物で確認した。AppleのIPA検証とaltoolアップロードはエラーなしで成功した。
+
+Apple側の処理`VALID`と、既存の「結 内部テスト」へ割り当てた後の`IN_BETA_TESTING`を確認した。ビルドIDは`e2835427-feb4-4083-8f7b-0bad0b92a51d`。審査説明へ修正内容と確認範囲を追記し、既存の審査認証情報が変わっていないことを照合した。
+
+2026年10月6日8時7分（日本時間）、同じ提出`5750afa1-dc53-4acd-91a1-bb204d253190`をビルド12で再送した。提出とiOS版の両方で`WAITING_FOR_REVIEW`、審査項目1件で`READY_FOR_REVIEW`を確認した。一般公開は手動設定のまま、Appleの審査結果を待つ。TestFlightの実機導入と認証画面の操作確認は未完了。Mac版1.0（11）の提出も引き続き`WAITING_FOR_REVIEW`。
+
+![iPhoneのログインボタン](images/sign-in/apple-google-iphone.jpg)
+
+![iPadのログインボタン](images/sign-in/apple-google-ipad.jpg)
