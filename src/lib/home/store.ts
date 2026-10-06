@@ -5,6 +5,7 @@ import { DEMO_CLIMATE, DEMO_DEVICES, matchesStep, SCENES } from "./demo";
 import { emptyConnectors, type HomeSnapshot } from "./snapshot";
 import { dropRoomFromOrder, renameOrderKey } from "./order";
 import { applyOverrides } from "./overrides";
+import { newDeviceGroupId, normalizeDeviceGroups } from "./device-group";
 import {
   DEFAULT_ROOMS,
   EMPTY_CREDENTIALS,
@@ -15,6 +16,8 @@ import {
   type Credentials,
   type Device,
   type DeviceCommand,
+  type DeviceGroup,
+  type DeviceGroupState,
   type DeviceOverride,
   type Scene,
   migrateAutomation,
@@ -34,6 +37,9 @@ interface HomeState {
   deviceOrder: Record<string, string[]>;
   scenes: Scene[];
   automations: Automation[];
+  /** サーバーから受けるまでは null。受ける前に空の一覧を保存すると、サーバーのグループが消える。 */
+  deviceGroups: DeviceGroup[] | null;
+  deviceGroupStates: Record<string, DeviceGroupState>;
   pairPin: string;
   credentialFlags: Record<keyof Credentials, boolean> | null;
   odelicBridge: boolean;
@@ -68,6 +74,8 @@ interface HomeState {
   moveAutomation: (id: string, dir: -1 | 1) => void;
   markAutomationFired: (id: string, key: string) => void;
   markLastRanAutomation: (id: string) => void;
+  saveDeviceGroup: (group: Omit<DeviceGroup, "id"> & { id?: string }) => void;
+  removeDeviceGroup: (id: string) => void;
 }
 
 const defaultConnectors = emptyConnectors;
@@ -96,6 +104,7 @@ export function snapshotFromState(s: {
   automations: Automation[];
   lastScene: string | null;
   lastRanAutomationId?: string | null;
+  deviceGroups?: DeviceGroup[] | null;
   savedAt: string | null;
   pairPin?: string;
 }): HomeSnapshot {
@@ -111,6 +120,7 @@ export function snapshotFromState(s: {
     automations: s.automations,
     lastScene: s.lastScene,
     lastRanAutomationId: s.lastRanAutomationId ?? null,
+    deviceGroups: s.deviceGroups ?? undefined,
     savedAt: s.savedAt,
     pairPin: s.pairPin ?? "",
   };
@@ -144,6 +154,8 @@ export const useHome = create<HomeState>()(
       deviceOrder: {},
       scenes: SCENES,
       automations: [],
+      deviceGroups: null,
+      deviceGroupStates: {},
       pairPin: "",
       credentialFlags: null,
       odelicBridge: false,
@@ -169,6 +181,8 @@ export const useHome = create<HomeState>()(
           automations: snap.automations,
           lastScene: snap.lastScene,
           lastRanAutomationId: snap.lastRanAutomationId ?? null,
+          deviceGroups: snap.deviceGroups ?? [],
+          deviceGroupStates: snap.deviceGroupStates ?? {},
           savedAt: snap.savedAt,
           pairPin: snap.pairPin,
           serverHost: host ?? get().serverHost,
@@ -403,6 +417,21 @@ export const useHome = create<HomeState>()(
           ),
         })),
       markLastRanAutomation: (id) => set({ lastRanAutomationId: id }),
+      saveDeviceGroup: (group) =>
+        set((s) => {
+          if (!s.deviceGroups) return s;
+          const next = { ...group, id: group.id ?? newDeviceGroupId() };
+          // 編集したグループを先頭にして揃える。同じ機器が他のグループにあれば、そちらから外れる。
+          const merged = normalizeDeviceGroups([next, ...s.deviceGroups.filter((g) => g.id !== next.id)]);
+          const order = s.deviceGroups.map((g) => g.id);
+          const deviceGroups = [
+            ...order.flatMap((id) => merged.filter((g) => g.id === id)),
+            ...merged.filter((g) => !order.includes(g.id)),
+          ];
+          return { deviceGroups, savedAt: nowIso() };
+        }),
+      removeDeviceGroup: (id) =>
+        set((s) => (s.deviceGroups ? { deviceGroups: s.deviceGroups.filter((g) => g.id !== id), savedAt: nowIso() } : s)),
     }),
     {
       name: "yui-home",

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { HomeSnapshot } from "../home/snapshot.ts";
-import { parseNativeAutomation, parseNativeSceneSteps } from "./native-edit.ts";
+import { parseNativeAutomation, parseNativeDeviceGroup, parseNativeSceneSteps } from "./native-edit.ts";
 
 function home() {
   return { devices: [
@@ -44,4 +44,21 @@ test("iPhone のオートメーションは範囲条件と読み返せる機器�
   assert.equal(parseNativeAutomation(draft, snap)?.actions[0].targetTemp, 24);
   assert.equal(parseNativeAutomation({ ...draft, actions: [{ id: "action", deviceId: "ir", on: true }] }, snap), null);
   assert.equal(parseNativeAutomation({ ...draft, trigger: { ...draft.trigger, valueMax: 20 } }, snap), null);
+});
+
+test("iPhone の機器グループは実在する機器と分数を検証し、機器の重複を拒む", () => {
+  const snap = home();
+  snap.devices.push({ ...snap.devices[1], id: "sensor", kind: "sensor" });
+  const draft = { name: " 換気扇 ", deviceIds: ["ac", "ir", "ac"], lockMinutes: 10 };
+  assert.deepEqual(parseNativeDeviceGroup(draft, snap), { name: "換気扇", deviceIds: ["ac", "ir"], lockMinutes: 10 });
+  assert.equal(parseNativeDeviceGroup({ ...draft, deviceIds: ["missing"] }, snap), null);
+  assert.equal(parseNativeDeviceGroup({ ...draft, deviceIds: ["sensor"] }, snap), null);
+  assert.equal(parseNativeDeviceGroup({ ...draft, deviceIds: [] }, snap), null);
+  assert.equal(parseNativeDeviceGroup({ ...draft, name: " " }, snap), null);
+  for (const lockMinutes of [0, 1.5, 1441]) assert.equal(parseNativeDeviceGroup({ ...draft, lockMinutes }, snap), null);
+
+  snap.deviceGroups = [{ id: "fan", name: "換気扇", deviceIds: ["ac", "gone"], lockMinutes: 5 }];
+  assert.equal(parseNativeDeviceGroup({ ...draft, deviceIds: ["ac"] }, snap), null);
+  // 同期で一時的に消えた機器も、編集中のグループには残せる。
+  assert.deepEqual(parseNativeDeviceGroup({ ...draft, deviceIds: ["ac", "gone"] }, snap, "fan")?.deviceIds, ["ac", "gone"]);
 });

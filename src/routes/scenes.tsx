@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AutomationEditor } from "@/components/automation-editor";
+import { DeviceGroupEditor } from "@/components/device-group-editor";
 import { SceneEditor } from "@/components/scene-editor";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/lib/auth/gates";
@@ -8,8 +9,9 @@ import { ReorderButtons } from "@/components/reorder-buttons";
 import { Button } from "@/components/ui/button";
 import { describeAction, describeTrigger, executeAutomation } from "@/lib/home/run-automation";
 import { runScene } from "@/lib/home/run";
+import { groupLockNote } from "@/lib/home/device-group";
 import { useHome } from "@/lib/home/store";
-import type { Automation, Scene } from "@/lib/home/types";
+import type { Automation, DeviceGroup, Scene } from "@/lib/home/types";
 import { cn } from "@/lib/cn";
 
 export const Route = createFileRoute("/scenes")({
@@ -29,7 +31,12 @@ export function ScenesPage() {
   const moveAutomation = useHome((s) => s.moveAutomation);
   const toggleAutomation = useHome((s) => s.toggleAutomation);
   const removeAutomation = useHome((s) => s.removeAutomation);
+  const devices = useHome((s) => s.devices);
+  const deviceGroups = useHome((s) => s.deviceGroups);
+  const deviceGroupStates = useHome((s) => s.deviceGroupStates);
+  const removeDeviceGroup = useHome((s) => s.removeDeviceGroup);
   const [editingAuto, setEditingAuto] = useState<Automation | null | "new">(null);
+  const [editingGroup, setEditingGroup] = useState<DeviceGroup | null | "new">(null);
   const [editingScene, setEditingScene] = useState<Scene | null | "new">(null);
 
   return (
@@ -140,6 +147,57 @@ export function ScenesPage() {
         </div>
       </section>
 
+      {deviceGroups ? (
+        <section className="mt-10 px-4">
+          <p className="text-[11px] tracking-[0.22em] text-faint">GROUP</p>
+          <h2 className="mt-1 font-display text-2xl text-fg">機器グループ</h2>
+          <p className="mt-2 text-sm text-muted">
+            入と切が別々の機器のように、複数で一つの働きをする機器をまとめます。どれかを動かすと、決めた時間はグループの機器をオートメーションから動かしません。
+          </p>
+          <Button className="mt-4 h-12 w-full" variant="outline" onClick={() => setEditingGroup("new")}>
+            グループを作る
+          </Button>
+
+          <div className="mt-4 space-y-2">
+            {deviceGroups.map((group) => {
+              const names = group.deviceIds.map((id) => devices.find((d) => d.id === id)?.name ?? "見つからない機器");
+              const note = groupLockNote(group, deviceGroupStates[group.id], automations, Date.now());
+              return (
+                <div key={group.id} className="rounded-lg border border-border bg-bg-2 px-3 py-3">
+                  <p className="text-base text-fg">{group.name}</p>
+                  <p className="mt-1 text-xs text-faint">
+                    {names.join("、") || "機器なし"} · {group.lockMinutes}分
+                  </p>
+                  {note ? <p className="mt-1 text-xs text-muted">{note}</p> : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="h-11 rounded-md bg-surface px-3 text-sm text-fg"
+                      onClick={() => setEditingGroup(group)}
+                    >
+                      編集
+                    </button>
+                    <button
+                      type="button"
+                      className="h-11 rounded-md px-3 text-sm text-muted"
+                      onClick={() => removeDeviceGroup(group.id)}
+                    >
+                      削除
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {editingGroup ? (
+        <DeviceGroupEditor
+          initial={editingGroup === "new" ? null : editingGroup}
+          onClose={() => setEditingGroup(null)}
+        />
+      ) : null}
       {editingAuto ? (
         <AutomationEditor
           initial={editingAuto === "new" ? null : editingAuto}

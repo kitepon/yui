@@ -309,6 +309,34 @@ export interface Automation {
   stopOnMatch?: boolean;
 }
 
+/**
+ * 複数の機器を一つの機器とみなすグループ。
+ * どれかを動かすと、決めた時間はグループの機器をオートメーションから動かさない。
+ */
+export interface DeviceGroup {
+  id: string;
+  name: string;
+  deviceIds: string[];
+  /** グループのどれかを動かしてから、オートメーションの操作を止める分数。 */
+  lockMinutes: number;
+}
+
+/** 止めている間に来たオートメーションの操作。グループごとに最後の1件だけ持つ。 */
+export interface DeviceGroupPending {
+  automationId: string;
+  actionIds: string[];
+  at: string;
+}
+
+/** グループの実行時の記録。サーバーだけが書く。 */
+export interface DeviceGroupState {
+  /** グループのどれかを最後に動かした時刻。 */
+  operatedAt: string;
+  /** そのとき動かした機器。 */
+  deviceId: string;
+  pending?: DeviceGroupPending;
+}
+
 export const DEFAULT_ROOMS = ["リビング", "寝室", "玄関", "その他"];
 
 export function newActionId() {

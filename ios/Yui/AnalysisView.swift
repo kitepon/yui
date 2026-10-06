@@ -283,6 +283,7 @@ struct AnalysisView: View {
             "claimed_by": "上のオートメーションが機器を取った",
             "already_applied": "いまの設定と同じ",
             "unreadable": "設定を読み返せない",
+            "group_locked": "グループが操作を止めている",
         ]
         if let reason = event.reason { return labels[reason] ?? reason }
         return event.detail

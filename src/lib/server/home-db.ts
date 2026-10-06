@@ -4,6 +4,7 @@ import { isDeepStrictEqual } from "node:util";
 import { emptySnapshot, type HomeSnapshot } from "@/lib/home/snapshot";
 import { migrateAutomation } from "@/lib/home/types";
 import type { Device } from "@/lib/home/types";
+import { normalizeDeviceGroups, pruneGroupStates, stampGroupOperation, type DeviceGroupStates } from "@/lib/home/device-group";
 import { applyOverrides } from "@/lib/home/overrides";
 import { daikinConfigured, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import { tuyaLanDiscoveryStatus } from "@/lib/home/tuya-lan";
@@ -33,6 +34,7 @@ function newPin() {
 }
 
 function bodyOf(snap: HomeSnapshot) {
+  const deviceGroups = normalizeDeviceGroups(snap.deviceGroups);
   return {
     devices: snap.devices,
     climate: snap.climate,
@@ -44,6 +46,8 @@ function bodyOf(snap: HomeSnapshot) {
     automations: snap.automations.map(migrateAutomation).filter((a): a is NonNullable<typeof a> => a != null),
     lastScene: snap.lastScene,
     lastRanAutomationId: snap.lastRanAutomationId ?? null,
+    deviceGroups,
+    deviceGroupStates: pruneGroupStates(deviceGroups, snap.deviceGroupStates),
     savedAt: snap.savedAt,
   };
 }
@@ -64,6 +68,8 @@ function decodeRow(row: HomeRow): { id: string; ownerUserId: string; snap: HomeS
       devices: (body.devices ?? base.devices).filter((d) => !isRetiredDaikinOutdoorId(d.id)),
       credentials,
       automations: (body.automations ?? []).map(migrateAutomation).filter((a): a is NonNullable<typeof a> => a != null),
+      deviceGroups: normalizeDeviceGroups(body.deviceGroups),
+      deviceGroupStates: body.deviceGroupStates ?? {},
       pairPin: row.pair_pin,
     },
   };
@@ -208,6 +214,9 @@ export async function replaceHome(ownerUserId: string, next: HomeSnapshot): Prom
     credentials: mergeIncomingCredentials(cur.snap.credentials, next.credentials),
     pairPin: cur.snap.pairPin,
     lastRanAutomationId: next.lastRanAutomationId ?? cur.snap.lastRanAutomationId ?? null,
+    // グループを知らない古い画面は項目ごと送ってこない。そのときは消さない。
+    deviceGroups: next.deviceGroups ?? cur.snap.deviceGroups,
+    deviceGroupStates: cur.snap.deviceGroupStates,
     automations: (next.automations ?? []).map((a) => {
       const prev = prevById.get(a.id);
       return {
@@ -258,12 +267,38 @@ export function deviceStateChanges(before: Device, after: Device): Partial<Devic
   return Object.fromEntries(DEVICE_STATE_KEYS.filter((key) => !isDeepStrictEqual(before[key], after[key])).map((key) => [key, after[key]]));
 }
 
-/** 操作した機器の項目だけを、最新の家へ保存する。読取と書込の間に await を置かない。 */
+/**
+ * 操作した機器の項目だけを、最新の家へ保存する。読取と書込の間に await を置かない。
+ * 機器がグループに入っていれば、グループを動かした時刻も同じ書込で残す。
+ */
 export async function saveDeviceState(homeId: string, deviceId: string, patch: Partial<Device>): Promise<HomeSnapshot> {
   const cur = readHomeRecord(homeId);
   if (!cur) throw new Error("家が無い");
   if (!cur.snap.devices.some((device) => device.id === deviceId)) throw new Error("機器が無い");
-  const saved = withOverrides({ ...cur.snap, devices: cur.snap.devices.map((device) => device.id === deviceId ? { ...device, ...patch } : device), savedAt: new Date().toISOString() });
+  const now = new Date().toISOString();
+  const saved = withOverrides({
+    ...cur.snap,
+    devices: cur.snap.devices.map((device) => device.id === deviceId ? { ...device, ...patch } : device),
+    deviceGroupStates: stampGroupOperation(cur.snap.deviceGroups, cur.snap.deviceGroupStates, deviceId, now),
+    savedAt: now,
+  });
+  persistRow(homeId, cur.ownerUserId, saved);
+  return saved;
+}
+
+/**
+ * グループの実行時の記録だけを、最新の家へ保存する。読取と書込の間に await を置かない。
+ * `update` は最新の家を見て決める。null を返したら書かない。
+ */
+export async function saveDeviceGroupStates(
+  homeId: string,
+  update: (snap: HomeSnapshot) => DeviceGroupStates | null,
+): Promise<HomeSnapshot> {
+  const cur = readHomeRecord(homeId);
+  if (!cur) throw new Error("家が無い");
+  const deviceGroupStates = update(cur.snap);
+  if (!deviceGroupStates) return cur.snap;
+  const saved = withOverrides({ ...cur.snap, deviceGroupStates, savedAt: new Date().toISOString() });
   persistRow(homeId, cur.ownerUserId, saved);
   return saved;
 }

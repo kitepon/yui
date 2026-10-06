@@ -8,7 +8,7 @@ import { daikinSync } from "@/lib/home/daikin";
 import { isLanOwner } from "@/lib/server/lan-owner";
 import { moveById, orderedByIds } from "@/lib/home/order";
 import { patchFromAction } from "@/lib/home/device-patch";
-import { parseNativeAutomation, parseNativeSceneSteps } from "@/lib/server/native-edit";
+import { parseNativeAutomation, parseNativeDeviceGroup, parseNativeSceneSteps } from "@/lib/server/native-edit";
 import type { Brand, Device, Scene } from "@/lib/home/types";
 import { auth } from "@/lib/auth/server";
 import { clientHome, loadHome, replaceHome, saveDeviceReadings, saveHome } from "@/lib/server/home-db";
@@ -269,6 +269,33 @@ export const Route = createFileRoute("/api/home")({
             return Response.json({ error: "場面が見つかりません" }, { status: 404 });
           }
           const saved = await saveHome(userId, { scenes: snap.scenes.filter((scene) => scene.id !== sceneId) });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "group-save") {
+          const groupId = String(body.groupId ?? "");
+          const groups = snap.deviceGroups ?? [];
+          const previous = groupId ? groups.find((group) => group.id === groupId) : undefined;
+          if (groupId && !previous) {
+            return Response.json({ error: "グループが見つかりません" }, { status: 404 });
+          }
+          const draft = parseNativeDeviceGroup(body.group, snap, previous?.id);
+          if (!draft) return Response.json({ error: "グループの設定が不正です" }, { status: 400 });
+          const group = { ...draft, id: previous?.id ?? `group-${randomUUID()}` };
+          const deviceGroups = previous
+            ? groups.map((item) => item.id === previous.id ? group : item)
+            : [...groups, group];
+          const saved = await saveHome(userId, { deviceGroups });
+          return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
+        }
+
+        if (op === "group-remove") {
+          const groupId = String(body.groupId ?? "");
+          const groups = snap.deviceGroups ?? [];
+          if (!groups.some((group) => group.id === groupId)) {
+            return Response.json({ error: "グループが見つかりません" }, { status: 404 });
+          }
+          const saved = await saveHome(userId, { deviceGroups: groups.filter((group) => group.id !== groupId) });
           return Response.json(clientHome(saved, request.headers.get("host"), who.lanOwner));
         }
 

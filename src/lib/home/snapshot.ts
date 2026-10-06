@@ -8,6 +8,8 @@ import {
   type ConnectorStatus,
   type Credentials,
   type Device,
+  type DeviceGroup,
+  type DeviceGroupState,
   type DeviceOverride,
   type Scene,
 } from "./types";
@@ -25,6 +27,10 @@ export interface HomeSnapshot {
   lastScene: string | null;
   /** 直前に機器を動かしたオートメーション。 */
   lastRanAutomationId?: string | null;
+  /** 一つの機器とみなす機器のグループ。古い画面は送ってこない。 */
+  deviceGroups?: DeviceGroup[];
+  /** グループ id → 実行時の記録。サーバーだけが書く。 */
+  deviceGroupStates?: Record<string, DeviceGroupState>;
   savedAt: string | null;
   pairPin: string;
   host?: string;
@@ -61,6 +67,8 @@ export function emptySnapshot(): HomeSnapshot {
     automations: [],
     lastScene: null,
     lastRanAutomationId: null,
+    deviceGroups: [],
+    deviceGroupStates: {},
     savedAt: null,
     pairPin: "",
   };

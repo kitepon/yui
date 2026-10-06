@@ -1,16 +1,17 @@
 import type { HomeSnapshot } from "@/lib/home/snapshot";
-import type { Automation } from "@/lib/home/types";
+import type { Automation, DeviceGroupPending } from "@/lib/home/types";
 import type { AnalysisSource } from "@/lib/home/analysis-series";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
 import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
+import { clearGroupPendings, deferGroupActions, dueGroupPendings, partitionGroupLocked } from "@/lib/home/device-group";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { startTuyaLanDiscovery, tuyaLanRefreshSensors } from "@/lib/home/tuya-lan";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
 import { heldSkipReason } from "@/lib/home/analysis-series";
 import { homeBelongsToLanOwner } from "./lan-owner";
-import { listAutomationHomeIds, loadHomeRecord, saveDeviceReadings, saveHomeRecord } from "./home-db";
+import { listAutomationHomeIds, loadHomeRecord, saveDeviceGroupStates, saveDeviceReadings, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
 import { startBackupRunner } from "./home-backup";
 import { billingConfigured, loadEntitlement } from "./billing";
@@ -99,6 +100,8 @@ async function runPrioritized(
   let cur = snap;
   const lastRan = cur.lastRanAutomationId;
   const planned = prioritizeAutomationActions(firing);
+  // グループが止めた操作。同じ波では一覧の上を残す。
+  const deferred = new Map<string, DeviceGroupPending>();
   for (const auto of firing) {
     const current = cur.automations.find((a) => a.id === auto.id) ?? auto;
     const actions = planned.get(auto.id) ?? [];
@@ -138,10 +141,64 @@ async function runPrioritized(
     }
     if (!split.run.length) continue;
     const holding = holds.has(auto.id);
-    cur = await runAutomation(homeId, cur, { ...current, actions: split.run }, {
+    // 止めるかは送る前に一度だけ決める。同じオートメーションがグループの機器を続けて動かすのは通す。
+    // センサーの読取中に人が動かした分を見落とさないよう、グループの記録は保存済みの最新を読む。
+    const latest = cur.deviceGroups?.length ? ((await loadHomeRecord(homeId))?.snap ?? cur) : cur;
+    const gate = partitionGroupLocked(split.run, latest.deviceGroups, latest.deviceGroupStates, Date.now());
+    const blocked = new Set<string>();
+    for (const { action, group, until } of gate.locked) {
+      const device = cur.devices.find((d) => d.id === action.deviceId);
+      // 条件成立が続いている回に、もともと送らない操作は従来の省略として扱う。
+      if (holding && (!device || skipHeldRepeat(device, patchFromAction(action)))) continue;
+      blocked.add(action.id);
+      // 条件成立が続くあいだは毎回判定し直すので、覚えるのは成立した最初の回だけ。
+      if (!holding) {
+        const pending = deferred.get(group.id) ?? { automationId: current.id, actionIds: [], at: new Date().toISOString() };
+        if (pending.automationId === current.id) pending.actionIds.push(action.id);
+        deferred.set(group.id, pending);
+      }
+      recordEvent({
+        homeId,
+        waveId,
+        source,
+        automationId: current.id,
+        automationName: current.name,
+        deviceId: action.deviceId,
+        deviceName: device?.name,
+        outcome: "skipped",
+        reason: "group_locked",
+        detail: JSON.stringify({ group: group.id, name: group.name, until: new Date(until).toISOString() }),
+      });
+    }
+    const run = split.run.filter((action) => !blocked.has(action.id));
+    if (!run.length) continue;
+    cur = await runAutomation(homeId, cur, { ...current, actions: run }, {
       onlyIfDifferent: holding,
       source,
       waveId,
+    });
+  }
+  if (deferred.size) {
+    cur = await saveDeviceGroupStates(homeId, (snap) => deferGroupActions(snap.deviceGroupStates, deferred));
+  }
+  return cur;
+}
+
+/**
+ * グループが覚えている操作を片付ける。条件が外れた分は捨て、
+ * 操作を止める時間が明けた分は一度だけ送る。
+ */
+async function runPendingGroupActions(homeId: string) {
+  let run: ReturnType<typeof dueGroupPendings>["run"] = [];
+  let cur = await saveDeviceGroupStates(homeId, (snap) => {
+    const due = dueGroupPendings(snap, Date.now());
+    run = due.run;
+    return due.clear.length ? clearGroupPendings(snap.deviceGroupStates, due.clear) : null;
+  });
+  for (const item of run) {
+    cur = await runAutomation(homeId, cur, { ...item.automation, actions: item.actions }, {
+      source: "tick",
+      waveId: newWaveId(),
     });
   }
   return cur;
@@ -279,6 +336,7 @@ export async function tickHome(homeId: string) {
   snap = await refreshSensorReadings(homeId, snap);
   recordHomeSamples(homeId, snap);
   await tickMatching(homeId, snap);
+  await runPendingGroupActions(homeId);
   pruneAnalysis(homeId);
 }
 

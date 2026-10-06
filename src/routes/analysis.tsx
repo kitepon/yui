@@ -51,6 +51,7 @@ const REASON_LABEL: Record<string, string> = {
   claimed_by: "上のオートメーションが機器を取った",
   already_applied: "いまの設定と同じ",
   unreadable: "設定を読み返せない",
+  group_locked: "グループが操作を止めている",
 };
 
 function windowOf(range: RangeKey) {
@@ -213,6 +214,14 @@ function reasonText(reason: string | null, detail: string | null) {
     try {
       const body = detail ? (JSON.parse(detail) as { name?: string }) : {};
       if (body.name) return `${body.name} が機器を取った`;
+    } catch {
+      /* keep default */
+    }
+  }
+  if (reason === "group_locked") {
+    try {
+      const body = detail ? (JSON.parse(detail) as { name?: string }) : {};
+      if (body.name) return `グループ「${body.name}」が操作を止めている`;
     } catch {
       /* keep default */
     }

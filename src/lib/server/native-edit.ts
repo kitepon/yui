@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { matchesStep } from "../home/demo.ts";
+import { GROUP_LOCK_MINUTES_MAX, GROUP_LOCK_MINUTES_MIN } from "../home/device-group.ts";
 import { fillVisibleDefaults, reportsActuatorState } from "../home/device-patch.ts";
 import type { HomeSnapshot } from "../home/snapshot.ts";
 import { completeTrigger, isSensorSource, sensorMetricsOf, type AutoAction, type AutoTrigger, type SceneStep } from "../home/types.ts";
@@ -57,6 +58,12 @@ const automationSchema = z.strictObject({
   })).min(1),
 });
 
+const deviceGroupSchema = z.strictObject({
+  name: z.string().trim().min(1),
+  deviceIds: z.array(z.string().min(1)).min(1),
+  lockMinutes: z.number().int().min(GROUP_LOCK_MINUTES_MIN).max(GROUP_LOCK_MINUTES_MAX),
+});
+
 function activeDevices(snap: HomeSnapshot) {
   const live = snap.devices.filter((device) => device.source === "live");
   return live.length ? live : snap.devices;
@@ -99,4 +106,20 @@ export function parseNativeAutomation(input: unknown, snap: HomeSnapshot) {
     actions.push(fillVisibleDefaults(device, action));
   }
   return { name: draft.name, enabled: draft.enabled, stopOnMatch: draft.stopOnMatch, trigger, actions };
+}
+
+/** 機器は一つのグループにだけ入れる。編集中のグループ自身の機器は入れ直せる。 */
+export function parseNativeDeviceGroup(input: unknown, snap: HomeSnapshot, groupId?: string) {
+  const parsed = deviceGroupSchema.safeParse(input);
+  if (!parsed.success) return null;
+  const draft = parsed.data;
+  const deviceIds = [...new Set(draft.deviceIds)];
+  const previous = snap.deviceGroups?.find((group) => group.id === groupId);
+  const taken = new Set((snap.deviceGroups ?? []).filter((group) => group.id !== groupId).flatMap((group) => group.deviceIds));
+  for (const deviceId of deviceIds) {
+    if (taken.has(deviceId)) return null;
+    if (previous?.deviceIds.includes(deviceId)) continue;
+    if (!activeDevices(snap).some((device) => device.id === deviceId && device.kind !== "sensor")) return null;
+  }
+  return { name: draft.name, deviceIds, lockMinutes: draft.lockMinutes };
 }
