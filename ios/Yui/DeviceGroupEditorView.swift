@@ -6,6 +6,10 @@ struct DeviceGroupEditorView: View {
     let group: HomeDeviceGroup?
     @State private var draft: DeviceGroupDraft
     @State private var confirmRemove = false
+    @State private var attemptedSave = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case name, minutes }
 
     init(group: HomeDeviceGroup?) {
         self.group = group
@@ -27,23 +31,41 @@ struct DeviceGroupEditorView: View {
                         .disabled(session.busy)
                 }
                 VStack(alignment: .leading, spacing: 16) {
-                    TextField("グループの名前（例：換気扇）", text: $draft.name)
-                        .font(.system(size: 17, weight: .semibold))
-                        .accessibilityIdentifier("device-group-name")
-                    HStack {
-                        Text("連続操作を止める時間")
-                        Spacer()
-                        TextField("10", text: $draft.lockMinutes)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 65)
-                            .accessibilityLabel("連続操作を止める時間（分）")
-                            .accessibilityIdentifier("device-group-minutes")
-                        Text("分")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("グループ名").font(.system(size: 13)).foregroundStyle(YuiTheme.muted)
+                        TextField("例：換気扇", text: $draft.name)
+                            .textFieldStyle(.plain)
+                            .focused($focusedField, equals: .name)
+                            .font(.system(size: 17))
+                            .padding(12)
+                            .frame(minHeight: 44)
+                            .background(YuiTheme.bg, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(focusedField == .name ? YuiTheme.accent : YuiTheme.border, lineWidth: 1) }
+                            .accessibilityLabel("グループ名")
+                            .accessibilityIdentifier("device-group-name")
                     }
-                    .font(.system(size: 14))
-                    Text("1〜1440分で設定できます")
-                        .font(.system(size: 12)).foregroundStyle(draft.minutes == nil ? YuiTheme.warning : YuiTheme.muted)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("連続操作を止める時間")
+                            .font(.system(size: 13)).foregroundStyle(YuiTheme.muted)
+                        HStack(spacing: 10) {
+                            TextField("10", text: $draft.lockMinutes)
+                                .textFieldStyle(.plain)
+                                .focused($focusedField, equals: .minutes)
+                                .keyboardType(.numberPad)
+                                .font(.system(size: 17).monospacedDigit())
+                                .padding(12)
+                                .frame(width: 120)
+                                .frame(minHeight: 44)
+                                .background(YuiTheme.bg, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(focusedField == .minutes ? YuiTheme.accent : YuiTheme.border, lineWidth: 1) }
+                                .accessibilityLabel("連続操作を止める時間（分）")
+                                .accessibilityIdentifier("device-group-minutes")
+                            Text("分").font(.system(size: 15))
+                            Spacer()
+                        }
+                        Text("1〜1440分。60分で1時間です。")
+                            .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    }
                 }
                 .foregroundStyle(YuiTheme.fg)
                 .padding(18)
@@ -67,11 +89,26 @@ struct DeviceGroupEditorView: View {
                 }
                 Text("グループのどれかを動かすと、設定した時間は自動操作を止めます。手操作・場面・Alexaは使えますが、停止時間を数え直します。止めた最後の操作は、時間が明けても条件が成立していれば送られます。")
                     .font(.system(size: 13)).foregroundStyle(YuiTheme.muted)
+                if attemptedSave, let issue = draft.validationIssue {
+                    Text(issue.message).font(.system(size: 13)).foregroundStyle(YuiTheme.warning)
+                        .accessibilityIdentifier("device-group-validation")
+                }
                 if let error = session.error {
                     Text(error).font(.system(size: 13)).foregroundStyle(YuiTheme.warning)
                         .accessibilityIdentifier("device-group-error")
                 }
                 Button {
+                    attemptedSave = true
+                    session.error = nil
+                    if let issue = draft.validationIssue {
+                        switch issue {
+                        case .name: focusedField = .name
+                        case .minutes: focusedField = .minutes
+                        case .devices: focusedField = nil
+                        }
+                        return
+                    }
+                    focusedField = nil
                     Task { if await session.saveDeviceGroup(group, draft: draft) { dismiss() } }
                 } label: {
                     Text(session.busy ? "保存中…" : "機器グループを保存")
@@ -79,7 +116,9 @@ struct DeviceGroupEditorView: View {
                         .frame(maxWidth: .infinity, minHeight: 55)
                         .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 17))
                 }
-                .disabled(!draft.canSave || session.busy)
+                .buttonStyle(.plain)
+                .disabled(session.busy)
+                .opacity(session.busy ? 0.5 : 1)
                 .accessibilityIdentifier("device-group-save")
                 if group != nil {
                     Button(role: .destructive) { confirmRemove = true } label: {

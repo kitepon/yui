@@ -109,6 +109,31 @@ final class YuiDeviceGroupTests: XCTestCase {
         XCTAssertFalse(draft.canSave)
     }
 
+    func test全角数字と前後の空白を同じ分数として受け取る() {
+        var draft = DeviceGroupDraft(group: nil)
+        draft.name = "換気扇"
+        draft.deviceIds = ["fan-on", "fan-off"]
+        for value in ["６０", " 60 ", "　６０　"] {
+            draft.lockMinutes = value
+            XCTAssertEqual(draft.minutes, 60, value)
+            XCTAssertTrue(draft.canSave, value)
+        }
+    }
+
+    func test入力不足は保存できない理由を返す() {
+        var draft = DeviceGroupDraft(group: nil)
+        XCTAssertEqual(draft.validationIssue, .name)
+        XCTAssertEqual(draft.validationIssue?.message, "グループ名を入力してください")
+        draft.name = "換気扇"
+        XCTAssertEqual(draft.validationIssue, .devices)
+        draft.deviceIds = ["fan-on", "fan-off"]
+        draft.lockMinutes = "0"
+        XCTAssertEqual(draft.validationIssue, .minutes)
+        draft.lockMinutes = "６０"
+        XCTAssertNil(draft.validationIssue)
+        XCTAssertTrue(draft.canSave)
+    }
+
     private func snapshot() throws -> HomeSnapshot {
         try JSONDecoder().decode(HomeSnapshot.self, from: Data(DeviceGroupProtocol.home.utf8))
     }

@@ -1,6 +1,18 @@
 import Foundation
 
 struct DeviceGroupDraft {
+    enum ValidationIssue: Equatable {
+        case name, devices, minutes
+
+        var message: String {
+            switch self {
+            case .name: "グループ名を入力してください"
+            case .devices: "機器を1つ以上選んでください"
+            case .minutes: "停止時間は1〜1440分の整数で入力してください"
+            }
+        }
+    }
+
     var name: String
     var deviceIds: [String]
     var lockMinutes: String
@@ -12,12 +24,21 @@ struct DeviceGroupDraft {
     }
 
     var minutes: Int? {
-        guard let value = Int(lockMinutes), (1...1440).contains(value) else { return nil }
+        let text = lockMinutes.folding(options: .widthInsensitive, locale: nil)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = Int(text), (1...1440).contains(value) else { return nil }
         return value
     }
 
+    var validationIssue: ValidationIssue? {
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .name }
+        if deviceIds.isEmpty { return .devices }
+        if minutes == nil { return .minutes }
+        return nil
+    }
+
     var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !deviceIds.isEmpty && minutes != nil
+        validationIssue == nil
     }
 
     mutating func toggle(_ id: String) {
