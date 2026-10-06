@@ -384,6 +384,25 @@ final class SessionStore: ObservableObject {
         return error == nil
     }
 
+    func saveDeviceGroup(_ group: HomeDeviceGroup?, draft: DeviceGroupDraft) async -> Bool {
+        guard let token, let minutes = draft.minutes, draft.canSave else { return false }
+        await run {
+            self.home = try await YuiClient.shared.saveDeviceGroup(
+                token: token, groupId: group?.id, name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                deviceIds: draft.deviceIds, lockMinutes: minutes
+            )
+        }
+        return error == nil
+    }
+
+    func removeDeviceGroup(_ group: HomeDeviceGroup) async -> Bool {
+        guard let token else { return false }
+        await run {
+            self.home = try await YuiClient.shared.removeDeviceGroup(token: token, groupId: group.id)
+        }
+        return error == nil
+    }
+
     func sync(_ brand: String) async {
         guard let token else { return }
         syncPhases[brand] = .syncing

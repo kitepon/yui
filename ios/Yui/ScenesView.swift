@@ -149,6 +149,8 @@ struct ScenesView: View {
                         .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 21))
                     }
                 }
+
+                DeviceGroupsSection()
             }
             .padding(.horizontal, 22)
             .padding(.top, 20)

@@ -225,6 +225,8 @@ struct HomeSnapshot: Decodable {
     var connectors: [String: ConnectorStatus]?
     var scenes: [HomeScene]
     var automations: [HomeAutomation]?
+    var deviceGroups: [HomeDeviceGroup]?
+    var deviceGroupStates: [String: HomeDeviceGroupState]?
     var rooms: [String]?
     var deviceOrder: [String: [String]]?
     var lastScene: String?
@@ -253,6 +255,31 @@ struct HomeSnapshot: Decodable {
             return left < right
         }
     }
+}
+
+struct HomeDeviceGroup: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let deviceIds: [String]
+    let lockMinutes: Int
+}
+
+struct HomeDeviceGroupState: Decodable {
+    let operatedAt: String
+    let deviceId: String
+    let pending: HomeDeviceGroupPending?
+
+    func lockedUntil(for group: HomeDeviceGroup, now: Date) -> Date? {
+        guard let operated = AnalysisDate.formatter.date(from: operatedAt) else { return nil }
+        let until = operated.addingTimeInterval(Double(group.lockMinutes) * 60)
+        return until > now ? until : nil
+    }
+}
+
+struct HomeDeviceGroupPending: Decodable {
+    let automationId: String
+    let actionIds: [String]
+    let at: String
 }
 
 struct HomeAutomation: Decodable, Identifiable {

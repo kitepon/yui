@@ -35,6 +35,19 @@ extension SessionStore {
             plans: BillingPlans(monthlyYen: 100, annualYen: 1000, trialDays: 30)
         )
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-yui-preview-groups") {
+            store.home?.deviceGroups = [
+                HomeDeviceGroup(id: "preview-group", name: "リビングのまとめ操作",
+                                deviceIds: ["preview-light", "preview-curtain", "missing-device"], lockMinutes: 2),
+                HomeDeviceGroup(id: "preview-other-group", name: "寝室の照明",
+                                deviceIds: ["preview-plug"], lockMinutes: 10),
+            ]
+            let now = AnalysisDate.formatter.string(from: Date())
+            store.home?.deviceGroupStates = ["preview-group": HomeDeviceGroupState(
+                operatedAt: now, deviceId: "preview-light",
+                pending: HomeDeviceGroupPending(automationId: "auto-1", actionIds: ["action-1"], at: now)
+            )]
+        }
         if arguments.contains("-yui-preview-sync-loading") {
             store.syncPhases = Dictionary(uniqueKeysWithValues: ["nature", "switchbot", "smartlife", "daikin", "odelec"].map { ($0, .syncing) })
             store.busy = true

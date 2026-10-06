@@ -169,6 +169,18 @@ struct YuiClient {
         try await send(path: "/api/home", method: "POST", token: token, body: ["op": "scene-remove", "sceneId": sceneId])
     }
 
+    func saveDeviceGroup(token: String, groupId: String?, name: String, deviceIds: [String], lockMinutes: Int) async throws -> HomeSnapshot {
+        var body: [String: Any] = ["op": "group-save", "group": [
+            "name": name, "deviceIds": deviceIds, "lockMinutes": lockMinutes,
+        ]]
+        if let groupId { body["groupId"] = groupId }
+        return try await send(path: "/api/home", method: "POST", token: token, body: body)
+    }
+
+    func removeDeviceGroup(token: String, groupId: String) async throws -> HomeSnapshot {
+        try await send(path: "/api/home", method: "POST", token: token, body: ["op": "group-remove", "groupId": groupId])
+    }
+
     private func auth(_ kind: String, email: String, password: String, name: String?) async throws -> String {
         var payload: [String: Any] = ["email": email, "password": password]
         if let name { payload["name"] = name }

@@ -17,7 +17,7 @@
   },
   "testTargets": [{
     "parallelizable": false,
-    "selectedTests": ["YuiBillingTests", "YuiHomeRefreshTests"],
+    "selectedTests": ["YuiBillingTests", "YuiHomeRefreshTests", "YuiDeviceGroupTests"],
     "target": {
       "containerPath": "container:Yui.xcodeproj",
       "identifier": "6A3CBB051A2E91024F9C4377",
