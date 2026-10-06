@@ -5,6 +5,9 @@
 # 使い方:
 #   DEPLOY_HOST=user@host [DEPLOY_REMOTE_DIR=/home/user/yuihome] ./scripts/deploy-prod.sh
 #
+# 手元に Docker が無いときは DEPLOY_BUILD_ON_HOST=1 を付ける。npm の build は手元で行い、
+# できた .output をサーバーへ送って、image だけサーバーで焼く（Dockerfile は COPY だけ）。
+#
 # 家に固有の設定（公開 URL、LAN 直結の宛先、秘密）はサーバーの deploy/.env が持つ。
 # このスクリプトも compose.yaml も、それらの値を知らない。
 set -eu
@@ -22,16 +25,19 @@ REMOTE_DIR=${DEPLOY_REMOTE_DIR:-yuihome}
 PUBLIC_HOSTNAME=${DEPLOY_PUBLIC_HOSTNAME:-}
 # サーバーの CPU に合わせる（ミニ PC は amd64、Raspberry Pi は arm64）。
 PLATFORM=${DEPLOY_PLATFORM:-linux/amd64}
+BUILD_ON_HOST=${DEPLOY_BUILD_ON_HOST:-}
 
 cd "$ROOT"
 
 # Docker Desktop 同梱の buildx が `docker buildx` で出ない環境があるため、両方見る。
-if command -v docker-buildx >/dev/null 2>&1; then
+if [ -n "$BUILD_ON_HOST" ]; then
+  BUILDX=""
+elif command -v docker-buildx >/dev/null 2>&1; then
   BUILDX="docker-buildx"
 elif docker buildx version >/dev/null 2>&1; then
   BUILDX="docker buildx"
 else
-  echo "buildx が無い。Docker Desktop か docker-buildx を入れる" >&2
+  echo "buildx が無い。Docker Desktop か docker-buildx を入れる（無いまま配るなら DEPLOY_BUILD_ON_HOST=1）" >&2
   exit 1
 fi
 
@@ -52,12 +58,24 @@ PGLITE_DIST="$ROOT/node_modules/@electric-sql/pglite/dist"
 PGLITE_OUT="$ROOT/.output/server/_libs"
 cp "$PGLITE_DIST/pglite.data" "$PGLITE_DIST/pglite.wasm" "$PGLITE_DIST/initdb.wasm" "$PGLITE_OUT/"
 
-echo "[deploy] image $IMAGE ($PLATFORM)"
-$BUILDX build --platform "$PLATFORM" --load -t "$IMAGE" "$ROOT"
 BLE_IMAGE="yuihome-switchbot-ble:$TAG"
+if [ -n "$BUILD_ON_HOST" ]; then
+  # .dockerignore が通す物だけを送る。
+  CONTEXT="$REMOTE_DIR/image-context"
+  echo "[deploy] image $IMAGE on $HOST ($PLATFORM)"
+  ssh "$HOST" "rm -rf $CONTEXT && mkdir -p $CONTEXT"
+  tar -C "$ROOT" -cf - Dockerfile .dockerignore .output package.json certs/apple \
+    scripts/hosted-metrics.mjs src/lib/home/lan-udp.ts src/lib/home/tuya-lan-forward.ts |
+    ssh "$HOST" "tar -C $CONTEXT -xf -"
+  ssh "$HOST" "docker build --platform $PLATFORM -t $IMAGE $CONTEXT"
+  ssh "$HOST" "rm -rf $CONTEXT"
+else
+  echo "[deploy] image $IMAGE ($PLATFORM)"
+  $BUILDX build --platform "$PLATFORM" --load -t "$IMAGE" "$ROOT"
 
-echo "[deploy] load $IMAGE on $HOST"
-docker save "$IMAGE" | ssh "$HOST" docker load
+  echo "[deploy] load $IMAGE on $HOST"
+  docker save "$IMAGE" | ssh "$HOST" docker load
+fi
 ssh "$HOST" "docker image inspect $IMAGE >/dev/null"
 
 # BLE 口は BlueZ を使う小さな image。手元の disk を食わないようサーバーで焼く。
@@ -76,8 +94,10 @@ trap 'rm -f "$TMP"' EXIT
 sed -e "s|image: yuihome:local|image: $IMAGE|" -e "s|image: yuihome-switchbot-ble:local|image: $BLE_IMAGE|" "$ROOT/deploy/compose.yaml" >"$TMP"
 scp -q "$TMP" "$HOST:$REMOTE_DIR/deploy/compose.yaml"
 
+# 時刻オートメーションは分ごとに判定する。止まっている間に分をまたぐと、その分の判定が飛ぶことがある。
+# 分の頭を待って入れ替え、同じ分のうちに起こし直す。
 echo "[deploy] up"
-ssh "$HOST" "cd $REMOTE_DIR/deploy && docker compose up -d --force-recreate"
+ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && docker compose up -d --force-recreate"
 ssh "$HOST" "docker ps --filter name=^/${NAME}$ --format '{{.Names}}\t{{.Status}}\t{{.Image}}'"
 
 echo "[deploy] probe"

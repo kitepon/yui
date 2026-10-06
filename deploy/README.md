@@ -87,6 +87,9 @@ cd deploy && docker compose up -d
 DEPLOY_HOST=user@192.168.0.2 ./scripts/deploy-prod.sh
 ```
 
+手元に Docker が無いときは `DEPLOY_BUILD_ON_HOST=1` を付ける。`npm run build` は手元で行い、できた `.output` をサーバーへ送って、image だけサーバーで焼く。
+入れ替えは分の頭まで待ってから行う（最大約1分）。時刻オートメーションは分ごとに判定するので、止まっている間に分をまたがないようにする。
+
 ## 更新
 
 新しい image を焼いて `docker compose up -d` する。tag を `日付-短sha` のように固定しておくと、
