@@ -3,7 +3,12 @@ import Security
 
 enum Keychain {
     static let service = "dev.kitepon.yuihome"
-    static let account = "session"
+    static var account: String {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-yui-test-login") { return "session-test-login" }
+        #endif
+        return "session"
+    }
 
     static func save(_ token: String) {
         let data = Data(token.utf8)
