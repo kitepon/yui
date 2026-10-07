@@ -54,3 +54,9 @@ Apple側の処理`VALID`と、既存の「結 内部テスト」へ割り当て�
 ![iPhoneのログインボタン](images/sign-in/apple-google-iphone.jpg)
 
 ![iPadのログインボタン](images/sign-in/apple-google-ipad.jpg)
+
+## 機器グループと入力欄の修理を含む再提出
+
+2026年10月7日、所有者の指示で審査待ちのiOS版1.0（12）とMac版1.0（11）を取り下げ、内部TestFlightへ配布済みのiOS版1.0（15）とMac版1.0（16）へ差し替えた。機器グループの作成・編集・削除、保存できない理由の表示、時間入力欄の改善を含む。
+
+iPhone・iPadは同日9:45:59、Macは9:46:08（日本時間）に再提出し、両提出とApp Store版の`WAITING_FOR_REVIEW`を読み返して確認した。審査用認証情報・連絡先を保持し、確認手順と検証の範囲を審査説明へ追記した。公開方式は`MANUAL`。提出IDと照合結果は[機器グループの実施記録](native-device-groups.md#最新ビルドのapp-store審査提出)を参照する。

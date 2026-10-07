@@ -26,3 +26,11 @@ Markdown版には属性一覧が省略されていたため、同じApple文書�
 - 結の旧Appleボタンは暗い背景に黒を置き、高さ57ptに文字16ptだった。Googleは`g.circle.fill`を使っていた。Appleの拒絶メッセージは「同等のログイン選択肢として表示されていない」とだけ述べており、これらのどれを審査員が問題にしたかは未確定。
 
 公式素材の取得元は[ロゴ](https://developers.google.com/static/identity/images/g-logo.png)、[フォント](https://github.com/google/fonts/tree/main/ofl/googlesans)。元ファイルを使い、フォントのOFLを同梱する。画面の日本語表示に合わせてアプリの開発言語を日本語にする。
+
+## 審査待ちのビルド差し替え
+
+出典: [Appleの提出取り下げ手順](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/remove-a-submission-from-review)。取得日: 2026年10月7日。確度: 公式説明と同日のAPI実測。
+
+審査待ちの提出を取り下げると、その提出の項目は審査の待ち列から外れ、アプリは`DEVELOPER_REJECTED`になる。再提出で審査はやり直しになる。
+
+結では取消要求後の応答は`CANCELING`だったため、App Store版が`DEVELOPER_REJECTED`になるまで差し替えなかった。新ビルドの割当と審査説明を保存し、既存の認証情報・連絡先と手動公開設定を読み返して照合してから、新しい提出を送信した。iOS・Macともに新しい提出ID、提出とApp Store版の`WAITING_FOR_REVIEW`、審査項目の`READY_FOR_REVIEW`を確認した。
