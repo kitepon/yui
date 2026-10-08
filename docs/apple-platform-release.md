@@ -73,6 +73,8 @@ App Store Connectの画面でもiOS版の「配信準備完了」、ビルド15�
 
 公式Web・サポート・プライバシーポリシーはHTTP 200、未ログインの家APIはHTTP 401を確認した。Python標準のUser-AgentではWebが403を返したが、ブラウザ相当のUser-Agentとcurlでは200だった。Jev Bookmarksは`no_entry`でブラウザを操作していない。
 
-App Store版の実機導入、ログイン、家の表示と機器操作、購入・復元、本番通知の再確認は未完了。iPhoneへの導入と家の表示の確認を決裁箱`K-M9UADB`で本人へ依頼した。本人の操作が必要なこの確認を残し、公開操作と公開ページの確認は完了した。Sandbox購入・復元とStoreKitローカル試験の確認範囲は[課金記録](apple-billing-setup.md)を参照する。
+同日、決裁箱`K-M9UADB`で所有者が「App Storeから導入し、起動して家が表示された」と回答した。これにより、iPhone版の一般公開、公開ページの表示、App Storeからの実機導入・起動・家の表示まで確認を完了した。
+
+iPad実機の導入、公開版での機器操作・購入・復元、本番通知の再確認は未完了。Sandbox購入・復元とStoreKitローカル試験の確認範囲は[課金記録](apple-billing-setup.md)を参照する。
 
 今回の変更は公開記録と導入案内の文書だけ。変更文書のローカルリンク、`npm run lint`、`npm run typecheck`、`npm test`、`npm run build:dev`が成功した。
