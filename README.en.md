@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://yuihome.kitepon.dev">Hosted service</a> ·
+  <a href="https://apps.apple.com/jp/app/id6816410748">App Store（日本）</a> ·
   <a href="deploy/README.md">Self-host</a> ·
   <a href="README.md">日本語</a>
 </p>
@@ -76,7 +77,7 @@ Product decisions live in [docs/00_direction.md](docs/00_direction.md).
 - Unknown cloud device types, vacuums, humidifiers, and Nature Remo left/right swing are out of scope. Smart Life cannot send commands the device does not expose.
 - Smart Life devices not found on the LAN and local-protocol versions 3.4 and 3.5 require Tuya IoT Core. Exhausting its trial quota prevents cloud operations and retrieval of keys for newly added devices, but does not invalidate keys already saved for LAN devices.
 - While releases are `v0.x`, long-term database and configuration upgrade compatibility is not guaranteed.
-- The native iPhone app and the production Cloudflare migration remain future work.
+- Cloudflareへの実移転は後続工程です。
 
 For vulnerabilities, use the private route in [SECURITY.md](SECURITY.md). For bugs and compatibility reports, use [GitHub Issues](https://github.com/kitepon/yui/issues). Contributions are described in [CONTRIBUTING.md](CONTRIBUTING.md).
 

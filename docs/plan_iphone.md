@@ -1,5 +1,7 @@
 # 結 iPhone アプリの現在地
 
+iPhone・iPad版は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)へ一般公開を開始した。公開ページの反映・実機確認とMac版の審査状況は[配布記録](apple-platform-release.md#iphoneipad版の一般公開)を参照する。
+
 ## Web との機能照合
 
 | Web の面 | iPhone の実装 |

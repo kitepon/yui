@@ -1,5 +1,7 @@
 # 外部仕様の調査記録
 
+- [承認後のApp Store手動公開](ios-app-store-review.md#承認後の手動公開) — 公開要求APIと配信状態、ストア表示まで最大24時間の反映待ちを区別する。
+
 - [AlexaアカウントリンクのCookie結合](alexa-redirect-cookies.md) — セッション更新時の転送応答が500になる原因、TanStackの実処理による再現と修理。
 
 - [Alexa「結ホーム」の公開確認](alexa-skill-release.md) — Amazonの公開登録とストアページ、Web・iPhoneの正式スキル導入導線。

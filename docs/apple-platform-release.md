@@ -60,3 +60,19 @@ Apple側の処理`VALID`と、既存の「結 内部テスト」へ割り当て�
 2026年10月7日、所有者の指示で審査待ちのiOS版1.0（12）とMac版1.0（11）を取り下げ、内部TestFlightへ配布済みのiOS版1.0（15）とMac版1.0（16）へ差し替えた。機器グループの作成・編集・削除、保存できない理由の表示、時間入力欄の改善を含む。
 
 iPhone・iPadは同日9:45:59、Macは9:46:08（日本時間）に再提出し、両提出とApp Store版の`WAITING_FOR_REVIEW`を読み返して確認した。審査用認証情報・連絡先を保持し、確認手順と検証の範囲を審査説明へ追記した。公開方式は`MANUAL`。提出IDと照合結果は[機器グループの実施記録](native-device-groups.md#最新ビルドのapp-store審査提出)を参照する。
+
+## iPhone・iPad版の一般公開
+
+2026年10月8日、所有者の公開指示を受け、iOS版1.0（15）の`PENDING_DEVELOPER_RELEASE`と、月額・年額商品の`APPROVED`をApple公式APIで確認した。審査対象のビルドIDは`d819c487-b43d-4495-a483-58653172adf5`。実装コミット`c6de8d7`が`origin/main`の祖先であることを再確認した。
+
+同日19時32分（日本時間）、承認済みのApp Store版へ手動公開を要求した。要求は成功し、読み返したiOS版は`READY_FOR_DISTRIBUTION`（旧属性`appStoreState`は`READY_FOR_SALE`）になった。再ビルド・追加アップロード・サーバー配備は行っていない。Mac版1.0（16）は引き続き`WAITING_FOR_REVIEW`。
+
+App Store Connectの画面でもiOS版の「配信準備完了」、ビルド15、配信可能な地域が日本1か所であることを確認した。配信設定は変更していない。APIの地域取得は`data: null`で地域を確認できなかったため、この項目は画面の表示を根拠にした。
+
+公開先は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)。公開直後はストアページがHTTP 404、Appleの日本向けLookup APIが0件を返したため、利用者向け表示は反映待ち。Appleは手動公開後の表示に最大24時間かかる場合があると[説明している](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/)。
+
+公式Web・サポート・プライバシーポリシーはHTTP 200、未ログインの家APIはHTTP 401を確認した。Python標準のUser-AgentではWebが403を返したが、ブラウザ相当のUser-Agentとcurlでは200だった。Jev Bookmarksは`no_entry`でブラウザを操作していない。
+
+App Store版の実機導入、ログイン、家の表示と機器操作、購入・復元、本番通知の再確認は未完了。Sandbox購入・復元とStoreKitローカル試験の確認範囲は[課金記録](apple-billing-setup.md)を参照する。
+
+今回の変更は公開記録と導入案内の文書だけ。変更文書のローカルリンク、`npm run lint`、`npm run typecheck`、`npm test`、`npm run build:dev`が成功した。

@@ -34,3 +34,11 @@ Markdown版には属性一覧が省略されていたため、同じApple文書�
 審査待ちの提出を取り下げると、その提出の項目は審査の待ち列から外れ、アプリは`DEVELOPER_REJECTED`になる。再提出で審査はやり直しになる。
 
 結では取消要求後の応答は`CANCELING`だったため、App Store版が`DEVELOPER_REJECTED`になるまで差し替えなかった。新ビルドの割当と審査説明を保存し、既存の認証情報・連絡先と手動公開設定を読み返して照合してから、新しい提出を送信した。iOS・Macともに新しい提出ID、提出とApp Store版の`WAITING_FOR_REVIEW`、審査項目の`READY_FOR_REVIEW`を確認した。
+
+## 承認後の手動公開
+
+出典: [Appleの公開方法](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/)、[公開要求API](https://developer.apple.com/documentation/appstoreconnectapi/app-store-version-release-requests)。取得日: 2026年10月8日。確度: 公式仕様と同日のAPI実測。短い原文は[抜粋](ios-testflight/raw/apple-release-excerpts.md)へ保存した。
+
+手動公開に設定したアプリは、審査通過後の`PENDING_DEVELOPER_RELEASE`で公開要求を送る。公開要求の成功と、利用者向けストアページへの反映は別に確認する。Appleは手動公開後の表示に最大24時間かかる場合があると説明している。
+
+結のiOS版1.0（15）では、公開要求の後に`appVersionState=READY_FOR_DISTRIBUTION`、旧属性の`appStoreState=READY_FOR_SALE`になった。一方、直後の日本向けストアページは404、Lookup APIは0件だった。この段階では公開操作の成功までを確認済みとし、ストア表示と実機導入は反映待ちとして扱う。

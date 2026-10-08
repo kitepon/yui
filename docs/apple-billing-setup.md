@@ -1,5 +1,7 @@
 # iPhone版のApp Store提出
 
+2026年10月8日、iPhone・iPad版1.0（15）を手動公開し、Apple公式APIで`READY_FOR_DISTRIBUTION`を確認した。月額・年額商品も承認済み。公開ページの反映と実機での確認状況は[Appleアプリの配布記録](apple-platform-release.md#iphoneipad版の一般公開)を参照する。
+
 Web契約はStripe、iPhoneアプリ内の契約はAppleの自動更新サブスクリプションで扱う。サーバーは両方を同じ家の利用権として判定し、他方の契約中や購入手続き中には新しい購入を始めさせない。Apple取引は署名付きJWSを検証して結のアカウントに結び付ける。利用者はアプリから購入を復元し、契約状態を再取得できる。
 
 ## App Store Connectで保存済み
