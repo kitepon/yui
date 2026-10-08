@@ -69,10 +69,10 @@ iPhone・iPadは同日9:45:59、Macは9:46:08（日本時間）に再提出し�
 
 App Store Connectの画面でもiOS版の「配信準備完了」、ビルド15、配信可能な地域が日本1か所であることを確認した。配信設定は変更していない。APIの地域取得は`data: null`で地域を確認できなかったため、この項目は画面の表示を根拠にした。
 
-公開先は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)。公開直後はストアページがHTTP 404、Appleの日本向けLookup APIが0件を返したため、利用者向け表示は反映待ち。Appleは手動公開後の表示に最大24時間かかる場合があると[説明している](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/)。
+公開先は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)。公開直後はストアページがHTTP 404、Appleの日本向けLookup APIが0件だった。同日19時39分ごろ、公開URLが正式な「結 Yui」のページへ転送され、HTTP 200を返すことを確認した。ブラウザでもアプリ名、「無料・アプリ内購入」、iPhone・iPad対応、日本語、iOS 17.0以降、公式Webとプライバシーポリシーへのリンクを確認した。Lookup APIはまだ0件だが、公開ページへの反映は確認済み。Appleは手動公開後の表示に最大24時間かかる場合があると[説明している](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/)。
 
 公式Web・サポート・プライバシーポリシーはHTTP 200、未ログインの家APIはHTTP 401を確認した。Python標準のUser-AgentではWebが403を返したが、ブラウザ相当のUser-Agentとcurlでは200だった。Jev Bookmarksは`no_entry`でブラウザを操作していない。
 
-App Store版の実機導入、ログイン、家の表示と機器操作、購入・復元、本番通知の再確認は未完了。Sandbox購入・復元とStoreKitローカル試験の確認範囲は[課金記録](apple-billing-setup.md)を参照する。
+App Store版の実機導入、ログイン、家の表示と機器操作、購入・復元、本番通知の再確認は未完了。iPhoneへの導入と家の表示の確認を決裁箱`K-M9UADB`で本人へ依頼した。本人の操作が必要なこの確認を残し、公開操作と公開ページの確認は完了した。Sandbox購入・復元とStoreKitローカル試験の確認範囲は[課金記録](apple-billing-setup.md)を参照する。
 
 今回の変更は公開記録と導入案内の文書だけ。変更文書のローカルリンク、`npm run lint`、`npm run typecheck`、`npm test`、`npm run build:dev`が成功した。
