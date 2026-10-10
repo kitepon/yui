@@ -1,7 +1,7 @@
 # 結 Appleアプリ
 
 SwiftUI製のiPhone・iPadアプリとMac Catalyst版。接続先は `https://yuihome.kitepon.dev`。
-一般向けのiPhone・iPad版は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)から導入する。公開直後の反映状況とMac版の審査状況は[配布記録](../docs/apple-platform-release.md#iphoneipad版の一般公開)を参照する。
+一般向けのiPhone・iPad版は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)から導入する。Mac版も同じアプリ登録で公開した。ストアへの反映と実機確認の状況は[iPhone・iPad版](../docs/apple-platform-release.md#iphoneipad版の一般公開)と[Mac版](../docs/apple-platform-release.md#mac版の一般公開)の配布記録を参照する。
 現在の実装範囲と残る確認は [`../docs/plan_iphone.md`](../docs/plan_iphone.md)。
 
 ```bash

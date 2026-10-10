@@ -1,6 +1,6 @@
 # 結 iPhone アプリの現在地
 
-iPhone・iPad版は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)へ一般公開を開始した。公開ページの反映・実機確認とMac版の審査状況は[配布記録](apple-platform-release.md#iphoneipad版の一般公開)を参照する。
+iPhone・iPad版は[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)へ一般公開を開始した。Mac版も2026年10月10日に同じアプリ登録で手動公開した。公開ページの反映と実機確認は[iPhone・iPad版](apple-platform-release.md#iphoneipad版の一般公開)と[Mac版](apple-platform-release.md#mac版の一般公開)の配布記録を参照する。
 
 ## Web との機能照合
 

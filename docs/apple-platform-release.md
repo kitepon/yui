@@ -78,3 +78,15 @@ App Store Connectの画面でもiOS版の「配信準備完了」、ビルド15�
 iPad実機の導入、公開版での機器操作・購入・復元、本番通知の再確認は未完了。Sandbox購入・復元とStoreKitローカル試験の確認範囲は[課金記録](apple-billing-setup.md)を参照する。
 
 今回の変更は公開記録と導入案内の文書だけ。変更文書のローカルリンク、`npm run lint`、`npm run typecheck`、`npm test`、`npm run build:dev`が成功した。
+
+## Mac版の一般公開
+
+2026年10月10日、所有者から承認の連絡と対応の指示を受け、Mac版1.0（16）の`PENDING_DEVELOPER_RELEASE`、公開方式`MANUAL`、提出`2d339329-5729-48c8-bf71-dee1fbd77cab`の`COMPLETE`をApple公式APIで確認した。審査対象のビルドIDは`66b3d429-2a8c-4dec-80af-8b193aaf00ff`。実装コミット`c6de8d7`が`origin/main`の祖先であることを再確認した。
+
+同日11時26分（日本時間）、承認済みのMac版へ手動公開を要求した。要求は成功し、読み返したMac版は`READY_FOR_DISTRIBUTION`（旧属性`appStoreState`は`READY_FOR_SALE`）になった。iPhone・iPad版と同じアプリ登録・同じ公開URLを使う。再ビルド・追加アップロード・サーバー配備は行っていない。
+
+公開要求の直後、[公開URL](https://apps.apple.com/jp/app/id6816410748)と`?platform=mac`指定はどちらもHTTP 200だったが、ブラウザで見たページの対応端末は「iPad、iPhone」、互換性は「iOS 17.0以降」のままで、Macの表示は確認できなかった。Lookup APIの`macSoftware`指定も、iOS版と同じ1件（最低OS 17.0）を返した。この時点では公開操作の成功までを確認済みとし、ストアのMac表示は反映待ちとして扱う。Appleは手動公開後の表示に最大24時間かかる場合があると[説明している](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/)。READMEの導入案内は、Mac表示を確認してから更新する。
+
+Mac App Storeからの導入・起動・家の表示は、決裁箱`K-JHDHS2`で所有者へ確認を依頼した。公開版での機器操作・購入・復元は未完了。
+
+今回の変更は公開記録の文書だけ。`npm run lint`、`npm run typecheck`、`npm test`、`npm run build:dev`が成功した。

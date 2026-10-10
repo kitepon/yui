@@ -44,3 +44,5 @@ Markdown版には属性一覧が省略されていたため、同じApple文書�
 結のiOS版1.0（15）では、公開要求の後に`appVersionState=READY_FOR_DISTRIBUTION`、旧属性の`appStoreState=READY_FOR_SALE`になった。一方、直後の日本向けストアページは404、Lookup APIは0件だった。この段階では公開操作の成功までを確認済みとし、ストア表示と実機導入は反映待ちとして扱う。
 
 同日、公開後約7分でストアページがHTTP 200になり、ブラウザにも「結 Yui」が表示された。その時点でもLookup APIは0件だったため、Lookupの結果だけでストア公開の成否を判定しない。
+
+2026年10月10日、同じアプリ登録のMac版1.0（16）にも同じ公開要求APIを使い、`READY_FOR_DISTRIBUTION`を確認した。既にiOS版が公開済みのため公開URLは直後からHTTP 200を返すが、対応端末と互換性の表示はiOSのままだった。Lookup APIの`entity=macSoftware`もiOS版と同じ1件を返す。追加プラットフォームの反映は、HTTPの状態やLookupの件数でなく、ページの対応端末と互換性の表示で判定する。
