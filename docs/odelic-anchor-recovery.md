@@ -39,7 +39,7 @@
 - 非公開ブリッジ34試験が成功。
 - `systemctl restart bluetooth`（原因と同じ経路）: ブリッジが追従して立ち直り、照明が4秒で再認証。
 - `kill -9 bluetoothd`を4回: 4回とも再登録が成立し、ブリッジの異常終了ゼロ、探索有効、照明が再認証。
-- 結・Web・iPhoneの実装は変更していない。結からの3台操作は所有者の実機確認を残す。
+- 結・Web・iPhoneの実装は変更していない。19時46分、所有者が結から3台それぞれの切る→点けるを試し、3台とも動いたと決裁箱（K-3TKJZQ）で回答した。これを復旧の確認とする。
 
 計測した事実と判断は非公開リポジトリの`rag/bluez-restart/summary.md`に置いた。
 10月4日の記録は[alexa-operation-recovery.md](alexa-operation-recovery.md)。
