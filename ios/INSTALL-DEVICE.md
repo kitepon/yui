@@ -1,4 +1,4 @@
-# 実機インストール（iPhone(Kaito)）
+# 実機インストール（iPhone）
 
 開発用 Team は `TPWX489GV4`。端末と Mac を接続して実行する。
 
