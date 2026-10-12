@@ -10,9 +10,9 @@ xcodebuild -project Yui.xcodeproj -scheme Yui -configuration Debug \
   -allowProvisioningUpdates \
   DEVELOPMENT_TEAM=TPWX489GV4 CODE_SIGN_STYLE=Automatic \
   CODE_SIGN_IDENTITY='Apple Development' build
-xcrun devicectl device install app --device 00008140-000019223A40801C \
+xcrun devicectl device install app --device 00000000-0000000000000000 \
   /tmp/yui-device-build/Build/Products/Debug-iphoneos/Yui.app
-xcrun devicectl device process launch --device 00008140-000019223A40801C dev.kitepon.yuihome
+xcrun devicectl device process launch --device 00000000-0000000000000000 dev.kitepon.yuihome
 ```
 
-端末を替えたら `xcrun devicectl list devices` で UDID を読み替える。
+`--device` の `00000000-0000000000000000` は見本。`xcrun devicectl list devices` で実機の UDID を読んで置き換える。
