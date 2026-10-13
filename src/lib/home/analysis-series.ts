@@ -90,6 +90,21 @@ export function shouldWriteSkip(
   return !(last.outcome === "skipped" && last.reason === reason);
 }
 
+/** 上の行が判定を打ち切った記録の理由。機器ではなくオートメーションに付く。 */
+export const STOPPED_BY_REASON = "stopped_by";
+
+/**
+ * 判定の打ち切りは、そのオートメーションの最後の記録が同じ打ち切りのあいだ書かない。
+ * 打ち切る行が替わったときと、あいだに別の記録（送った・外れた など）が入ったときは書く。
+ */
+export function shouldWriteStopped(
+  last: { outcome: string; reason: string | null; detail: string | null } | undefined,
+  detail: string,
+) {
+  if (!last) return true;
+  return !(last.outcome === "skipped" && last.reason === STOPPED_BY_REASON && last.detail === detail);
+}
+
 export function downsamplePoints(points: SeriesPoint[], bucketMs: number): SeriesPoint[] {
   if (points.length < 3) return points;
   const buckets = new Map<number, { sum: number; n: number }>();

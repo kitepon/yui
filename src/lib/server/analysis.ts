@@ -5,6 +5,7 @@ import {
   ANALYSIS_RETENTION_MS,
   CLIMATE_DEVICE_ID,
   ON_METRIC,
+  STOPPED_BY_REASON,
   collectOnChanges,
   collectSensorSamples,
   downsamplePoints,
@@ -12,6 +13,7 @@ import {
   seriesLabel,
   seriesUnit,
   shouldWriteSkip,
+  shouldWriteStopped,
   type AnalysisOutcome,
   type AnalysisSource,
   type SeriesPoint,
@@ -150,9 +152,25 @@ function lastPairEvent(homeId: string, automationId: string, deviceId: string, s
     .get(homeId, automationId, deviceId) as { outcome: string; reason: string | null } | undefined;
 }
 
+/** オートメーションの最後の記録。機器は問わない。 */
+function lastAutomationEvent(homeId: string, automationId: string, sqlite: Db) {
+  return sqlite
+    .prepare(
+      `SELECT outcome, reason, detail FROM home_events
+       WHERE home_id = ? AND automation_id = ?
+       ORDER BY ts DESC, id DESC LIMIT 1`,
+    )
+    .get(homeId, automationId) as { outcome: string; reason: string | null; detail: string | null } | undefined;
+}
+
 export function recordEvent(input: EventInput, db?: Db) {
   const sqlite = dbOf(db);
-  if (input.outcome === "skipped") {
+  if (input.outcome === "skipped" && input.reason === STOPPED_BY_REASON && input.automationId) {
+    // 判定の打ち切りは機器を持たない。機器ごとの記録を挟んで再び打ち切られた回を落とさないよう、
+    // オートメーションの最後の記録と比べる。
+    const last = lastAutomationEvent(input.homeId, input.automationId, sqlite);
+    if (!shouldWriteStopped(last, input.detail ?? "")) return false;
+  } else if (input.outcome === "skipped") {
     const last = lastPairEvent(input.homeId, input.automationId ?? "", input.deviceId ?? "", sqlite);
     if (!shouldWriteSkip(last, input.reason ?? "")) return false;
   }

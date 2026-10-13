@@ -108,6 +108,62 @@ test("同じ skip は1行に畳み、sent は毎回残す", () => {
   );
 });
 
+test("判定の打ち切りは続くあいだ1行。機器の記録を挟んで再び打ち切られたら、また残す", () => {
+  const db = seed();
+  const base = {
+    homeId: "home-1",
+    waveId: "w",
+    source: "tick" as const,
+    automationId: "auto-water",
+    automationName: "水槽水温深刻",
+  };
+  const stopped = {
+    ...base,
+    outcome: "skipped" as const,
+    reason: "stopped_by",
+    detail: JSON.stringify({ by: "auto-room", name: "室温基準" }),
+  };
+  // 1晩目：打ち切りが続く。
+  assert.equal(recordEvent({ ...stopped, ts: "2026-10-11T10:18:00.000Z" }, db), true);
+  assert.equal(recordEvent({ ...stopped, ts: "2026-10-11T10:19:00.000Z" }, db), false);
+  // 朝：打ち切りが外れて、この行が機器を動かす。条件を外れた記録は無い。
+  assert.equal(
+    recordEvent({ ...base, deviceId: "ac", deviceName: "エアコン", outcome: "sent", ts: "2026-10-11T21:30:00.000Z" }, db),
+    true,
+  );
+  assert.equal(
+    recordEvent(
+      { ...base, deviceId: "ac", deviceName: "エアコン", outcome: "skipped", reason: "already_applied", ts: "2026-10-11T21:31:00.000Z" },
+      db,
+    ),
+    true,
+  );
+  // 2晩目：また打ち切られる。
+  assert.equal(recordEvent({ ...stopped, ts: "2026-10-12T10:19:00.000Z" }, db), true);
+  assert.equal(recordEvent({ ...stopped, ts: "2026-10-12T10:20:00.000Z" }, db), false);
+  // 打ち切る行が替わった。
+  assert.equal(
+    recordEvent(
+      { ...stopped, detail: JSON.stringify({ by: "auto-air", name: "外気取り込みオン" }), ts: "2026-10-12T10:21:00.000Z" },
+      db,
+    ),
+    true,
+  );
+  // ほかのオートメーションの打ち切りは別に数える。
+  assert.equal(
+    recordEvent({ ...stopped, automationId: "auto-mid", automationName: "中温域", ts: "2026-10-12T10:21:00.000Z" }, db),
+    true,
+  );
+  const rows = db
+    .prepare("SELECT reason, device_id FROM home_events WHERE home_id = ? AND automation_id = ? ORDER BY ts")
+    .all("home-1", "auto-water") as Array<{ reason: string | null; device_id: string | null }>;
+  assert.deepEqual(
+    rows.map((r) => r.reason),
+    ["stopped_by", null, "already_applied", "stopped_by", "stopped_by"],
+  );
+  assert.equal(rows[0]?.device_id, null);
+});
+
 test("読み出しは climate の室温ラベルを付ける", () => {
   const db = seed();
   insertSamples("home-1", "2026-09-12T01:00:00.000Z", [{ deviceId: "climate", metric: "temperature", value: 23.5 }], db);

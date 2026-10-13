@@ -6,6 +6,7 @@ import {
   heldSkipReason,
   seriesLabel,
   shouldWriteSkip,
+  shouldWriteStopped,
 } from "./analysis-series.ts";
 import type { Device } from "./types.ts";
 
@@ -83,4 +84,17 @@ test("連続 skip は畳み、sent は畳まない", () => {
   assert.equal(shouldWriteSkip({ outcome: "skipped", reason: "already_applied" }, "already_applied"), false);
   assert.equal(shouldWriteSkip({ outcome: "skipped", reason: "already_applied" }, "claimed_by"), true);
   assert.equal(shouldWriteSkip({ outcome: "sent", reason: null }, "already_applied"), true);
+});
+
+test("判定の打ち切りは、同じ行に打ち切られているあいだ1行に畳む", () => {
+  const detail = JSON.stringify({ by: "auto-room", name: "室温基準" });
+  const stopped = { outcome: "skipped", reason: "stopped_by", detail };
+  assert.equal(shouldWriteStopped(undefined, detail), true);
+  assert.equal(shouldWriteStopped(stopped, detail), false);
+  // 打ち切る行が替わった。
+  assert.equal(shouldWriteStopped(stopped, JSON.stringify({ by: "auto-water", name: "水温" })), true);
+  // あいだに送った・外れたが入った。
+  assert.equal(shouldWriteStopped({ outcome: "sent", reason: null, detail: null }, detail), true);
+  assert.equal(shouldWriteStopped({ outcome: "left", reason: null, detail: null }, detail), true);
+  assert.equal(shouldWriteStopped({ outcome: "skipped", reason: "already_applied", detail: null }, detail), true);
 });

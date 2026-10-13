@@ -3,13 +3,13 @@ import type { Automation, DeviceGroupPending } from "@/lib/home/types";
 import type { AnalysisSource } from "@/lib/home/analysis-series";
 import { remoSync } from "@/lib/home/remo";
 import { patchFromAction, skipHeldRepeat } from "@/lib/home/device-patch";
-import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition } from "@/lib/home/automation-priority";
+import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition, stoppedAutomations } from "@/lib/home/automation-priority";
 import { clearGroupPendings, deferGroupActions, dueGroupPendings, partitionGroupLocked } from "@/lib/home/device-group";
 import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { startTuyaLanDiscovery, tuyaLanRefreshSensors } from "@/lib/home/tuya-lan";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
-import { heldSkipReason } from "@/lib/home/analysis-series";
+import { STOPPED_BY_REASON, heldSkipReason } from "@/lib/home/analysis-series";
 import { homeBelongsToLanOwner } from "./lan-owner";
 import { listAutomationHomeIds, loadHomeRecord, saveDeviceGroupStates, saveDeviceReadings, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
@@ -87,6 +87,35 @@ function sensorWouldRun(
 ): { run: boolean; holds: boolean; key?: string } {
   const d = sensorCondition(auto, snap);
   return { run: d.match, holds: d.holds, key: d.key };
+}
+
+/**
+ * 打ち切りで判定されなかった行のうち、条件を満たしていたものを分析に残す。
+ * 残すのは記録だけ。判定の記録（lastFiredKey）と機器は変えない。
+ */
+function recordStopped(
+  homeId: string,
+  automations: Automation[],
+  firing: Automation[],
+  wouldMatch: (auto: Automation) => boolean,
+  source: AnalysisSource,
+) {
+  const cut = stoppedAutomations(automations, firing, wouldMatch);
+  if (!cut?.stopped.length) return;
+  const waveId = newWaveId();
+  const detail = JSON.stringify({ by: cut.by.id, name: cut.by.name });
+  for (const auto of cut.stopped) {
+    recordEvent({
+      homeId,
+      waveId,
+      source,
+      automationId: auto.id,
+      automationName: auto.name,
+      outcome: "skipped",
+      reason: STOPPED_BY_REASON,
+      detail,
+    });
+  }
 }
 
 async function runPrioritized(
@@ -233,6 +262,17 @@ async function tickMatching(homeId: string, snap: HomeSnapshot) {
     }
     return false;
   });
+  recordStopped(
+    homeId,
+    snap.automations,
+    firing,
+    (auto) => {
+      if (auto.trigger.type === "time") return timeWouldRun(auto, now, nowMs).run;
+      if (auto.trigger.type === "sensor") return sensorWouldRun(auto, snap).run;
+      return false;
+    },
+    "tick",
+  );
   let cur = snap;
   if (keys.size) {
     cur = await saveHomeRecord(homeId, {
@@ -381,12 +421,14 @@ export async function fireDeviceOnServer(
   if (on === undefined) return;
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
-  const firing = collectMatchingAutomations(rec.snap.automations, (auto) => {
+  const matches = (auto: Automation) => {
     if (auto.trigger.type !== "device") return false;
     if (auto.trigger.deviceId !== deviceId) return false;
     if (auto.trigger.deviceOn !== undefined && auto.trigger.deviceOn !== on) return false;
     return true;
-  });
+  };
+  const firing = collectMatchingAutomations(rec.snap.automations, matches);
+  recordStopped(homeId, rec.snap.automations, firing, matches, source);
   await runPrioritized(homeId, rec.snap, firing, new Set(), source);
 }
 
@@ -397,9 +439,8 @@ export async function fireSceneOnServer(
 ) {
   const rec = await loadHomeRecord(homeId);
   if (!rec) return;
-  const firing = collectMatchingAutomations(
-    rec.snap.automations,
-    (auto) => auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId,
-  );
+  const matches = (auto: Automation) => auto.trigger.type === "scene" && auto.trigger.sceneId === sceneId;
+  const firing = collectMatchingAutomations(rec.snap.automations, matches);
+  recordStopped(homeId, rec.snap.automations, firing, matches, source);
   await runPrioritized(homeId, rec.snap, firing, new Set(), source);
 }

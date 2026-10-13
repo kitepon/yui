@@ -19,6 +19,26 @@ export function collectMatchingAutomations(
 }
 
 /**
+ * 打ち切りで判定されなかった行のうち、いま条件を満たしているもの。
+ * `firing` は `collectMatchingAutomations` の結果。最後が打ち切りの行なら、その下を見る。
+ * `wouldMatch` は判定の記録を変えずに条件だけを見る。分析に理由を残すために使い、実行はしない。
+ */
+export function stoppedAutomations(
+  automations: Automation[],
+  firing: Automation[],
+  wouldMatch: (auto: Automation) => boolean,
+): { by: Automation; stopped: Automation[] } | null {
+  const by = firing[firing.length - 1];
+  if (!by?.stopOnMatch) return null;
+  const index = automations.findIndex((auto) => auto.id === by.id);
+  if (index < 0) return null;
+  const stopped = automations
+    .slice(index + 1)
+    .filter((auto) => auto.enabled && auto.actions.length > 0 && wouldMatch(auto));
+  return { by, stopped };
+}
+
+/**
  * 一覧の上が同じ機器を取る。下は残った機器だけ動かす。
  * `firing` は条件を満たしたオートメーションを、欄の並びのまま渡す。
  * 再送を省く行も含めて優先権を確定し、その後に送信を省く。

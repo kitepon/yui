@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition, skipContinuousActions } from "./automation-priority.ts";
+import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition, skipContinuousActions, stoppedAutomations } from "./automation-priority.ts";
 import type { AutoAction, Automation } from "./types.ts";
 
 function auto(id: string, deviceIds: string[]): Automation {
@@ -287,4 +287,33 @@ test("連続では動かさないは機器ごとに省き、他の機器は送�
   assert.deepEqual(again.run.map((a) => a.deviceId), ["ac"]);
   assert.deepEqual(again.skipped.map((a) => a.deviceId), ["fan-off"]);
   assert.equal(skipContinuousActions(auto, "severe"), false);
+});
+
+test("打ち切られた行のうち、条件を満たしていたものだけを返す", () => {
+  const stop = { ...auto("室温", ["エアコン"]), stopOnMatch: true };
+  const hot = auto("水温高", ["エアコン"]);
+  const cold = auto("水温低", ["エアコン"]);
+  const list = [auto("照明", ["照明"]), stop, hot, cold];
+  const firing = collectMatchingAutomations(list, (a) => a.id === "室温");
+  const checked: string[] = [];
+  const cut = stoppedAutomations(list, firing, (a) => {
+    checked.push(a.id);
+    return a.id === "水温高";
+  });
+  assert.deepEqual(checked, ["水温高", "水温低"]);
+  assert.equal(cut?.by.id, "室温");
+  assert.deepEqual(cut?.stopped.map((a) => a.id), ["水温高"]);
+});
+
+test("打ち切りが無い回と、無効・アクションなしの行は、打ち切られた行に数えない", () => {
+  const upper = auto("上", ["エアコン"]);
+  const lower = auto("下", ["換気扇"]);
+  assert.equal(stoppedAutomations([upper, lower], [upper, lower], () => true), null);
+  assert.equal(stoppedAutomations([upper, lower], [], () => true), null);
+
+  const stop = { ...auto("打ち切り", ["エアコン"]), stopOnMatch: true };
+  const disabled = { ...auto("無効", ["A"]), enabled: false };
+  const empty = auto("空", []);
+  const cut = stoppedAutomations([stop, disabled, empty, lower], [stop], () => true);
+  assert.deepEqual(cut?.stopped.map((a) => a.id), ["下"]);
 });
