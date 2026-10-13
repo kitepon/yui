@@ -12,7 +12,7 @@
 
 ## 秘密
 
-`deploy/.env` に置く。リポジトリには入れない。
+`deploy/.env` に置く。リポジトリには入れない。平文で置かずに 1Password から読む形は、下の「秘密を 1Password から読む」。
 
 | 変数 | 要否 | 用途 |
 |---|---|---|
@@ -94,6 +94,39 @@ DEPLOY_HOST=user@192.168.0.2 ./scripts/deploy-prod.sh
 
 新しい image を焼いて `docker compose up -d` する。tag を `日付-短sha` のように固定しておくと、
 戻したいときに `image:` を古い tag へ書き換えるだけで済む。`latest` は使わない方がいい。
+
+## 秘密を 1Password から読む（任意）
+
+`.env` に秘密を平文で置かず、起こす時に 1Password CLI（`op`）で読む形にもできる。
+サーバーに `op` があり、login shell で `op whoami` が通ること。Docker Compose v5.3.1 と `op` 2.40.0 で確かめた。
+
+1. 秘密を 1Password の項目へ入れる。
+2. `deploy/op.env`（権限 600）を置く。書き方は `.env` と同じで、秘密だけを参照に替える。ほかの設定は値のまま書く。
+
+   ```
+   BETTER_AUTH_SECRET=op://<保管庫のID>/<項目のID>/credential
+   HOME_SECRETS_KEY=op://<保管庫のID>/<項目のID>/credential
+   BETTER_AUTH_URL=https://yui.example.com
+   ```
+
+3. `docker compose up -d` の代わりに `./up.sh` で起こす。引数はそのまま `up` へ渡る。
+   `scripts/deploy-prod.sh` は、サーバーに `op.env` があれば `.env` を作らず、`up.sh` で起こす。
+
+`up.sh` は次のように動く。
+
+- `op.env` に書いた名前をすべて `app` へ渡す。値が空の名前が一つでもあれば起こさない。
+- `op` が読めない時は、Docker まで進まずに終わる。動いている結はそのまま残る。
+- 1Password から読んだ値が、動いている結の値と違う時は起こさない。項目が意図せず書き換わった時に、動いている鍵を捨てないため。
+  鍵を入れ替えた時は、変数名を書いて通す（`YUI_ACCEPT_CHANGED="STRIPE_SECRET_KEY" ./up.sh --force-recreate`）。
+  `HOME_SECRETS_KEY` を入れ替えると、保存済みの家電トークンと予備は復号できなくなる。
+- 置き場に `.env` が残っていても読まない。
+
+知っておくこと。
+
+- `op` を呼ぶのは `up.sh` を実行した時だけ。Docker の自動再起動とホストの再起動は、Docker が保存している値で起きる。
+- 値は、Docker が保存する容器の設定には残る。無くなるのは置き場の平文のファイル。
+- 1Password へ届かない間は、容器を作り直せない。
+- `.env` へ戻す時は、`umask 077; op inject -i op.env -o .env` で作り直してから `docker compose up -d` で起こす。
 
 ## 予備の復旧
 

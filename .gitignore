@@ -8,6 +8,8 @@ data/
 *.local
 .env
 .env.*
+deploy/op.env
+deploy/compose.op.yaml
 screenshots/
 artifacts/
 attachments/

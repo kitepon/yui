@@ -10,6 +10,8 @@
 #
 # 家に固有の設定（公開 URL、LAN 直結の宛先、秘密）はサーバーの deploy/.env が持つ。
 # このスクリプトも compose.yaml も、それらの値を知らない。
+# サーバーに deploy/op.env がある時は、秘密を 1Password から読む置き場として扱う。
+# .env は作らず、deploy/up.sh で起こす（deploy/README.md）。
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
@@ -87,22 +89,38 @@ ssh "$HOST" "docker image inspect $BLE_IMAGE >/dev/null"
 
 echo "[deploy] compose $REMOTE_DIR/deploy"
 ssh "$HOST" "mkdir -p $REMOTE_DIR/deploy"
-# 初回だけ、鍵を持つ .env を作る。既にあれば触らない。
-ssh "$HOST" "umask 077; if [ ! -f $REMOTE_DIR/deploy/.env ]; then printf 'BETTER_AUTH_SECRET=%s\nHOME_SECRETS_KEY=%s\n' \"\$(openssl rand -hex 32)\" \"\$(openssl rand -hex 32)\" > $REMOTE_DIR/deploy/.env; echo '[deploy] wrote new deploy/.env — BETTER_AUTH_URL などを書き足すこと'; fi"
+if ssh "$HOST" "[ -f $REMOTE_DIR/deploy/op.env ]"; then
+  # 秘密は 1Password にある。新しい鍵を作ると、動いている鍵と食い違う。
+  CONF=op.env
+  echo "[deploy] op.env がある。秘密は 1Password から読む"
+else
+  CONF=.env
+  # 初回だけ、鍵を持つ .env を作る。既にあれば触らない。
+  ssh "$HOST" "umask 077; if [ ! -f $REMOTE_DIR/deploy/.env ]; then printf 'BETTER_AUTH_SECRET=%s\nHOME_SECRETS_KEY=%s\n' \"\$(openssl rand -hex 32)\" \"\$(openssl rand -hex 32)\" > $REMOTE_DIR/deploy/.env; echo '[deploy] wrote new deploy/.env — BETTER_AUTH_URL などを書き足すこと'; fi"
+fi
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
 sed -e "s|image: yuihome:local|image: $IMAGE|" -e "s|image: yuihome-switchbot-ble:local|image: $BLE_IMAGE|" "$ROOT/deploy/compose.yaml" >"$TMP"
 scp -q "$TMP" "$HOST:$REMOTE_DIR/deploy/compose.yaml"
+if [ "$CONF" = op.env ]; then
+  scp -q "$ROOT/deploy/up.sh" "$HOST:$REMOTE_DIR/deploy/up.sh"
+  ssh "$HOST" "chmod 755 $REMOTE_DIR/deploy/up.sh"
+fi
 
 # 時刻オートメーションは分ごとに判定する。止まっている間に分をまたぐと、その分の判定が飛ぶことがある。
 # 分の頭を待って入れ替え、同じ分のうちに起こし直す。
 echo "[deploy] up"
-ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && docker compose up -d --force-recreate"
+if [ "$CONF" = op.env ]; then
+  # 1Password のトークンは login shell の読み込みで入る。
+  ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && \"\$SHELL\" -lc './up.sh --force-recreate'"
+else
+  ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && docker compose up -d --force-recreate"
+fi
 ssh "$HOST" "docker ps --filter name=^/${NAME}$ --format '{{.Names}}\t{{.Status}}\t{{.Image}}'"
 
 echo "[deploy] probe"
-ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./.env 2>/dev/null; curl -fsS -o /dev/null -w '%{http_code}\n' --max-time 10 http://\${YUI_BIND:-127.0.0.1}:\${YUI_PORT:-18861}/"
-if ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./.env 2>/dev/null; grep -q '^COMPOSE_PROFILES=.*ble' .env"; then
+ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./$CONF 2>/dev/null; curl -fsS -o /dev/null -w '%{http_code}\n' --max-time 10 http://\${YUI_BIND:-127.0.0.1}:\${YUI_PORT:-18861}/"
+if ssh "$HOST" "cd $REMOTE_DIR/deploy && . ./$CONF 2>/dev/null; grep -q '^COMPOSE_PROFILES=.*ble' $CONF"; then
   # BLE のポートはホストへ公開しない。結が設定された接続先へ届くことを確かめる。
   ssh "$HOST" "docker exec $NAME node --input-type=module -e 'const res = await fetch(new URL(\"/health\", process.env.YUI_SWITCHBOT_BLE_URL), { signal: AbortSignal.timeout(5000) }); if (!res.ok) throw new Error(\"Bluetooth 確認失敗: HTTP \" + res.status); console.log(await res.text());'"
 fi

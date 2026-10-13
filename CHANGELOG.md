@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-13
+
+本番 image は `yuihome:20261010-b537dd8` のまま。容器は作り直していない。
+
+### 変わったこと
+
+- 秘密を `.env` に平文で置かず、起こす時に 1Password から読める（`deploy/up.sh` と `deploy/op.env`。手順は `deploy/README.md`）。`.env` で動かす置き場は今までどおり
+- `up.sh` は、`op` が読めない時と値が空の時は起こさない。1Password から読んだ値が動いている結の値と違う時も、変数名を指定するまで起こさない
+- 配備スクリプトは、サーバーに `op.env` があれば `.env` を作らず `up.sh` で起こす
+- 公式 hosted 版の秘密9個を 1Password から読む形へ替えた。値は変えていない
+
+### 限界
+
+- 1Password へ届かない間は、容器を作り直せない。動いている容器の自動再起動は 1Password を使わない
+- 値は、Docker が保存する容器の設定には残る
+
 ## 2026-10-07
 
 本番 image `yuihome:20261007-6006873`。Bluetooth 押し `yuihome-switchbot-ble:20261007-6006873`。
