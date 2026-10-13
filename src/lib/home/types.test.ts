@@ -182,3 +182,25 @@ test("detail extra drops the connector already shown on the badge", () => {
   assert.equal(stripConnectorFromExtra("Bot", "switchbot"), "Bot");
   assert.equal(stripConnectorFromExtra("cz", "smartlife"), "cz");
 });
+
+test("戻り幅は小数点第一位に揃えて残し、0 以下と数でない値は付けない", () => {
+  const base = { type: "sensor" as const, deviceId: "s1", metric: "temperature" as const, op: "gte" as const, value: 25.5 };
+  assert.equal(completeTrigger({ ...base, hysteresis: 0.2 }).hysteresis, 0.2);
+  assert.equal(completeTrigger({ ...base, hysteresis: 0.24 }).hysteresis, 0.2);
+  assert.equal(completeTrigger({ ...base, hysteresis: 1000 }).hysteresis, 100);
+  for (const hysteresis of [0, -1, 0.04, Number.NaN]) {
+    assert.equal("hysteresis" in completeTrigger({ ...base, hysteresis }), false);
+  }
+  assert.equal("hysteresis" in completeTrigger(base), false);
+  // 時刻・機器・場面には付けない。
+  assert.equal("hysteresis" in completeTrigger({ type: "time", hysteresis: 0.2 }), false);
+
+  const saved = migrateAutomation({
+    id: "hot",
+    name: "高温域",
+    enabled: true,
+    trigger: { ...base, op: "between", valueMax: 26, hysteresis: 0.2 },
+    actions: [{ id: "a", deviceId: "ac", on: true }],
+  });
+  assert.equal(saved?.trigger.hysteresis, 0.2);
+});

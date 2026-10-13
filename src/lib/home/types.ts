@@ -287,6 +287,20 @@ export interface AutoTrigger {
   value?: number;
   /** `op === "between"` の上限。下限は `value`。 */
   valueMax?: number;
+  /**
+   * センサー条件の戻り幅。成立したあとは、値が境目からこの幅を超えて戻るまで成立を続ける。
+   * 無いか 0 なら、境目をまたぐたびに切り替わる。
+   */
+  hysteresis?: number;
+}
+
+export const HYSTERESIS_MAX = 100;
+
+/** 戻り幅は小数点第一位まで。0 以下と数でない値は「無し」にする。 */
+export function normalizeHysteresis(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
+  const rounded = Math.round(Math.min(value, HYSTERESIS_MAX) * 10) / 10;
+  return rounded > 0 ? rounded : undefined;
 }
 
 export interface AutoAction extends Omit<DeviceCommand, "id"> {
@@ -417,6 +431,8 @@ export function completeTrigger(trigger: AutoTrigger): AutoTrigger {
   if (op === "between") {
     next.valueMax = trigger.valueMax ?? Math.min(100, (next.value ?? 24) + 2);
   }
+  const hysteresis = normalizeHysteresis(trigger.hysteresis);
+  if (hysteresis != null) next.hysteresis = hysteresis;
   return next;
 }
 

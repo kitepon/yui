@@ -4,6 +4,7 @@ import { describePatch, patchFromAction, skipHeldRepeat } from "./device-patch";
 import { runCommand } from "./run";
 import { useHome } from "./store";
 import { collectMatchingAutomations, partitionContinuousActions, prioritizeAutomationActions, sensorCondition } from "./automation-priority";
+import { sensorHysteresis } from "./sensor-trigger";
 import type { AutoAction, Automation } from "./types";
 import { METRIC_LABEL, WEEKDAYS, sensorTempLabel } from "./types";
 
@@ -32,13 +33,14 @@ export function describeTrigger(auto: Automation) {
     const device = useHome.getState().devices.find((d) => d.id === t.deviceId);
     const metric =
       device?.extra === "水温" ? sensorTempLabel(device) : METRIC_LABEL[t.metric ?? "temperature"];
+    const margin = sensorHysteresis(t) ? `（戻り幅${sensorHysteresis(t)}）` : "";
     if (t.op === "between") {
       const lo = Math.min(t.value ?? 0, t.valueMax ?? t.value ?? 0);
       const hi = Math.max(t.value ?? 0, t.valueMax ?? t.value ?? 0);
-      return `${device?.name ?? "センサー"} ${metric}${lo}〜${hi}の範囲`;
+      return `${device?.name ?? "センサー"} ${metric}${lo}〜${hi}の範囲${margin}`;
     }
     const op = t.op === "lte" ? "以下" : "以上";
-    return `${device?.name ?? "センサー"} ${metric}${t.value ?? 0}${op}`;
+    return `${device?.name ?? "センサー"} ${metric}${t.value ?? 0}${op}${margin}`;
   }
   const scene = useHome.getState().scenes.find((s) => s.id === t.sceneId);
   return `場面「${scene?.name ?? "—"}」`;

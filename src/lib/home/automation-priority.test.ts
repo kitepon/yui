@@ -317,3 +317,74 @@ test("打ち切りが無い回と、無効・アクションなしの行は、�
   const cut = stoppedAutomations([stop, disabled, empty, lower], [stop], () => true);
   assert.deepEqual(cut?.stopped.map((a) => a.id), ["下"]);
 });
+
+/** 水温が境目を行き来する家。上から 高温域（入）、外気（切）、中温域（入）、低温域（切）。 */
+function waterStack(hysteresis?: number): Automation[] {
+  const water = (id: string, value: number, valueMax: number, on: boolean): Automation => ({
+    ...auto(id, []),
+    stopOnMatch: true,
+    trigger: { type: "sensor", deviceId: "水温計", metric: "temperature", op: "between", value, valueMax, hysteresis },
+    actions: [{ id: `${id}-ac`, deviceId: "エアコン", on }],
+  });
+  return [
+    water("高温域", 25.6, 26, true),
+    {
+      ...auto("外気", []),
+      stopOnMatch: true,
+      trigger: { type: "sensor", deviceId: "外気温", metric: "temperature", op: "lte", value: 21.5 },
+      actions: [{ id: "外気-ac", deviceId: "エアコン", on: false }],
+    },
+    water("中温域", 25.5, 25.6, true),
+    water("低温域", 0, 25.5, false),
+  ];
+}
+
+/** 各回にエアコンを取った行。判定のキーは runner と同じく毎回書き戻す。 */
+function holders(list: Automation[], waterTemps: number[]) {
+  return waterTemps.map((temperature) => {
+    const snap = { devices: [{ id: "水温計", temperature }, { id: "外気温", temperature: 19 }], climate: {} };
+    const firing = collectMatchingAutomations(list, (a) => {
+      const d = sensorCondition(a, snap);
+      if (d.key) a.lastFiredKey = d.key;
+      return d.match;
+    });
+    return firing[0]?.id;
+  });
+}
+
+test("戻り幅が無いと、水温が境目を行き来するたびにエアコンを取る行が入れ替わる", () => {
+  assert.deepEqual(holders(waterStack(), [25.5, 25.6, 25.5, 25.6, 25.5, 25.6]), [
+    "外気", "高温域", "外気", "高温域", "外気", "高温域",
+  ]);
+});
+
+test("戻り幅があると、成立した行が境目の行き来では入れ替わらない", () => {
+  assert.deepEqual(holders(waterStack(0.2), [25.5, 25.6, 25.5, 25.6, 25.5, 25.4, 25.3, 25.5, 25.6]), [
+    "外気", "高温域", "高温域", "高温域", "高温域", "高温域", "外気", "外気", "高温域",
+  ]);
+});
+
+test("戻り幅で成立を続けている行より上の行は、元の境目で入って上から取る", () => {
+  const list = waterStack(0.2);
+  const hot: Automation = {
+    ...auto("深刻", []),
+    stopOnMatch: true,
+    trigger: { type: "sensor", deviceId: "水温計", metric: "temperature", op: "between", value: 26, valueMax: 99, hysteresis: 0.2 },
+    actions: [{ id: "深刻-ac", deviceId: "エアコン", on: true }],
+  };
+  // 上がる時は 26.0 で深刻へ替わる。下がる時は 25.8 を下回るまで深刻が続く。
+  assert.deepEqual(holders([hot, ...list], [25.6, 25.9, 26, 25.9, 25.8, 25.7, 25.6]), [
+    "高温域", "高温域", "深刻", "深刻", "深刻", "高温域", "高温域",
+  ]);
+});
+
+test("戻り幅は、最後の判定で成立していたあいだだけ効く。保存し直すと元の境目から始まる", () => {
+  const [hot] = waterStack(0.2);
+  const snap = { devices: [{ id: "水温計", temperature: 25.5 }], climate: {} };
+  assert.equal(sensorCondition(hot, snap).match, false);
+  hot.lastFiredKey = sensorCondition(hot, { devices: [{ id: "水温計", temperature: 25.6 }], climate: {} }).key;
+  assert.deepEqual(sensorCondition(hot, snap), { match: true, holds: true });
+  // 編集画面の保存は lastFiredKey を消す。
+  hot.lastFiredKey = undefined;
+  assert.equal(sensorCondition(hot, snap).match, false);
+});

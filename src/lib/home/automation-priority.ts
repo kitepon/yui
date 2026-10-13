@@ -1,5 +1,5 @@
 import type { AutoAction, Automation, AutoTrigger } from "./types.ts";
-import { metricValue, sensorHoldsWhileInRange, sensorTriggerDecision } from "./sensor-trigger.ts";
+import { metricValue, sensorHoldsWhileInRange, sensorPassKey, sensorTriggerDecision } from "./sensor-trigger.ts";
 
 /**
  * 条件成立を上から集め、打ち切り設定のある行で判定を終える。
@@ -94,6 +94,7 @@ export function skipContinuousActions(
 /**
  * センサー条件をいま満たしているか。満たしているあいだは機器を取り続ける（下が奪わない）。
  * 範囲に入った最初は送り、入っているあいだは保持する。出たら fail を残して、再入場でまた送る。
+ * 戻り幅があれば、成立中は境目をそのぶん広げて見る。
  */
 export function sensorCondition(auto: Automation, snap: {
   devices: Array<{
@@ -112,7 +113,8 @@ export function sensorCondition(auto: Automation, snap: {
   const raw = device ? metricValue(device, metric) : metricValue(snap.climate, metric);
   if (raw == null || t.value == null) return { match: false, holds: false };
   if (sensorHoldsWhileInRange(t) && t.valueMax == null) return { match: false, holds: false };
-  const { pass, key } = sensorTriggerDecision(raw, t);
+  // 戻り幅は、最後の判定で成立していたあいだだけ効かせる。
+  const { pass, key } = sensorTriggerDecision(raw, t, auto.lastFiredKey === sensorPassKey(t));
   if (!pass) {
     if (sensorHoldsWhileInRange(t)) return { match: false, holds: false, key };
     if (auto.lastFiredKey === key) return { match: false, holds: false };

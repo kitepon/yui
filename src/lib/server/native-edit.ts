@@ -3,7 +3,7 @@ import { matchesStep } from "../home/demo.ts";
 import { GROUP_LOCK_MINUTES_MAX, GROUP_LOCK_MINUTES_MIN } from "../home/device-group.ts";
 import { fillVisibleDefaults, reportsActuatorState } from "../home/device-patch.ts";
 import type { HomeSnapshot } from "../home/snapshot.ts";
-import { completeTrigger, isSensorSource, sensorMetricsOf, type AutoAction, type AutoTrigger, type SceneStep } from "../home/types.ts";
+import { HYSTERESIS_MAX, completeTrigger, isSensorSource, sensorMetricsOf, type AutoAction, type Automation, type AutoTrigger, type SceneStep } from "../home/types.ts";
 
 const patchFields = {
   on: z.boolean().optional(),
@@ -43,6 +43,7 @@ const triggerSchema = z.discriminatedUnion("type", [
     metric: z.enum(["temperature", "humidity", "lux", "outdoorTemp"]),
     op: z.enum(["gte", "lte", "between"]),
     value: z.number().finite(), valueMax: z.number().finite().optional(),
+    hysteresis: z.number().finite().min(0).max(HYSTERESIS_MAX).optional(),
   }),
 ]);
 
@@ -86,11 +87,22 @@ export function parseNativeSceneSteps(input: unknown, snap: HomeSnapshot, previo
   });
 }
 
-export function parseNativeAutomation(input: unknown, snap: HomeSnapshot) {
+/**
+ * `previous` は編集前のオートメーション。戻り幅を送らないアプリ（項目を知らない版）で保存しても、
+ * 同じセンサー値の条件なら Web で入れた戻り幅を消さない。消すときは 0 を送る。
+ */
+export function parseNativeAutomation(input: unknown, snap: HomeSnapshot, previous?: Pick<Automation, "trigger">) {
   const parsed = automationSchema.safeParse(input);
   if (!parsed.success) return null;
   const draft = parsed.data;
-  const trigger: AutoTrigger = completeTrigger(draft.trigger);
+  const kept =
+    draft.trigger.type === "sensor" &&
+    draft.trigger.hysteresis === undefined &&
+    previous?.trigger.type === "sensor" &&
+    (previous.trigger.metric ?? "temperature") === draft.trigger.metric
+      ? previous.trigger.hysteresis
+      : undefined;
+  const trigger: AutoTrigger = completeTrigger(kept === undefined ? draft.trigger : { ...draft.trigger, hysteresis: kept });
   if (trigger.type === "device" && !snap.devices.some((device) => device.id === trigger.deviceId && device.kind !== "sensor")) return null;
   if (trigger.type === "scene" && !snap.scenes.some((scene) => scene.id === trigger.sceneId)) return null;
   if (trigger.type === "sensor") {

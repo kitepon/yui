@@ -97,7 +97,7 @@ export const Route = createFileRoute("/api/home")({
           if (automationId && !previous) {
             return Response.json({ error: "オートメーションが見つかりません" }, { status: 404 });
           }
-          const draft = parseNativeAutomation(body.automation, snap);
+          const draft = parseNativeAutomation(body.automation, snap, previous);
           if (!draft) return Response.json({ error: "オートメーションの設定が不正です" }, { status: 400 });
           const automation = {
             ...draft,

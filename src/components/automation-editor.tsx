@@ -18,6 +18,7 @@ import {
   type Automation,
   type Device,
   type TimeRepeat,
+  HYSTERESIS_MAX,
   METRIC_LABEL,
   WEEKDAYS,
   completeTrigger,
@@ -321,6 +322,17 @@ export function AutomationEditor({
                 onChange={(value) => setTrigger({ ...trigger, value })}
               />
             )}
+            <Num
+              label="戻り幅（0 で無し）"
+              value={trigger.hysteresis ?? 0}
+              min={0}
+              max={HYSTERESIS_MAX}
+              step={0.1}
+              onChange={(hysteresis) => setTrigger({ ...trigger, hysteresis })}
+            />
+            <p className="text-xs leading-relaxed text-faint">
+              戻り幅を入れると、成立したあとは、値が境目からその幅を超えて戻るまで成立を続けます。境目の近くで値が行き来しても、入切を繰り返しません。例：25.5以上・戻り幅0.2 なら、25.5 で成立し、25.3 を下回るまで続きます。
+            </p>
             <p className="text-xs leading-relaxed text-faint">
               {trigger.op === "between"
                 ? `範囲内のあいだ、いまの設定と違うときだけ送ります。機器ごとの『連続では動かさない』は、直前に動いたのが自分自身のときその機器をオンオフしません。赤外線リモコンのように設定を読み返せない機器には使えません。センサーの値はサーバーが${SENSOR_TICK_SECONDS}秒ごとに確認します。`

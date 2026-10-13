@@ -62,3 +62,40 @@ test("iPhone の機器グループは実在する機器と分数を検証し、�
   // 同期で一時的に消えた機器も、編集中のグループには残せる。
   assert.deepEqual(parseNativeDeviceGroup({ ...draft, deviceIds: ["ac", "gone"] }, snap, "fan")?.deviceIds, ["ac", "gone"]);
 });
+
+test("iPhone の保存は戻り幅を受け取り、送らない版でも Web で入れた戻り幅を消さない", () => {
+  const snap = home();
+  const draft = {
+    name: "暑い日", enabled: true,
+    trigger: { type: "sensor", deviceId: "ac", metric: "temperature", op: "between", value: 25, valueMax: 30 },
+    actions: [{ id: "action", deviceId: "ac", on: true, mode: "cool", targetTemp: 24 }],
+  };
+  const withMargin = { ...draft, trigger: { ...draft.trigger, hysteresis: 0.2 } };
+  assert.equal(parseNativeAutomation(withMargin, snap)?.trigger.hysteresis, 0.2);
+  const plain = parseNativeAutomation(draft, snap);
+  assert.equal(plain?.trigger.op, "between");
+  assert.equal("hysteresis" in (plain?.trigger ?? {}), false);
+
+  // 編集前に戻り幅がある。項目を知らない版は送ってこない。
+  const previous = { trigger: { ...draft.trigger, hysteresis: 0.3 } } as Parameters<typeof parseNativeAutomation>[2];
+  assert.equal(parseNativeAutomation({ ...draft, trigger: { ...draft.trigger, value: 26 } }, snap, previous)?.trigger.hysteresis, 0.3);
+  // 0 を送れば消える。数を送れば置き換わる。
+  const cleared = parseNativeAutomation({ ...draft, trigger: { ...draft.trigger, hysteresis: 0 } }, snap, previous);
+  assert.equal(cleared?.trigger.op, "between");
+  assert.equal("hysteresis" in (cleared?.trigger ?? {}), false);
+  assert.equal(parseNativeAutomation(withMargin, snap, previous)?.trigger.hysteresis, 0.2);
+  // 別の値の条件へ替えたら持ち越さない。時刻へ替えても付かない。
+  const humid = { ...draft, trigger: { type: "sensor", deviceId: "ac", metric: "humidity", op: "gte", value: 60 } };
+  const snapHumid = home();
+  (snapHumid.devices[0] as { humidity?: number }).humidity = 50;
+  const switched = parseNativeAutomation(humid, snapHumid, previous);
+  assert.equal(switched?.trigger.metric, "humidity");
+  assert.equal("hysteresis" in (switched?.trigger ?? {}), false);
+  const timed = parseNativeAutomation({ ...draft, trigger: { type: "time", hour: 7, minute: 0 } }, snap, previous);
+  assert.equal(timed?.trigger.type, "time");
+  assert.equal("hysteresis" in (timed?.trigger ?? {}), false);
+  // 範囲外は拒む。
+  for (const hysteresis of [-0.1, 100.1]) {
+    assert.equal(parseNativeAutomation({ ...draft, trigger: { ...draft.trigger, hysteresis } }, snap), null);
+  }
+});
