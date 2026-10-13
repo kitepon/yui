@@ -14,7 +14,7 @@ import * as Slider from "@radix-ui/react-slider";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/lib/auth/gates";
 import { pullAnalysis } from "@/lib/home/control-client";
-import { ON_METRIC } from "@/lib/home/analysis-series";
+import { ON_METRIC, parseStoppedDetail } from "@/lib/home/analysis-series";
 import {
   HOUR_MS,
   MINUTE_MS,
@@ -210,7 +210,7 @@ function DualRange({
   );
 }
 
-function reasonText(reason: string | null, detail: string | null) {
+function reasonText(reason: string | null, detail: string | null, ts?: string) {
   if (reason === "claimed_by") {
     try {
       const body = detail ? (JSON.parse(detail) as { name?: string }) : {};
@@ -220,11 +220,11 @@ function reasonText(reason: string | null, detail: string | null) {
     }
   }
   if (reason === "stopped_by") {
-    try {
-      const body = detail ? (JSON.parse(detail) as { name?: string }) : {};
-      if (body.name) return `${body.name} が下の判定を打ち切った（条件は満たしていた）`;
-    } catch {
-      /* keep default */
+    const body = parseStoppedDetail(detail);
+    if (body.name) {
+      // 続いたあいだは1行にまとまる。1分以上続いた回だけ、最後に確かめた時刻を添える。
+      const lasted = body.until && ts ? Date.parse(body.until) - Date.parse(ts) >= MINUTE_MS : false;
+      return `${body.name} が下の判定を打ち切った（条件は満たしていた${lasted ? `。${eventTime(body.until as string)} まで` : ""}）`;
     }
   }
   if (reason === "group_locked") {
@@ -574,7 +574,7 @@ export function AnalysisPage() {
                   {ev.automationName ? ` · ${ev.automationName}` : ""}
                   {ev.deviceName ? ` · ${ev.deviceName}` : ""}
                 </p>
-                {ev.reason ? <p className="mt-0.5 text-xs text-muted">{reasonText(ev.reason, ev.detail)}</p> : null}
+                {ev.reason ? <p className="mt-0.5 text-xs text-muted">{reasonText(ev.reason, ev.detail, ev.ts)}</p> : null}
               </article>
             ))
           )}

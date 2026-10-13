@@ -27,6 +27,10 @@ const fixtureUrl = `data:text/javascript,${encodeURIComponent(`
   export const billingConfigured = () => false;
   export const newWaveId = () => 'wave';
   export const recordEvent = (event) => state.events.push(event);
+  export const recordStoppedEvent = (event) => {
+    state.events.push({ ...event, outcome: 'skipped', reason: 'stopped_by' });
+    return 'inserted';
+  };
   export const recordHomeSamples = () => {};
   export const pruneAnalysis = () => {};
   export const startTuyaLanDiscovery = () => {};
@@ -214,7 +218,59 @@ for (const [name, tick] of runners) {
     await tick();
     await tick();
     assert.deepEqual(state.sent, [{ deviceId: "ac", on: false }]);
+    if (name === "サーバー") {
+      // 打ち切られた下の行は、条件を満たしている回ごとに分析へ渡す（続きを1行にまとめるのは記録の側）。
+      const stopped = state.events.filter((event) => event.reason === "stopped_by");
+      assert.deepEqual(
+        stopped.map((event) => [event.automationId, event.by.id, event.deviceId]),
+        [
+          ["tank", "outdoor", undefined],
+          ["tank", "outdoor", undefined],
+        ],
+      );
+      // 判定の状態は変えない。
+      assert.equal(state.snap.automations[1].lastFiredKey, undefined);
+      // 下の行が条件を外れた回は渡さない。
+      state.snap.devices[1].temperature = 26;
+      await tick();
+      assert.equal(state.events.filter((event) => event.reason === "stopped_by").length, 2);
+    }
   });
+
+  for (const [hysteresis, expected] of [
+    [undefined, [true, false, true, false, true]],
+    [0.2, [true, false, true]],
+  ]) {
+    test(`${name}: 戻り幅${hysteresis ?? "なし"}で、水温が境目を行き来した時の入切`, async () => {
+      reset();
+      state.snap.automations = [
+        {
+          id: "hot",
+          name: "高い",
+          enabled: true,
+          stopOnMatch: true,
+          trigger: { type: "sensor", deviceId: "water", metric: "temperature", op: "gte", value: 25.5, hysteresis },
+          actions: [{ id: "on", deviceId: "ac", on: true }],
+        },
+        {
+          id: "cold",
+          name: "低い",
+          enabled: true,
+          trigger: { type: "sensor", deviceId: "water", metric: "temperature", op: "between", value: 0, valueMax: 25.5 },
+          actions: [{ id: "off", deviceId: "ac", on: false }],
+        },
+      ];
+      // 25.5 と 25.4 を行き来してから 25.2 まで下がり、また 25.5 へ戻る。
+      for (const temperature of [25.5, 25.4, 25.5, 25.4, 25.2, 25.4, 25.5]) {
+        state.snap.devices[1].temperature = temperature;
+        await tick();
+      }
+      assert.deepEqual(
+        state.sent.map((sent) => sent.on),
+        expected,
+      );
+    });
+  }
 }
 
 // ここから下はサーバーだけ。グループの判定はサーバーの実行口が持つ。

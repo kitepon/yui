@@ -13,7 +13,7 @@ import {
   seriesLabel,
   seriesUnit,
   shouldWriteSkip,
-  shouldWriteStopped,
+  stoppedRecordAction,
   type AnalysisOutcome,
   type AnalysisSource,
   type SeriesPoint,
@@ -156,24 +156,16 @@ function lastPairEvent(homeId: string, automationId: string, deviceId: string, s
 function lastAutomationEvent(homeId: string, automationId: string, sqlite: Db) {
   return sqlite
     .prepare(
-      `SELECT outcome, reason, detail FROM home_events
+      `SELECT id, outcome, reason, detail FROM home_events
        WHERE home_id = ? AND automation_id = ?
        ORDER BY ts DESC, id DESC LIMIT 1`,
     )
-    .get(homeId, automationId) as { outcome: string; reason: string | null; detail: string | null } | undefined;
+    .get(homeId, automationId) as
+    | { id: string; outcome: string; reason: string | null; detail: string | null }
+    | undefined;
 }
 
-export function recordEvent(input: EventInput, db?: Db) {
-  const sqlite = dbOf(db);
-  if (input.outcome === "skipped" && input.reason === STOPPED_BY_REASON && input.automationId) {
-    // 判定の打ち切りは機器を持たない。機器ごとの記録を挟んで再び打ち切られた回を落とさないよう、
-    // オートメーションの最後の記録と比べる。
-    const last = lastAutomationEvent(input.homeId, input.automationId, sqlite);
-    if (!shouldWriteStopped(last, input.detail ?? "")) return false;
-  } else if (input.outcome === "skipped") {
-    const last = lastPairEvent(input.homeId, input.automationId ?? "", input.deviceId ?? "", sqlite);
-    if (!shouldWriteSkip(last, input.reason ?? "")) return false;
-  }
+function insertEvent(input: EventInput, sqlite: Db) {
   sqlite
     .prepare(
       `INSERT INTO home_events
@@ -194,7 +186,57 @@ export function recordEvent(input: EventInput, db?: Db) {
       input.reason ?? null,
       input.detail ?? null,
     );
+}
+
+export function recordEvent(input: EventInput, db?: Db) {
+  const sqlite = dbOf(db);
+  if (input.outcome === "skipped") {
+    const last = lastPairEvent(input.homeId, input.automationId ?? "", input.deviceId ?? "", sqlite);
+    if (!shouldWriteSkip(last, input.reason ?? "")) return false;
+  }
+  insertEvent(input, sqlite);
   return true;
+}
+
+/**
+ * 上の行に判定を打ち切られた記録。機器は付けず、打ち切った行と、最後に確かめた時刻を残す。
+ * 続いているあいだは同じ行の時刻だけを進め、新しい回は行を足す。
+ */
+export function recordStoppedEvent(
+  input: {
+    homeId: string;
+    ts?: string;
+    waveId: string;
+    source: AnalysisSource;
+    automationId: string;
+    automationName?: string;
+    by: { id: string; name: string };
+  },
+  db?: Db,
+): "inserted" | "extended" {
+  const sqlite = dbOf(db);
+  const ts = input.ts ?? new Date().toISOString();
+  const detail = JSON.stringify({ by: input.by.id, name: input.by.name, until: ts });
+  const last = lastAutomationEvent(input.homeId, input.automationId, sqlite);
+  if (last && stoppedRecordAction(last, input.by.id, Date.parse(ts)) === "extend") {
+    sqlite.prepare("UPDATE home_events SET detail = ? WHERE id = ?").run(detail, last.id);
+    return "extended";
+  }
+  insertEvent(
+    {
+      homeId: input.homeId,
+      ts,
+      waveId: input.waveId,
+      source: input.source,
+      automationId: input.automationId,
+      automationName: input.automationName,
+      outcome: "skipped",
+      reason: STOPPED_BY_REASON,
+      detail,
+    },
+    sqlite,
+  );
+  return "inserted";
 }
 
 export function unauthorizedAnalysis() {

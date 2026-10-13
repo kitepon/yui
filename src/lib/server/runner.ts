@@ -9,7 +9,7 @@ import { switchbotRefreshSensors } from "@/lib/home/switchbot";
 import { tuyaRefreshSensors } from "@/lib/home/tuya";
 import { startTuyaLanDiscovery, tuyaLanRefreshSensors } from "@/lib/home/tuya-lan";
 import { daikinConfigured, daikinSync, isRetiredDaikinOutdoorId } from "@/lib/home/daikin";
-import { STOPPED_BY_REASON, heldSkipReason } from "@/lib/home/analysis-series";
+import { heldSkipReason } from "@/lib/home/analysis-series";
 import { homeBelongsToLanOwner } from "./lan-owner";
 import { listAutomationHomeIds, loadHomeRecord, saveDeviceGroupStates, saveDeviceReadings, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
@@ -17,7 +17,7 @@ import { startBackupRunner } from "./home-backup";
 import { billingConfigured, loadEntitlement } from "./billing";
 import { clockInTokyo } from "@/lib/home/clock";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
-import { newWaveId, pruneAnalysis, recordEvent, recordHomeSamples } from "./analysis";
+import { newWaveId, pruneAnalysis, recordEvent, recordHomeSamples, recordStoppedEvent } from "./analysis";
 
 let started = false;
 let ticking = false;
@@ -103,17 +103,14 @@ function recordStopped(
   const cut = stoppedAutomations(automations, firing, wouldMatch);
   if (!cut?.stopped.length) return;
   const waveId = newWaveId();
-  const detail = JSON.stringify({ by: cut.by.id, name: cut.by.name });
   for (const auto of cut.stopped) {
-    recordEvent({
+    recordStoppedEvent({
       homeId,
       waveId,
       source,
       automationId: auto.id,
       automationName: auto.name,
-      outcome: "skipped",
-      reason: STOPPED_BY_REASON,
-      detail,
+      by: { id: cut.by.id, name: cut.by.name },
     });
   }
 }

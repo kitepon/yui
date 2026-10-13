@@ -93,16 +93,39 @@ export function shouldWriteSkip(
 /** 上の行が判定を打ち切った記録の理由。機器ではなくオートメーションに付く。 */
 export const STOPPED_BY_REASON = "stopped_by";
 
+/** 打ち切りを最後に確かめてからこの時間より空いたら、別の回として数える。tick 5回ぶん。 */
+export const STOPPED_GAP_MS = 5 * 60 * 1000;
+
+/** `by` は打ち切った行の id、`until` は打ち切りを最後に確かめた時刻。 */
+export type StoppedDetail = { by: string; name: string; until: string };
+
+export function parseStoppedDetail(detail: string | null | undefined): Partial<StoppedDetail> {
+  if (!detail) return {};
+  try {
+    const body = JSON.parse(detail) as Partial<StoppedDetail> | null;
+    return body && typeof body === "object" ? body : {};
+  } catch {
+    return {};
+  }
+}
+
 /**
- * 判定の打ち切りは、そのオートメーションの最後の記録が同じ打ち切りのあいだ書かない。
- * 打ち切る行が替わったときと、あいだに別の記録（送った・外れた など）が入ったときは書く。
+ * 判定の打ち切りは、続いているあいだ1行にまとめる。
+ * そのオートメーションの最後の記録が同じ行による打ち切りで、最後に確かめた時刻から間が空いていなければ、
+ * その行を延ばす。あいだに別の記録（送った・外れた など）が入ったとき、打ち切る行が替わったとき、
+ * 間が空いたときは、新しい行を足す。最後の記録だけで比べると、条件を外れてからまた打ち切られた回を落とす。
  */
-export function shouldWriteStopped(
+export function stoppedRecordAction(
   last: { outcome: string; reason: string | null; detail: string | null } | undefined,
-  detail: string,
-) {
-  if (!last) return true;
-  return !(last.outcome === "skipped" && last.reason === STOPPED_BY_REASON && last.detail === detail);
+  by: string,
+  nowMs: number,
+): "insert" | "extend" {
+  if (!last || last.outcome !== "skipped" || last.reason !== STOPPED_BY_REASON) return "insert";
+  const body = parseStoppedDetail(last.detail);
+  if (body.by !== by) return "insert";
+  const until = Date.parse(body.until ?? "");
+  if (Number.isNaN(until) || nowMs - until > STOPPED_GAP_MS) return "insert";
+  return "extend";
 }
 
 export function downsamplePoints(points: SeriesPoint[], bucketMs: number): SeriesPoint[] {

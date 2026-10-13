@@ -5,8 +5,9 @@ import {
   collectSensorSamples,
   heldSkipReason,
   seriesLabel,
+  parseStoppedDetail,
   shouldWriteSkip,
-  shouldWriteStopped,
+  stoppedRecordAction,
 } from "./analysis-series.ts";
 import type { Device } from "./types.ts";
 
@@ -86,15 +87,39 @@ test("連続 skip は畳み、sent は畳まない", () => {
   assert.equal(shouldWriteSkip({ outcome: "sent", reason: null }, "already_applied"), true);
 });
 
-test("判定の打ち切りは、同じ行に打ち切られているあいだ1行に畳む", () => {
-  const detail = JSON.stringify({ by: "auto-room", name: "室温基準" });
-  const stopped = { outcome: "skipped", reason: "stopped_by", detail };
-  assert.equal(shouldWriteStopped(undefined, detail), true);
-  assert.equal(shouldWriteStopped(stopped, detail), false);
+test("判定の打ち切りは、続いているあいだ同じ行を延ばし、新しい回は行を足す", () => {
+  const at = (iso: string) => Date.parse(iso);
+  const row = (until: string, by = "auto-room") => ({
+    outcome: "skipped",
+    reason: "stopped_by",
+    detail: JSON.stringify({ by, name: "室温基準", until }),
+  });
+  assert.equal(stoppedRecordAction(undefined, "auto-room", at("2026-10-13T11:10:00.000Z")), "insert");
+  // 次の tick。続いている。
+  assert.equal(stoppedRecordAction(row("2026-10-13T11:10:00.000Z"), "auto-room", at("2026-10-13T11:11:00.000Z")), "extend");
+  // tick が数回抜けても、5分までは続きに数える。
+  assert.equal(stoppedRecordAction(row("2026-10-13T11:10:00.000Z"), "auto-room", at("2026-10-13T11:15:00.000Z")), "extend");
+  // 間が空いた。条件を外れてから、また打ち切られた回。
+  assert.equal(stoppedRecordAction(row("2026-10-13T11:10:00.000Z"), "auto-room", at("2026-10-13T11:15:01.000Z")), "insert");
   // 打ち切る行が替わった。
-  assert.equal(shouldWriteStopped(stopped, JSON.stringify({ by: "auto-water", name: "水温" })), true);
+  assert.equal(stoppedRecordAction(row("2026-10-13T11:10:00.000Z"), "auto-water", at("2026-10-13T11:11:00.000Z")), "insert");
   // あいだに送った・外れたが入った。
-  assert.equal(shouldWriteStopped({ outcome: "sent", reason: null, detail: null }, detail), true);
-  assert.equal(shouldWriteStopped({ outcome: "left", reason: null, detail: null }, detail), true);
-  assert.equal(shouldWriteStopped({ outcome: "skipped", reason: "already_applied", detail: null }, detail), true);
+  for (const last of [
+    { outcome: "sent", reason: null, detail: null },
+    { outcome: "left", reason: null, detail: null },
+    { outcome: "skipped", reason: "already_applied", detail: null },
+  ]) {
+    assert.equal(stoppedRecordAction(last, "auto-room", at("2026-10-13T11:11:00.000Z")), "insert");
+  }
+  // 時刻の無い古い形や壊れた detail は、続きに数えない。
+  assert.equal(
+    stoppedRecordAction({ outcome: "skipped", reason: "stopped_by", detail: '{"by":"auto-room"}' }, "auto-room", at("2026-10-13T11:11:00.000Z")),
+    "insert",
+  );
+  assert.equal(
+    stoppedRecordAction({ outcome: "skipped", reason: "stopped_by", detail: "x" }, "auto-room", at("2026-10-13T11:11:00.000Z")),
+    "insert",
+  );
+  assert.deepEqual(parseStoppedDetail(null), {});
+  assert.deepEqual(parseStoppedDetail("null"), {});
 });
