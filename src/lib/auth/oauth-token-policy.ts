@@ -7,10 +7,11 @@
  * Google プロジェクトのほかの client へ与えた権限まで、受け取るトークンに入る。
  *
  * ここで決める事：
- * 1. 求めた scope だけを受け取る（認可 URL から `include_granted_scopes` を外す）。
- * 2. 受け取ったトークンを保存しない（account 表のトークン欄を空で書く）。
- * 3. 呼ぶ側が scope を足せないようにする（`/sign-in/social` の `scopes` を断る）。
- * 4. トークンを取り出す口を閉じる（`OAUTH_TOKEN_DISABLED_PATHS`。`server.ts` で渡す）。
+ * 1. 前に与えた権限をまとめる事を求めない（認可 URL から `include_granted_scopes` を外す）。
+ *    Google が実際に返す scope が求めた3つだけになるかは、Google の側の動きで、ここでは保証しない。
+ * 2. 受け取った Google のトークンを保存しない（account 表のトークン欄を空で書く）。
+ * 3. 受け取った Google のトークンを返さない（取り出す口を閉じる。`OAUTH_TOKEN_DISABLED_PATHS` を `server.ts` で渡す）。
+ * 4. 呼ぶ側が scope を足せないようにする（`/sign-in/social` の `scopes` を断る）。
  *
  * Apple は対象にしない。Apple の取り消し用トークンは `apple_login_tokens` に別に持つ。
  */
@@ -80,7 +81,7 @@ export function tokenlessAccountOnUpdate(
   return { data: { ...BLANK_TOKENS } };
 }
 
-/** 求めた scope だけの認可にする。前に与えた権限を、今回のトークンへ足させない。 */
+/** 前に与えた権限を今回の認可へまとめる指定を外す。返る scope を決めるのは Google で、ここでは求めないだけ。 */
 export function withoutGrantedScopes(url: URL): URL {
   url.searchParams.delete("include_granted_scopes");
   return url;

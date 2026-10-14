@@ -13,6 +13,7 @@ import { DatabaseSync } from "node:sqlite";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { betterAuth } from "better-auth";
+import { bearer } from "better-auth/plugins";
 import {
   OAUTH_TOKEN_DISABLED_PATHS,
   oauthTokenPolicy,
@@ -88,7 +89,9 @@ function makeAuth(policy: boolean) {
         verifyIdToken: async () => true,
       },
     },
-    ...(policy ? { disabledPaths: OAUTH_TOKEN_DISABLED_PATHS, plugins: [oauthTokenPolicy()] } : {}),
+    ...(policy ? { disabledPaths: OAUTH_TOKEN_DISABLED_PATHS } : {}),
+    // 結と同じく、Cookie の代わりに `Authorization: Bearer` でも入れる（iPhone のアプリがこの形）。
+    plugins: [...(policy ? [oauthTokenPolicy()] : []), bearer()],
   });
   return { auth, db };
 }
@@ -112,10 +115,25 @@ class Jar {
   header() {
     return [...this.cookies].map(([name, value]) => `${name}=${value}`).join("; ");
   }
+  names() {
+    return [...this.cookies.keys()];
+  }
+  /** iPhone のアプリが持つ形（署名つきのセッションの印）。 */
+  sessionToken() {
+    const entry = [...this.cookies].find(([name]) => name.endsWith("session_token"));
+    return entry ? decodeURIComponent(entry[1]) : "";
+  }
 }
 
-async function call(auth: Auth, jar: Jar, path: string, body?: unknown, method = body === undefined ? "GET" : "POST") {
-  const headers: Record<string, string> = { origin: ORIGIN, cookie: jar.header() };
+async function call(
+  auth: Auth,
+  jar: Jar,
+  path: string,
+  body?: unknown,
+  method = body === undefined ? "GET" : "POST",
+  extra: Record<string, string> = {},
+) {
+  const headers: Record<string, string> = { origin: ORIGIN, cookie: jar.header(), ...extra };
   if (body !== undefined) headers["content-type"] = "application/json";
   return jar.absorb(
     await auth.handler(
@@ -140,8 +158,12 @@ async function googleSignIn(auth: Auth, jar: Jar, user: { sub: string; email: st
   assert.equal(start.status, 200);
   const url = new URL(((await start.json()) as { url: string }).url);
   const back = await call(auth, jar, `/callback/google?code=dummy-code&state=${url.searchParams.get("state")}`);
-  return { url, back };
+  return { url, back, setCookie: back.headers.getSetCookie() };
 }
+
+/** Cookie を持たず、`Authorization: Bearer` だけで呼ぶ。 */
+const withBearer = (auth: Auth, token: string, path: string, body?: unknown) =>
+  call(auth, new Jar(), path, body, body === undefined ? "GET" : "POST", { authorization: `Bearer ${token}` });
 
 const googleRows = (db: DatabaseSync) =>
   db.prepare(`SELECT * FROM account WHERE providerId = 'google' ORDER BY createdAt`).all() as Row[];
@@ -166,10 +188,10 @@ test("決まりが無い時（今の動き）：広い権限のトークンを�
   assert.equal(((await token.json()) as { accessToken: string }).accessToken, "ya29.dummy-access");
 });
 
-test("新しい利用者：求めた scope だけを求め、ログインは通り、トークン欄は空で入る", async () => {
+test("新しい利用者：前の権限をまとめる指定を付けず、ログインは通り、トークン欄は空で入る", async () => {
   const { auth, db } = makeAuth(true);
   const jar = new Jar();
-  const { url, back } = await googleSignIn(auth, jar, { sub: "g-1", email: "dummy1@example.com" });
+  const { url, back, setCookie } = await googleSignIn(auth, jar, { sub: "g-1", email: "dummy1@example.com" });
   assert.equal(url.origin + url.pathname, "https://accounts.google.com/o/oauth2/v2/auth");
   assert.equal(url.searchParams.has("include_granted_scopes"), false);
   assert.equal(url.searchParams.get("scope"), "email profile openid");
@@ -189,6 +211,12 @@ test("新しい利用者：求めた scope だけを求め、ログインは通�
   assert.deepEqual(tokensOf(rows[0]), [null, null, null, null, null]);
   // 受け取った権限の記録は残す（作り物の Google は広い権限を返している）。
   assert.match(String(rows[0].scope), /gmail\.send/);
+
+  // ログインの後の Cookie に、account の中身やトークンを持つ物が無い。
+  assert.ok(setCookie.some((line) => /session_token=/.test(line)));
+  assert.equal(setCookie.some((line) => /account_data/i.test(line)), false);
+  assert.equal(jar.names().some((name) => /account/i.test(name)), false);
+  assert.equal(setCookie.some((line) => /ya29|dummy-refresh|dummy-access/.test(decodeURIComponent(line))), false);
 });
 
 test("前からの利用者：トークンが残っていた行も、次のログインで空になる", async () => {
@@ -269,6 +297,74 @@ test("トークンを取り出す口は 404、scope を足したログインは 
       .status,
     200,
   );
+});
+
+test("Bearer で入っている時（iPhone のアプリの形）も、取り出す口は在らない道と同じ 404", async () => {
+  // 決まりが無いと、Bearer でも保存したトークンが本人へ返る。
+  const open = makeAuth(false);
+  const openJar = new Jar();
+  await googleSignIn(open.auth, openJar, { sub: "g-11", email: "dummy11@example.com" });
+  const leaked = await withBearer(open.auth, openJar.sessionToken(), "/get-access-token", { providerId: "google" });
+  assert.equal(leaked.status, 200);
+  assert.equal(((await leaked.json()) as { accessToken: string }).accessToken, "ya29.dummy-access");
+
+  const { auth, db } = makeAuth(true);
+  const jar = new Jar();
+  await googleSignIn(auth, jar, { sub: "g-11", email: "dummy11@example.com" });
+  const raw = (db.prepare("SELECT token FROM session").get() as { token: string }).token;
+  // 署名つき（アプリが持つ形）と、素のセッションの印の両方で見る。
+  for (const token of [jar.sessionToken(), raw]) {
+    assert.ok(token);
+    const session = await withBearer(auth, token, "/get-session");
+    assert.equal(session.status, 200);
+    assert.equal(((await session.json()) as { user?: { email: string } } | null)?.user?.email, "dummy11@example.com");
+
+    const missing = await withBearer(auth, token, "/no-such-path", {});
+    assert.equal(missing.status, 404);
+    for (const [path, body] of [
+      ["/get-access-token", { providerId: "google" }],
+      ["/refresh-token", { providerId: "google" }],
+      ["/account-info", undefined],
+      ["/link-social", { provider: "google", callbackURL: "/" }],
+    ] as const) {
+      const closed = await withBearer(auth, token, path, body);
+      assert.equal(closed.status, 404, path);
+      assert.equal((await closed.text()).includes("ya29"), false, path);
+    }
+  }
+  // 未ログインでも同じ 404（ログインの有る無しで答えが変わらない）。
+  assert.equal((await call(auth, new Jar(), "/get-access-token", { providerId: "google" })).status, 404);
+});
+
+test("iPhone の中継と同じ呼び方（サーバーの中から signInSocial）でも、認可 URL に include_granted_scopes が無い", async () => {
+  const { auth } = makeAuth(true);
+  // `src/routes/api/ios-auth.ts` の start と同じ引数。
+  const result = await auth.api.signInSocial({
+    body: {
+      provider: "google",
+      callbackURL: `${ORIGIN}/api/ios-auth?step=finish&state=dummy`,
+      errorCallbackURL: `${ORIGIN}/api/ios-auth?step=finish&state=dummy`,
+      disableRedirect: true,
+    },
+    headers: new Headers(),
+    asResponse: true,
+  });
+  assert.equal(result.ok, true);
+  const url = new URL(((await result.json()) as { url: string }).url);
+  assert.equal(url.searchParams.has("include_granted_scopes"), false);
+  assert.equal(url.searchParams.get("scope"), "email profile openid");
+  assert.equal(url.searchParams.get("redirect_uri"), `${ORIGIN}/api/auth/callback/google`);
+});
+
+test("結の設定がこの決まりを使っている（外れたら気づく）", () => {
+  const source = readFileSync(join(root, "src/lib/auth/server.ts"), "utf8");
+  assert.match(source, /disabledPaths: OAUTH_TOKEN_DISABLED_PATHS,/);
+  assert.match(source, /^\s+oauthTokenPolicy\(\),$/m);
+  // account の中身（トークンを含む）を Cookie へ写す設定は入れない。
+  assert.equal(/storeAccountCookie/.test(source), false);
+  // ライブラリが今も include_granted_scopes を付けている事。付けなくなったら、包みは要らなくなる。
+  const google = readFileSync(join(root, "node_modules/@better-auth/core/dist/social-providers/google.mjs"), "utf8");
+  assert.match(google, /include_granted_scopes: "true"/);
 });
 
 test("移る先を返す形（disableRedirect 無し）でも、Location から include_granted_scopes が外れる", async () => {
