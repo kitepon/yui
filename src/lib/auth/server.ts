@@ -35,6 +35,7 @@ import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { emailAndPasswordEnabled } from "./email-password";
 import { googleAuthConfigured } from "./google";
+import { OAUTH_TOKEN_DISABLED_PATHS, oauthTokenPolicy } from "./oauth-token-policy";
 import { GROK_PROVIDERS } from "./providers";
 import { getSqlite } from "../server/sqlite";
 import { nodeSqliteDialect } from "../server/sqlite-dialect";
@@ -183,6 +184,9 @@ export const auth = betterAuth({
   // local loopback variants, or clients get "Invalid origin".
   trustedOrigins,
 
+  // 保存したトークンを取り出す・更新する標準の口は使わない（`./oauth-token-policy`）。
+  disabledPaths: OAUTH_TOKEN_DISABLED_PATHS,
+
   // Encrypt OAuth tokens at rest. Google is a trusted first-party identity so
   // the same email as an existing password user links instead of
   // `account_not_linked`. Grok broker ids stay listed only while that plugin
@@ -274,6 +278,9 @@ export const auth = betterAuth({
     // One genericOAuth provider per upstream (when auth is on), all federating
     // to the broker with the SAME client and differing only by the `idp` hint.
     ...(grokOAuthPlugin ? [grokOAuthPlugin] : []),
+
+    // Google は本人確認にだけ使う。求めた scope だけを受け取り、トークンを残さない。
+    oauthTokenPolicy(),
 
     // Accept `Authorization: Bearer <session-token>` as an alternative to the
     // cookie. Needed for the LIVE PREVIEW: the app runs in an embedded iframe
