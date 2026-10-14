@@ -60,7 +60,7 @@ after(() => {
   globalThis.fetch = realFetch;
 });
 
-function makeAuth(policy: boolean) {
+function makeAuth(policy: boolean, accountCookie = false) {
   const db = new DatabaseSync(":memory:");
   db.exec(readFileSync(join(root, "migrations/sqlite/0001_auth.sql"), "utf8"));
   const auth = betterAuth({
@@ -73,6 +73,8 @@ function makeAuth(policy: boolean) {
     account: {
       encryptOAuthTokens: true,
       accountLinking: { enabled: true, trustedProviders: ["google", "apple"], requireLocalEmailVerified: false },
+      // 結は入れていない設定。検査が効く事を見る時だけ入れる。
+      ...(accountCookie ? { storeAccountCookie: true } : {}),
     },
     emailAndPassword: { enabled: true },
     user: { deleteUser: { enabled: true } },
@@ -165,6 +167,13 @@ async function googleSignIn(auth: Auth, jar: Jar, user: { sub: string; email: st
 const withBearer = (auth: Auth, token: string, path: string, body?: unknown) =>
   call(auth, new Jar(), path, body, body === undefined ? "GET" : "POST", { authorization: `Bearer ${token}` });
 
+/** ログインの後の Cookie に、account の中身やトークンを持つ物が無い（セッションの印だけが出る）。 */
+function assertNoAccountCookie(setCookie: string[]) {
+  assert.ok(setCookie.some((line) => /session_token=/.test(line)));
+  assert.equal(setCookie.some((line) => /account/i.test(line.split("=")[0])), false);
+  assert.equal(setCookie.some((line) => /ya29|dummy-refresh|dummy-access/.test(decodeURIComponent(line))), false);
+}
+
 const googleRows = (db: DatabaseSync) =>
   db.prepare(`SELECT * FROM account WHERE providerId = 'google' ORDER BY createdAt`).all() as Row[];
 const sessionCount = (db: DatabaseSync) => (db.prepare("SELECT count(*) n FROM session").get() as { n: number }).n;
@@ -212,11 +221,8 @@ test("新しい利用者：前の権限をまとめる指定を付けず、ロ�
   // 受け取った権限の記録は残す（作り物の Google は広い権限を返している）。
   assert.match(String(rows[0].scope), /gmail\.send/);
 
-  // ログインの後の Cookie に、account の中身やトークンを持つ物が無い。
-  assert.ok(setCookie.some((line) => /session_token=/.test(line)));
-  assert.equal(setCookie.some((line) => /account_data/i.test(line)), false);
+  assertNoAccountCookie(setCookie);
   assert.equal(jar.names().some((name) => /account/i.test(name)), false);
-  assert.equal(setCookie.some((line) => /ya29|dummy-refresh|dummy-access/.test(decodeURIComponent(line))), false);
 });
 
 test("前からの利用者：トークンが残っていた行も、次のログインで空になる", async () => {
@@ -231,8 +237,9 @@ test("前からの利用者：トークンが残っていた行も、次のロ�
   ).run();
   const before = sessionCount(db);
   const jar = new Jar();
-  const { back } = await googleSignIn(auth, jar, user);
+  const { back, setCookie } = await googleSignIn(auth, jar, user);
   assert.equal(back.status, 302);
+  assertNoAccountCookie(setCookie);
   assert.equal(sessionCount(db), before + 1);
   const rows = googleRows(db);
   assert.equal(rows.length, 1);
@@ -246,8 +253,9 @@ test("メールとパスワードの利用者が同じメールの Google で入
   const email = "dummy3@example.com";
   const signUp = await call(auth, new Jar(), "/sign-up/email", { email, password: "dummy-password-1", name: "ダミー" });
   assert.equal(signUp.status, 200);
-  const { back } = await googleSignIn(auth, new Jar(), { sub: "g-3", email });
+  const { back, setCookie } = await googleSignIn(auth, new Jar(), { sub: "g-3", email });
   assert.equal(back.status, 302);
+  assertNoAccountCookie(setCookie);
   assert.equal((db.prepare(`SELECT count(*) n FROM "user"`).get() as { n: number }).n, 1);
   assert.deepEqual(tokensOf(googleRows(db)[0]), [null, null, null, null, null]);
   const credential = db.prepare(`SELECT password FROM account WHERE providerId = 'credential'`).get() as Row;
@@ -334,6 +342,14 @@ test("Bearer で入っている時（iPhone のアプリの形）も、取り出
   }
   // 未ログインでも同じ 404（ログインの有る無しで答えが変わらない）。
   assert.equal((await call(auth, new Jar(), "/get-access-token", { providerId: "google" })).status, 404);
+});
+
+test("Cookie の検査が効く事：account を Cookie へ写す設定だと、検査が落ちる", async () => {
+  const { auth } = makeAuth(false, true);
+  await googleSignIn(auth, new Jar(), { sub: "g-12", email: "dummy12@example.com" });
+  // 2回目（今ある行への再ログイン）で、account の中身が Cookie へ出る。
+  const { setCookie } = await googleSignIn(auth, new Jar(), { sub: "g-12", email: "dummy12@example.com" });
+  assert.throws(() => assertNoAccountCookie(setCookie));
 });
 
 test("iPhone の中継と同じ呼び方（サーバーの中から signInSocial）でも、認可 URL に include_granted_scopes が無い", async () => {
