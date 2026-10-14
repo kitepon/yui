@@ -40,6 +40,8 @@ XcodeBuildMCPのタップは成功応答でも画面を開けなかったため�
 | iPhone・iPad 1.0.1（17） | 2026年10月14日9:49:54 | `d0755cc0-ca53-4fb1-bcbc-525e50471b0c` | `WAITING_FOR_REVIEW` |
 | Mac 1.0.1（18）          | 2026年10月14日9:50:04 | `30d0aee8-99ee-492c-b3c2-46e2523f6efb` | `WAITING_FOR_REVIEW` |
 
-両App Store版も`WAITING_FOR_REVIEW`、審査項目は各1件で`READY_FOR_REVIEW`。公開方式は`MANUAL`を保持した。一般公開版は引き続き1.0。今回の検証で起動したシミュレーター、Macのデモアプリ、Device Hubとログ収集は終了を確認した。配布版の実機画面と、Appleの審査結果が残っている。
+両App Store版も`WAITING_FOR_REVIEW`、審査項目は各1件で`READY_FOR_REVIEW`。公開方式は`MANUAL`を保持した。一般公開版は引き続き1.0。今回の検証で起動したシミュレーター、Macのデモアプリ、Device Hubとログ収集は終了を確認した。配布版の実機画面は次段の所有者回答で確認し、Appleの審査結果を待つ。
 
-実機の画面確認は決裁箱`K-Z8WJZX`へ依頼した。使っているiPhoneまたはMacをTestFlightから更新し、センサー条件の戻り幅欄が見えるかを確認する内容。設定の保存と実家電の操作は求めていない。App Store公開後に確認する選択も用意した。
+同日、決裁箱の「結1.0.1をTestFlightで更新し、戻り幅の入力欄を確認してほしい」（`K-Z8WJZX`）へ、所有者が「TestFlightで更新し、戻り幅の欄を確認した」と回答した。これにより、TestFlight版の実機導入と戻り幅欄の表示を確認した。使用端末の指定は回答に含まれない。実機からの設定保存と実家電の動作は、この回答による確認の範囲に含めない。
+
+同日10:00（日本時間）、Apple公式APIを読み返し、iPhone・iPadとMacの1.0.1がともに`WAITING_FOR_REVIEW`、公開方式が`MANUAL`のままであることを確認した。
