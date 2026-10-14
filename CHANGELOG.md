@@ -2,7 +2,7 @@
 
 ## 2026-10-14
 
-本番へはまだ入れていない。本番 image は `yuihome:20261010-b537dd8` のまま。
+本番 image `yuihome:20261014-fc99015`。Bluetooth 押し `yuihome-switchbot-ble:20261014-fc99015`。
 
 ### 変わったこと
 
