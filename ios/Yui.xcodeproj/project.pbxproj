@@ -22,6 +22,7 @@
 		3E4FEE72B33923B3766C7BB2 /* DeviceActionEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 879A9FA71DEDFD5036C04FFC /* DeviceActionEditor.swift */; };
 		455F81C4B3A0081D109F3627 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31E8B800857AAE16AA60AD2 /* HomeView.swift */; };
 		63588C117195B3CE5EF2F3E9 /* YuiHomeRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1270AEFDE0BA89A1223BFAD4 /* YuiHomeRefreshTests.swift */; };
+		669613B98EED345CD697D8A6 /* YuiAutomationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0C80DC82BDD920300F53AE1 /* YuiAutomationTests.swift */; };
 		6C8BE160DA527E08122C17E7 /* RoomManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */; };
 		6D8BF62B0E3EB69FEDDB28BA /* DeviceGroupDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4F4C05F57011E0481FC3CC /* DeviceGroupDraft.swift */; };
 		79A4C429BCAA9FDE73802780 /* GoogleSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1E29781AEB4EDAD8083AB47A /* GoogleSans.ttf */; };
@@ -96,6 +97,7 @@
 		BD5D8655E0BB39CAC86CDFF5 /* SceneEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneEditorView.swift; sourceTree = "<group>"; };
 		D60D12689F93763BBBF3345E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		DD09C3B8DD95E9ECAC6EAEF0 /* AnalysisChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisChartCard.swift; sourceTree = "<group>"; };
+		E0C80DC82BDD920300F53AE1 /* YuiAutomationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiAutomationTests.swift; sourceTree = "<group>"; };
 		E1F005E18EE5D2063412BD4A /* DeviceGroupEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupEditorView.swift; sourceTree = "<group>"; };
 		E31E8B800857AAE16AA60AD2 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E93DDEDD33A897D0BCCFB6F5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -203,6 +205,7 @@
 			isa = PBXGroup;
 			children = (
 				AFCF836AAD938F7F8497F33D /* Yui.storekit */,
+				E0C80DC82BDD920300F53AE1 /* YuiAutomationTests.swift */,
 				9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */,
 				5D99FCD2F8D1A2B4711F82EF /* YuiDeviceGroupTests.swift */,
 				1270AEFDE0BA89A1223BFAD4 /* YuiHomeRefreshTests.swift */,
@@ -316,6 +319,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				669613B98EED345CD697D8A6 /* YuiAutomationTests.swift in Sources */,
 				7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */,
 				074260160F4AECD5333081C3 /* YuiDeviceGroupTests.swift in Sources */,
 				63588C117195B3CE5EF2F3E9 /* YuiHomeRefreshTests.swift in Sources */,
@@ -378,15 +382,15 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
-				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 16;
+				CURRENT_PROJECT_VERSION = 17;
+				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 18;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -428,8 +432,8 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 15;
-				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 16;
+				CURRENT_PROJECT_VERSION = 17;
+				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				DEVELOPMENT_TEAM = TPWX489GV4;
@@ -452,7 +456,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
@@ -502,8 +506,8 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 15;
-				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 16;
+				CURRENT_PROJECT_VERSION = 17;
+				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 18;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				DEVELOPMENT_TEAM = TPWX489GV4;
@@ -532,7 +536,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -595,15 +599,15 @@
 				CODE_SIGN_ENTITLEMENTS = Yui/Yui.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
-				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 16;
+				CURRENT_PROJECT_VERSION = 17;
+				"CURRENT_PROJECT_VERSION[sdk=macosx*]" = 18;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				INFOPLIST_FILE = Yui/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.kitepon.yuihome;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

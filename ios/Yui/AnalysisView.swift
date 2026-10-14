@@ -244,7 +244,7 @@ struct AnalysisView: View {
                             Text(eventTitle(event))
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(YuiTheme.fg)
-                            if let reason = reasonText(event), !reason.isEmpty {
+                            if let reason = event.reasonText, !reason.isEmpty {
                                 Text(reason)
                                     .font(.system(size: 11))
                                     .foregroundStyle(YuiTheme.muted)
@@ -275,18 +275,6 @@ struct AnalysisView: View {
         let outcome = ["sent": "送った", "failed": "送れなかった", "skipped": "動かさなかった", "left": "条件を外れた"][event.outcome] ?? event.outcome
         return ([outcome, event.automationName, event.deviceName] as [String?])
             .compactMap { $0 }.joined(separator: " · ")
-    }
-
-    private func reasonText(_ event: AnalysisEvent) -> String? {
-        let labels = [
-            "skip_continuous": "連続では動かさない",
-            "claimed_by": "上のオートメーションが機器を取った",
-            "already_applied": "いまの設定と同じ",
-            "unreadable": "設定を読み返せない",
-            "group_locked": "グループが操作を止めている",
-        ]
-        if let reason = event.reason { return labels[reason] ?? reason }
-        return event.detail
     }
 
     private func unitTitle(_ unit: String) -> String {

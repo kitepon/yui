@@ -35,6 +35,12 @@ extension SessionStore {
             plans: BillingPlans(monthlyYen: 100, annualYen: 1000, trialDays: 30)
         )
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-yui-preview-automation") {
+            let automations = """
+            [{"id":"preview-sensor-auto","name":"室温で冷房","enabled":true,"trigger":{"type":"sensor","deviceId":"preview-ac","metric":"temperature","op":"gte","value":28,"hysteresis":0.2},"actions":[{"id":"preview-action","deviceId":"preview-ac","on":true,"mode":"cool","targetTemp":25}],"stopOnMatch":true}]
+            """
+            store.home?.automations = try! JSONDecoder().decode([HomeAutomation].self, from: Data(automations.utf8))
+        }
         if arguments.contains("-yui-preview-groups") {
             store.home?.deviceGroups = [
                 HomeDeviceGroup(id: "preview-group", name: "リビングのまとめ操作",
@@ -76,7 +82,7 @@ extension SessionStore {
                 points: points.map { AnalysisPoint(ts: $0.ts, value: index == 24 ? ($0.value > 22 ? 1 : 0) : $0.value + Double(index) * 0.1) }
             )
         }
-        let events = (0..<224).map { index in
+        var events = (0..<224).map { index in
             AnalysisEvent(
                 id: "event-\(index)", ts: points[1439 - index * 6].ts, source: "tick",
                 automationId: "preview-auto", deviceName: "リビングのエアコン",
@@ -84,12 +90,20 @@ extension SessionStore {
                 reason: index % 5 == 0 ? "already_applied" : nil, detail: nil
             )
         }
+        events.insert(AnalysisEvent(
+            id: "stopped-event", ts: points[1435].ts, source: "tick",
+            automationId: "preview-auto", deviceName: nil, automationName: "外気を取り込む",
+            outcome: "skipped", reason: "stopped_by",
+            detail: """
+            {"by":"preview-priority","name":"室温で冷房","until":"\(points.last!.ts)"}
+            """
+        ), at: 0)
         store.analysis = AnalysisData(
             from: points.first!.ts, to: points.last!.ts,
-            series: series,
+            series: ProcessInfo.processInfo.arguments.contains("-yui-preview-stopped") ? [] : series,
             automations: [AnalysisNamedItem(id: "preview-auto", name: "暑い日に冷房")],
             devices: [AnalysisNamedItem(id: "preview-ac", name: "リビングのエアコン")],
-            events: events
+            events: ProcessInfo.processInfo.arguments.contains("-yui-preview-stopped") ? [events[0]] : events
         )
         return store
     }

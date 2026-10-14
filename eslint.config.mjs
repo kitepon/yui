@@ -14,6 +14,8 @@ export default tseslint.config(
       ".vercel/**",
       ".nitro/**",
       "node_modules/**",
+      // 別の作業用チェックアウトと、その生成物は親の検査対象に含めない。
+      ".claude/worktrees/**",
       "src/routeTree.gen.ts",
     ],
   },

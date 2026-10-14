@@ -305,6 +305,7 @@ struct AutomationTrigger: Decodable {
     let op: String?
     let value: Double?
     let valueMax: Double?
+    let hysteresis: Double?
 
     func summary(devices: [Device], scenes: [HomeScene]) -> String {
         switch type {
@@ -326,8 +327,10 @@ struct AutomationTrigger: Decodable {
         case "sensor":
             let name = devices.first { $0.id == deviceId }?.name ?? "センサー"
             let label = ["temperature": "気温", "humidity": "湿度", "lux": "照度", "outdoorTemp": "外気温"][metric ?? ""] ?? "値"
-            if op == "between" { return "\(name) \(label)\(value ?? 0)〜\(valueMax ?? 0)の範囲" }
-            return "\(name) \(label)\(value ?? 0)\(op == "lte" ? "以下" : "以上")"
+            let width = (hysteresis ?? 0) > 0
+                ? "（戻り幅\((hysteresis ?? 0).formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "ja_JP"))))）" : ""
+            if op == "between" { return "\(name) \(label)\(value ?? 0)〜\(valueMax ?? 0)の範囲\(width)" }
+            return "\(name) \(label)\(value ?? 0)\(op == "lte" ? "以下" : "以上")\(width)"
         default: return "条件"
         }
     }
@@ -410,6 +413,42 @@ struct AnalysisEvent: Decodable, Identifiable {
     let detail: String?
 
     var date: Date? { AnalysisDate.formatter.date(from: ts) }
+
+    var reasonText: String? {
+        if reason == "stopped_by" {
+            guard let data = detail?.data(using: .utf8) else { return "打ち切りの詳細を読み取れません" }
+            do {
+                let stopped = try JSONDecoder().decode(StoppedAnalysisDetail.self, from: data)
+                var continuation = ""
+                if let rawUntil = stopped.until {
+                    guard let until = AnalysisDate.formatter.date(from: rawUntil), let start = date else {
+                        return "打ち切りの継続時刻を読み取れません"
+                    }
+                    if until.timeIntervalSince(start) >= 60 {
+                        continuation = "。\(until.formatted(.dateTime.month().day().hour().minute().locale(Locale(identifier: "ja_JP")))) まで"
+                    }
+                }
+                return "\(stopped.name) が下の判定を打ち切った（条件は満たしていた\(continuation)）"
+            } catch {
+                return "打ち切りの詳細を読み取れません"
+            }
+        }
+        let labels = [
+            "skip_continuous": "連続では動かさない",
+            "claimed_by": "上のオートメーションが機器を取った",
+            "already_applied": "いまの設定と同じ",
+            "unreadable": "設定を読み返せない",
+            "group_locked": "グループが操作を止めている",
+        ]
+        if let reason { return labels[reason] ?? reason }
+        return detail
+    }
+}
+
+private struct StoppedAnalysisDetail: Decodable {
+    let by: String
+    let name: String
+    let until: String?
 }
 
 enum AnalysisDate {

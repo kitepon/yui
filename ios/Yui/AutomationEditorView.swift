@@ -1,6 +1,6 @@
 import SwiftUI
 
-private struct AutomationTriggerDraft {
+struct AutomationTriggerDraft {
     var type = "time"
     var repeatType = "daily"
     var hour = 7
@@ -14,6 +14,7 @@ private struct AutomationTriggerDraft {
     var op = "gte"
     var value = 28.0
     var valueMax = 30.0
+    var hysteresis = "0"
 
     init(_ current: AutomationTrigger? = nil) {
         guard let current else { return }
@@ -30,9 +31,18 @@ private struct AutomationTriggerDraft {
         op = current.op ?? "gte"
         value = current.value ?? 28
         valueMax = current.valueMax ?? 30
+        hysteresis = current.hysteresis.map { String($0) } ?? "0"
     }
 
-    func dictionary() -> [String: Any] {
+    var hysteresisValue: Double? {
+        let text = hysteresis.trimmingCharacters(in: .whitespacesAndNewlines)
+            .applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? hysteresis
+        guard text.range(of: #"^(?:[0-9]+(?:\.[0-9]?)?|\.[0-9])$"#, options: .regularExpression) != nil,
+              let value = Double(text), (0...100).contains(value) else { return nil }
+        return value
+    }
+
+    func dictionary() throws -> [String: Any] {
         switch type {
         case "time":
             if repeatType == "interval" {
@@ -46,7 +56,11 @@ private struct AutomationTriggerDraft {
         case "scene":
             return ["type": "scene", "sceneId": sceneId]
         default:
-            var result: [String: Any] = ["type": "sensor", "deviceId": deviceId, "metric": metric, "op": op, "value": value]
+            guard let hysteresisValue else {
+                throw YuiError.message("戻り幅は0〜100、小数点第一位までで入力してください")
+            }
+            var result: [String: Any] = ["type": "sensor", "deviceId": deviceId, "metric": metric, "op": op, "value": value,
+                                         "hysteresis": hysteresisValue]
             if op == "between" { result["valueMax"] = valueMax }
             return result
         }
@@ -64,6 +78,7 @@ struct AutomationEditorView: View {
     @State private var actions: [DeviceActionDraft]
     @State private var message: String?
     @State private var confirmRemove = false
+    @FocusState private var hysteresisFocused: Bool
 
     init(automation: HomeAutomation?) {
         self.automation = automation
@@ -255,6 +270,35 @@ struct AutomationEditorView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(YuiTheme.muted)
             }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("戻り幅")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(YuiTheme.fg)
+                HStack(spacing: 10) {
+                    TextField("例：0.2", text: $trigger.hysteresis)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(.plain)
+                        .foregroundStyle(YuiTheme.fg)
+                        .padding(12)
+                        .frame(width: 120)
+                        .background(YuiTheme.bg, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10)
+                            .stroke(hysteresisFocused ? YuiTheme.accent : YuiTheme.muted.opacity(0.5), lineWidth: 1))
+                        .focused($hysteresisFocused)
+                        .accessibilityLabel("センサー条件の戻り幅")
+                        .accessibilityIdentifier("automation-hysteresis")
+                    Text(["temperature": "℃", "outdoorTemp": "℃", "humidity": "%", "lux": "lx"][trigger.metric] ?? "")
+                        .foregroundStyle(YuiTheme.muted)
+                }
+                Text("0〜100、小数点第一位まで。0で無効です。")
+                    .font(.system(size: 11))
+                    .foregroundStyle(YuiTheme.muted)
+                Text(trigger.op == "between"
+                     ? "成立したあとは、下限と上限を戻り幅のぶん広げた範囲から外れるまで条件を保ちます。"
+                     : "成立したあとは、境目から戻り幅を超えて戻るまで条件を保ちます。")
+                    .font(.system(size: 11))
+                    .foregroundStyle(YuiTheme.muted)
+            }
         }
     }
 
@@ -312,11 +356,19 @@ struct AutomationEditorView: View {
         if actions.contains(where: { action in !actionDevices.contains(where: { $0.id == action.deviceId }) }) {
             message = "条件で使える機器を選んでください"; return
         }
+        let savedTrigger: [String: Any]
+        do {
+            savedTrigger = try trigger.dictionary()
+        } catch {
+            message = error.localizedDescription
+            hysteresisFocused = true
+            return
+        }
         let draft: [String: Any] = [
             "name": name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "オートメーション" : name.trimmingCharacters(in: .whitespacesAndNewlines),
             "enabled": enabled,
             "stopOnMatch": stopOnMatch,
-            "trigger": trigger.dictionary(),
+            "trigger": savedTrigger,
             "actions": actions.map { $0.automationDictionary() },
         ]
         if await session.saveAutomation(automation, draft: draft) { dismiss() }
