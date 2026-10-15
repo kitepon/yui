@@ -45,3 +45,11 @@ XcodeBuildMCPのタップは成功応答でも画面を開けなかったため�
 同日、決裁箱の「結1.0.1をTestFlightで更新し、戻り幅の入力欄を確認してほしい」（`K-Z8WJZX`）へ、所有者が「TestFlightで更新し、戻り幅の欄を確認した」と回答した。これにより、TestFlight版の実機導入と戻り幅欄の表示を確認した。使用端末の指定は回答に含まれない。実機からの設定保存と実家電の動作は、この回答による確認の範囲に含めない。
 
 同日10:00（日本時間）、Apple公式APIを読み返し、iPhone・iPadとMacの1.0.1がともに`WAITING_FOR_REVIEW`、公開方式が`MANUAL`のままであることを確認した。
+
+## App Storeでの一般公開
+
+2026年10月15日、Apple公式APIで両提出の`COMPLETE`と審査項目の`APPROVED`を確認した。iPhone・iPad版1.0.1（17）とMac版1.0.1（18）はともに`PENDING_DEVELOPER_RELEASE`、公開方式は`MANUAL`、対象ビルドは`VALID`だった。月額・年額商品も`APPROVED`。実装コミット`f26202f`と配備記録`f90a545`が`origin/main`の祖先であることを再確認した。
+
+同日21時36分ごろ（日本時間）、承認済みの両版へ手動公開を要求した。要求は成功し、Apple公式APIで両版の`READY_FOR_DISTRIBUTION`（旧属性`READY_FOR_SALE`）と、対象ビルド17・18を読み返した。再ビルド・追加アップロード・サーバー再配備は行っていない。
+
+[日本のApp Store](https://apps.apple.com/jp/app/id6816410748)はHTTP 200で「結 Yui」のページへ転送された。公式Web、サポート、プライバシーポリシーもHTTP 200。一方、公開直後のApple Lookup APIは旧版1.0を返した。Macに入っているApp Store版も1.0（16）で、21時39分のアプリページには「開く」だけが表示され、更新はまだ選べなかった。この時点ではストア表示への1.0.1反映とApp Store版1.0.1の実機導入・動作は未確認とする。TestFlight版の実機表示確認は前節の範囲で完了している。
