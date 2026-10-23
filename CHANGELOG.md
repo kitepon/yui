@@ -2,8 +2,10 @@
 
 ## 2026-10-23
 
+本番 image `yuihome:20261023-5b7187d`（app・tuya-lan、Node.js 22.23.4）。Bluetooth押しのimageと容器は変更していない。
+
 - DockerのNode.jsとCIを22.23.4へ更新し、Brotliのリモートコード実行などを修理した[Node.jsの保安更新](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)を含む版を使う。対応するNode.jsの最低版をpackage.jsonと配備手順に記載した
-- 配備時は基底imageを取得し直してから作る。既存の容器へ適用するにはimageの作り直しと入れ替えが必要。本番への反映は別途確認する
+- 配備時は基底imageを取得し直してから作る。既存の容器へ適用するにはimageの作り直しと入れ替えが必要。公式hosted版では反映後の公開Web・未認証API・Stripeへの認証付き読取を確認した。秘密・保存データの置き場・公開ポートは維持した
 
 ## 2026-10-14
 
