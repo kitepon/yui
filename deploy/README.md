@@ -10,6 +10,10 @@
 - 外から使うなら、TLS を張るリバースプロキシ（Caddy、nginx、Cloudflare Tunnel など）
 - ドメイン 1 つ（`BETTER_AUTH_URL` に書く）
 
+ビルドには Node.js 22.23.4 以降の22系を使う。24系なら24.22.1以降、26系なら26.12.1以降が必要。
+DockerfileとCIは22.23.4を使う。[2026年10月のNode.js保安更新](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)を含む版で、
+古いimageは作り直してから容器を入れ替える。ホストのNode.jsを更新するだけでは、動いている容器のNode.jsは更新されない。
+
 ## 秘密
 
 `deploy/.env` に置く。リポジトリには入れない。平文で置かずに 1Password から読む形は、下の「秘密を 1Password から読む」。

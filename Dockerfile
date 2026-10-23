@@ -1,6 +1,6 @@
 # 結（Yui）本番 image。ホストで `npm run build` した .output を linux/amd64 に載せる。
 # サーバーは build せず、運ばれた image を動かすだけ。
-FROM node:22-bookworm-slim
+FROM node:22.23.4-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080

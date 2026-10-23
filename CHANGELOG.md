@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-23
+
+- DockerのNode.jsとCIを22.23.4へ更新し、Brotliのリモートコード実行などを修理した[Node.jsの保安更新](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)を含む版を使う。対応するNode.jsの最低版をpackage.jsonと配備手順に記載した
+- 配備時は基底imageを取得し直してから作る。既存の容器へ適用するにはimageの作り直しと入れ替えが必要。本番への反映は別途確認する
+
 ## 2026-10-14
 
 本番 image `yuihome:20261014-fc99015`。Bluetooth 押し `yuihome-switchbot-ble:20261014-fc99015`。

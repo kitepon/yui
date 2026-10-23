@@ -69,11 +69,11 @@ if [ -n "$BUILD_ON_HOST" ]; then
   tar -C "$ROOT" -cf - Dockerfile .dockerignore .output package.json certs/apple \
     scripts/hosted-metrics.mjs src/lib/home/lan-udp.ts src/lib/home/tuya-lan-forward.ts |
     ssh "$HOST" "tar -C $CONTEXT -xf -"
-  ssh "$HOST" "docker build --platform $PLATFORM -t $IMAGE $CONTEXT"
+  ssh "$HOST" "docker build --pull --platform $PLATFORM -t $IMAGE $CONTEXT"
   ssh "$HOST" "rm -rf $CONTEXT"
 else
   echo "[deploy] image $IMAGE ($PLATFORM)"
-  $BUILDX build --platform "$PLATFORM" --load -t "$IMAGE" "$ROOT"
+  $BUILDX build --pull --platform "$PLATFORM" --load -t "$IMAGE" "$ROOT"
 
   echo "[deploy] load $IMAGE on $HOST"
   docker save "$IMAGE" | ssh "$HOST" docker load
