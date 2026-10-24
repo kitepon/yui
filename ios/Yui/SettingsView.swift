@@ -249,7 +249,7 @@ struct SettingsView: View {
                         if let plan = session.applePurchaseResumePlan {
                             billingButton("中断した購入を続ける", plan: plan)
                         }
-                        Link("承認待ちが解決しない場合は問い合わせ", destination: URL(string: "mailto:kitepon@gmail.com")!)
+                        Link("承認待ちが解決しない場合は問い合わせ", destination: URL(string: "mailto:quolu@kitepon.dev")!)
                             .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
                     }
                 } else if billing.appleConfigured == true {
