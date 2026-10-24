@@ -213,7 +213,7 @@ export function SettingsPage() {
                     : "Webの購入手続き中です。開いている決済画面で完了してください。"}
                 </p>
                 {billing.purchasePendingProvider === "apple" && (
-                  <a className="text-sm text-accent underline" href="mailto:kitepon@gmail.com">
+                  <a className="text-sm text-accent underline" href="mailto:quolu@kitepon.dev">
                     承認待ちが解決しない場合は問い合わせ
                   </a>
                 )}

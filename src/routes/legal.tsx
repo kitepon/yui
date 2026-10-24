@@ -17,8 +17,8 @@ function Legal() {
         <div>
           <dt className="text-xs text-faint">開示の請求方法</dt>
           <dd>
-            <a href="mailto:kitepon@gmail.com?subject=%E7%B5%90%20%E7%89%B9%E5%95%86%E6%B3%95%E8%A1%A8%E7%A4%BA%E3%81%AE%E9%96%8B%E7%A4%BA%E8%AB%8B%E6%B1%82">
-              kitepon@gmail.com
+            <a href="mailto:quolu@kitepon.dev?subject=%E7%B5%90%20%E7%89%B9%E5%95%86%E6%B3%95%E8%A1%A8%E7%A4%BA%E3%81%AE%E9%96%8B%E7%A4%BA%E8%AB%8B%E6%B1%82">
+              quolu@kitepon.dev
             </a>
             へ「結 特商法表示の開示請求」と書いて送ってください。申込みの判断に間に合うようメールで開示します。
           </dd>

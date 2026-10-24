@@ -25,7 +25,7 @@ function Privacy() {
       <section>
         <h2 className="font-medium text-fg">問い合わせ</h2>
         <p>
-          <a href="mailto:kitepon@gmail.com">kitepon@gmail.com</a>
+          <a href="mailto:quolu@kitepon.dev">quolu@kitepon.dev</a>
         </p>
       </section>
     </LegalPage>

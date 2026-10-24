@@ -8,7 +8,7 @@ function Support() {
     <LegalPage title="結のサポート">
       <section>
         <h2 className="font-medium text-fg">お問い合わせ</h2>
-        <p>ログイン、家電の接続、操作、契約について、状況とお使いの端末を添えて <a href="mailto:kitepon@gmail.com?subject=%E7%B5%90%E3%81%AE%E3%82%B5%E3%83%9D%E3%83%BC%E3%83%88">kitepon@gmail.com</a> へご連絡ください。パスワードや家電のアクセストークンは送らないでください。</p>
+        <p>ログイン、家電の接続、操作、契約について、状況とお使いの端末を添えて <a href="mailto:quolu@kitepon.dev?subject=%E7%B5%90%E3%81%AE%E3%82%B5%E3%83%9D%E3%83%BC%E3%83%88">quolu@kitepon.dev</a> へご連絡ください。パスワードや家電のアクセストークンは送らないでください。</p>
       </section>
       <section>
         <h2 className="font-medium text-fg">契約の確認</h2>
