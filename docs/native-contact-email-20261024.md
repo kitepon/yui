@@ -1,5 +1,7 @@
 # Appleアプリの公開問い合わせ先変更
 
+10月25日01:00現在、iPhone・iPad 1.0.2（19）は審査を通過し、承認済みの手動公開要求が成功した。Apple側は配信可能、日本向けストアの1.0.2表示は反映待ち。Mac 1.0.2（20）は審査待ち。定期確認を継続している。
+
 ## 依頼と対象
 
 2026年10月24日06:08:06.589 UTCの、ヤン（`bot-98c5eea7`）へ届いた所有者の原文を、BellTeamの正規メッセージAPIから読み取った。内容は`quolu@kitepon.dev`を公式メールにし、全プロダクト担当者へ通達すること。旧Gmailは削除せず、当面転送するとの指示だった。
@@ -29,7 +31,7 @@ mailtoの宛先だけを変更した。iPhone・iPadとMac Catalystは同じ画�
 
 候補の保存先は、`artifacts/yui-ios-19-contact-export/Yui.ipa`と`artifacts/yui-mac-20-contact-export/Yui.pkg`。既存の書き出し設定が`destination=export`であることを確認して使い、承認前はローカルに保管した。今回シミュレーターやアプリの実行はせず、ビルド・書き出しの処理は終了を確認した。
 
-ソースの変更と公開版への反映は区別する。TestFlight配布・審査提出は次節の通り実施したが、一般公開はまだ。実機からのMail起動と送信先表示は今回の変更後には未確認。
+ソースの変更と公開版への反映は区別する。TestFlight配布・審査提出は次節の通り実施し、一般公開の経過は末尾に記録する。実機からのMail起動と送信先表示は今回の変更後には未確認。
 
 ## 連絡と次工程
 
@@ -79,3 +81,18 @@ mailtoの宛先だけを変更した。iPhone・iPadとMac Catalystは同じ画�
 23:01も公式APIで両版・両提出・対象ビルドIDを照合した。両版は引き続き`WAITING_FOR_REVIEW`・`MANUAL`、提出の審査項目は各1件の`READY_FOR_REVIEW`。公開要求は行わず、一般公開と公開後確認は審査待ち。本人への追加依頼はなく、定期確認を継続する。
 
 10月25日00:02も公式APIで両版・両提出の審査待ち、対象ビルドIDの一致、手動公開設定、審査項目各1件の`READY_FOR_REVIEW`を確認した。状態に変化はなく、公開要求は行っていない。一般公開と公開後確認は引き続き審査待ちで、追加の本人操作は不要。
+
+## 10月25日01:00のiPhone・iPad公開
+
+00:59の定期確認で、iPhone・iPad 1.0.2（19）が`PENDING_DEVELOPER_RELEASE`、提出が`COMPLETE`、審査項目が`APPROVED`になっていた。対象バージョンID・ビルドID・`MANUAL`を照合し、fresh `origin/main`にソース`bc62a9bb1e9d235013b9b444cbc9d43ef6c5b0da`が含まれることを`git merge-base --is-ancestor`の終了値0で確認した。
+
+本人の既存承認に従い、iPhone・iPad版だけへ公開要求APIを1回送信した。01:00:08までに成功応答を受け、直後の再取得で1.0.2（19）の`READY_FOR_DISTRIBUTION`・`READY_FOR_SALE`を確認した。Mac 1.0.2（20）は引き続き`WAITING_FOR_REVIEW`・`MANUAL`で、公開要求は行っていない。
+
+公開後の確認は以下の通り。
+
+- 日本のApp StoreはiPhone・iPad表示と`?platform=mac`のMac表示がともにHTTP 200で、「結 Yui」と各プラットフォームのページを返した。直後の複数回の取得では、両表示のバージョンはまだ1.0.1だった。iPhone・iPadの1.0.2表示は反映待ちとして、公開要求の成功と区別する。
+- 公式Webの`/`と`/support`はHTTP 200。サポート本文と、Cloudflareが保護して配信する公開メールリンクを照合し、問い合わせ先`quolu@kitepon.dev`を確認した。旧Gmailのmailtoはなかった。
+- Web取得ツールは対象URLを取得できなかったが、このMacからの独立したHTTP取得では上記を確認できた。Web全体の停止とは判定していない。
+- 通常のMacログイン、実家電、購入は操作していない。メールも送信していない。実機からのMail起動・送信先表示は未確認のまま。
+
+次回はiPhone・iPadのストア表示の反映と、Macの審査結果を確認する。iPhone・iPadの公開要求は再送しない。両版の公開後確認が完了するまで、同じ1時間ごとの定期確認を継続する。
