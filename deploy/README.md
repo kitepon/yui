@@ -72,6 +72,13 @@ SwitchBot の押すボットをハブ無しで動かすときは、サーバー�
 ボットが電波の届くところにあること。`.env` に `COMPOSE_PROFILES=ble` と
 `YUI_SWITCHBOT_BLE_URL=http://switchbot-ble:18862` を書く。
 
+BLE中継を使う場合は `docker build -t yuihome-switchbot-ble:local services/switchbot-ble`
+で専用イメージも作る。Pythonのベースはバージョンとdigest、CAパッケージと
+Python依存はバージョンを固定している。更新時はDockerfileの固定値を確認し、
+`verify_trust_store.py` による通常のPython TLS信頼ストアの検査を通す。
+古いCAや失効対象のルートが残る場合、ビルドは失敗する。TLS検証を無効にして回避しない。
+ビルドに使ったpipは、独自の古い証明書束を実行環境へ残さないよう依存導入後に取り除く。
+
 ## 起動
 
 ```bash
