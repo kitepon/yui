@@ -18,6 +18,7 @@ Grok App Builder由来の一般テンプレートや`.grok/skills/auth`と矛盾
 - Home Assistant 本体を repository や runtime へ入れない。機器表の写し（`src/lib/home/ha-catalog.ts`）だけを持つ。
 - production secret、家電token、利用者情報、Stripe情報をcommitしない。
 - 公開metadata、README、Release、support/security窓口は実装済みの範囲と限界だけを書く。
+- 通信不良そのものはバグとせず、通信不良を前提に適切に待機し、回復後に復帰する。全機能のオフライン動作は要求しない。設計・修理・受入は[通信不良時の方針](docs/00_direction.md#通信不良を前提にした動作オーナー裁定-2026-10-27)に従う。
 
 ## 変更の受入
 
