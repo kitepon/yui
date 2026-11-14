@@ -111,7 +111,7 @@ fi
 # 分の頭を待って入れ替え、同じ分のうちに起こし直す。
 echo "[deploy] up"
 if [ "$CONF" = op.env ]; then
-  # 1Password のトークンは login shell の読み込みで入る。
+  # The login shell supplies runtime paths; up.sh selects host or ordinary op credentials.
   ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && \"\$SHELL\" -lc './up.sh --force-recreate'"
 else
   ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && docker compose up -d --force-recreate"

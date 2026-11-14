@@ -1,5 +1,7 @@
 # 結 — 方針
 
+Deployment function and data-flow contracts: [deployment launch](../deploy/README.md#launch-contract-function-and-data-flow-diagrams).
+
 判断の正本。実装は本書に従う。一般テンプレートや`.grok/skills/auth`と矛盾する箇所は本書を優先する。
 
 ## 製品

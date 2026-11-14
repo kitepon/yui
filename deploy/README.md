@@ -108,8 +108,57 @@ DEPLOY_HOST=user@192.168.0.2 ./scripts/deploy-prod.sh
 
 ## 秘密を 1Password から読む（任意）
 
+### Launch contract (function and data-flow diagrams)
+
+This section is the canonical contract for `deploy/up.sh` and its caller,
+`scripts/deploy-prod.sh`.
+
+| Function | Input / owner | Output / connection |
+|---|---|---|
+| Deploy caller | Operator or `scripts/deploy-prod.sh`; deploy directory and Compose arguments | `up.sh`; regular image deployments may request `--force-recreate` |
+| Prepare configuration | `up.sh`; names in `op.env` | Names-only `compose.op.yaml`; no resolved values on disk |
+| Resolve configuration | Executable `${HOME:-}/.local/bin/dotagents-op-run`, otherwise `op run`; `op.env` | Re-enter `up.sh` with resolved environment and unchanged arguments; helper failure never falls back |
+| Host credential selection | `dotagents-op-run`, when installed | Remove inherited `OP_SERVICE_ACCOUNT_TOKEN` before the runner; use its existing host credential store; resolved values retain whitespace |
+| Protect existing keys | Resolved `up.sh`; referenced values and running `yuihome` configuration | Compare values without printing them; a mismatch requires existing `YUI_ACCEPT_CHANGED` acknowledgement |
+| Start containers | Resolved `up.sh`; Compose files and arguments | Docker Compose with `.env` disabled and token/stage/acknowledgement variables removed |
+| Restart containers | Docker's saved configuration | Restart existing containers without resolving references |
+
+Data flow: `op.env` references -> selected resolver -> secrets in child process
+environment -> comparison with Docker's existing container configuration ->
+Docker Compose -> container environment. Literal settings follow the same path.
+Only names enter `compose.op.yaml`. Docker owns the saved container configuration;
+automatic restarts do not call the resolver. The host runner owns its credential
+bootstrap; Yui neither copies its token nor modifies that store.
+Token flow on a host with the helper: login-shell token -> removed by `env -u`;
+existing `unattended.cred` -> external helper's `op` processes only -> never the
+resolved child or container.
+
+| State | Transition |
+|---|---|
+| Unresolved | Generate override, select installed host runner or ordinary `op run`, then re-enter once |
+| Helper absent | Use the existing `op run` path with the operator's existing authentication |
+| Resolution failed | Return nonzero before Docker; running containers continue; a later operator invocation can retry after credentials/connectivity recover |
+| Resolved, keys differ | Existing key-protection check returns nonzero; explicit acknowledgement on a later invocation permits intentional rotation |
+| Resolved, comparison accepted | Invoke Compose with the original arguments |
+| Compose failed | Return its exit status; a later operator invocation can retry after the Compose error is corrected |
+
+For a reference-only vault migration, compare the new resolved values with the
+running container in memory first. If they match, replace only references and the
+launch script; do not invoke Compose or recreate containers. Changing a vault
+reference does not rotate the underlying key.
+The migration check treats missing container variables as differences and compares
+the resolved Compose app hash with `com.docker.compose.config-hash`. Any key or
+hash difference ends the migration without recreation or automatic retry; report
+the drift for a corrected follow-up. Retain the old reference file and launcher
+with restricted permissions and a documented expiry for rollback.
+
 `.env` に秘密を平文で置かず、起こす時に 1Password CLI（`op`）で読む形にもできる。
 サーバーに `op` があり、login shell で `op whoami` が通ること。Docker Compose v5.3.1 と `op` 2.40.0 で確かめた。
+
+When `${HOME:-}/.local/bin/dotagents-op-run` is executable, `up.sh` uses that
+host-managed runner and removes the login shell's service-account token first.
+The runner must already have access to the referenced vault through its host
+credential store. Otherwise the existing `op run` authentication is used.
 
 1. 秘密を 1Password の項目へ入れる。
 2. `deploy/op.env`（権限 600）を置く。書き方は `.env` と同じで、秘密だけを参照に替える。ほかの設定は値のまま書く。
@@ -134,10 +183,10 @@ DEPLOY_HOST=user@192.168.0.2 ./scripts/deploy-prod.sh
 
 知っておくこと。
 
-- `op` を呼ぶのは `up.sh` を実行した時だけ。Docker の自動再起動とホストの再起動は、Docker が保存している値で起きる。
+- Reference resolution runs only when `up.sh` is invoked. Docker and host restarts use Docker's saved values without calling either resolver.
 - 値は、Docker が保存する容器の設定には残る。無くなるのは置き場の平文のファイル。
 - 1Password へ届かない間は、容器を作り直せない。
-- `.env` へ戻す時は、`umask 077; op inject -i op.env -o .env` で作り直してから `docker compose up -d` で起こす。
+- To roll back a vault migration, restore the retained `op.env` and launcher together. Keep the reference file at mode 600; no plaintext `.env` is needed.
 
 ## 予備の復旧
 

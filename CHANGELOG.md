@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-14
+
+- Deployment uses the host's `dotagents-op-run` when installed, discarding the inherited service-account token before resolving references. Ordinary self-hosts keep the existing `op run` path. This launcher-only change does not rebuild or restart application containers.
+
 ## 2026-10-25
 
 本番のBluetooth中継を `yuihome-switchbot-ble:sec021-20261025` へ更新した。WebアプリとTuya LAN中継の容器は保持した。

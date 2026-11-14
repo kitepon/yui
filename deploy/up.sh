@@ -2,7 +2,7 @@
 # 秘密を 1Password から読んで結を起こす（任意。使い方は deploy/README.md）。
 #
 # 同じ場所の `op.env` に、秘密は `op://` の参照で、ほかの設定は値のまま書く。
-# 値は `op run` がこのプロセスの環境変数として渡すだけで、ファイルには書かない。
+# The selected resolver passes values through the environment, never a file.
 # `op` が読めなければ、Docker まで進まずに終わる。
 #
 # 使い方:
@@ -48,7 +48,13 @@ if [ "${YUI_UP_STAGE:-}" != resolved ]; then
   mv "$tmp" compose.op.yaml
   trap - EXIT
 
-  # ここから先は op run の子として、値を環境に持った状態でもう一度この手順を通る。
+  # The host runner owns its credential bootstrap; discard the login-shell token.
+  helper="${HOME:-}/.local/bin/dotagents-op-run"
+  if [ -x "$helper" ]; then
+    YUI_UP_STAGE=resolved exec env -u OP_SERVICE_ACCOUNT_TOKEN "$helper" --env-file op.env -- "$self" "$@"
+  fi
+
+  # Ordinary self-hosts retain their existing op authentication.
   YUI_UP_STAGE=resolved exec op run --env-file=op.env -- "$self" "$@"
 fi
 

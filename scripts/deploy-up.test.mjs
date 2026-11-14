@@ -9,6 +9,7 @@ const UP = new URL("../deploy/up.sh", import.meta.url).pathname;
 
 // 試験用の op。`op://保管庫/項目/欄` を `resolved-項目` に読み替えて子を起こす。
 const FAKE_OP = `#!/bin/sh
+touch "$FAKE_DIR/op-called"
 [ "$1" = run ] || exit 9
 shift
 file=\${1#--env-file=}; shift
@@ -20,6 +21,16 @@ while IFS= read -r line; do
   case "$value" in op://*) item=\${value#op://*/}; value="resolved-\${item%%/*}" ;; esac
   export "$name=$value"
 done <"$file"
+exec "$@"
+`;
+
+const FAKE_HELPER = `#!/bin/sh
+[ -z "\${OP_SERVICE_ACCOUNT_TOKEN+x}" ] || exit 10
+printf '%s\\n' "$@" >"$FAKE_DIR/helper-argv"
+[ "$1" = --env-file ] && [ "$2" = op.env ] && [ "$3" = -- ] || exit 11
+shift 3
+if [ -n "\${FAKE_HELPER_FAIL:-}" ]; then exit 2; fi
+export BETTER_AUTH_SECRET="  host-key  " HOME_SECRETS_KEY=host-home-key YUI_BIND=127.0.0.9 COMPOSE_PROFILES=ble
 exec "$@"
 `;
 
@@ -42,7 +53,7 @@ YUI_BIND=127.0.0.9
 COMPOSE_PROFILES=ble
 `;
 
-function workspace({ opEnv = OP_ENV, container } = {}) {
+function workspace({ opEnv = OP_ENV, container, helper = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "yui-up-"));
   mkdirSync(join(dir, "bin"));
   copyFileSync(UP, join(dir, "up.sh"));
@@ -52,6 +63,12 @@ function workspace({ opEnv = OP_ENV, container } = {}) {
   }
   if (opEnv !== null) writeFileSync(join(dir, "op.env"), opEnv);
   if (container) writeFileSync(join(dir, "container.env"), container);
+  if (helper) {
+    mkdirSync(join(dir, ".local", "bin"), { recursive: true });
+    const file = join(dir, ".local", "bin", "dotagents-op-run");
+    writeFileSync(file, FAKE_HELPER);
+    chmodSync(file, 0o755);
+  }
   return dir;
 }
 
@@ -68,6 +85,37 @@ function up(dir, args = [], env = {}) {
   const read = (name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8") : null);
   return { ...result, argv: read("docker-argv"), dockerEnv: read("docker-env"), override: read("compose.op.yaml") };
 }
+
+test("host runner receives exact argv without the inherited token and forwards whitespace", () => {
+  const dir = workspace({ helper: true });
+  const run = up(dir, ["--force-recreate"], { HOME: dir });
+
+  assert.equal(run.status, 0, run.stderr);
+  assert.deepEqual(readFileSync(join(dir, "helper-argv"), "utf8").trim().split("\n"), [
+    "--env-file", "op.env", "--", "./up.sh", "--force-recreate",
+  ]);
+  assert.match(run.dockerEnv, /^BETTER_AUTH_SECRET= {2}host-key {2}$/m);
+  assert.doesNotMatch(run.dockerEnv, /OP_SERVICE_ACCOUNT_TOKEN|YUI_UP_STAGE/);
+  assert.equal(existsSync(join(dir, "op-called")), false);
+  assert.match(run.argv, /--force-recreate/);
+});
+
+test("host runner failure returns immediately without op fallback or Docker", () => {
+  const dir = workspace({ helper: true });
+  const run = up(dir, [], { HOME: dir, FAKE_HELPER_FAIL: "1" });
+
+  assert.equal(run.status, 2);
+  assert.equal(run.argv, null);
+  assert.equal(existsSync(join(dir, "op-called")), false);
+});
+
+test("absent host runner keeps ordinary op authentication", () => {
+  const dir = workspace();
+  const run = up(dir, [], { HOME: dir });
+
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(existsSync(join(dir, "op-called")), true);
+});
 
 test("op.env の名前をすべて app へ渡し、値はファイルへ書かず docker の環境にだけ置く", () => {
   const dir = workspace();
