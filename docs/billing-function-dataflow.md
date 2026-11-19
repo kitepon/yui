@@ -1,7 +1,7 @@
 # Billing function and data-flow contract
 
 Scope: Stripe Web billing of 結 and its merge with Apple entitlement. Apple purchase/notification handling is out of scope (one row below).
-Status: **baseline = current behavior** (code at de5f4ad). Target changes are marked "TARGET" and are added in the same diff as the code.
+Status: sections 1-6 describe the behavior before the consolidation change (code at de5f4ad). Section 7 lists the changes made in the same diff as this document; they take effect when the image is deployed together with the key switch.
 Source of truth for structure; the code follows it (see `docs/00_direction.md`).
 
 ## 1. Overall (billing as one box)
@@ -34,7 +34,8 @@ Source of truth for structure; the code follows it (see `docs/00_direction.md`).
 | `stripeSubscriptions` (billing.ts) | list all pages | customer id | subscriptions; throws if a page has no cursor |
 | `assertNoStripeContract` (billing.ts) | guard | customer id (if any) | throws if any subscription is not canceled/incomplete_expired; also called by `/api/apple/purchase` |
 | `trialEligible` (billing.ts) | trial rule | customer id | true when the customer has **no subscription ever in the account of the key** |
-| `startCheckout` (billing.ts) | checkout | see failure table | session URL |
+| `startCheckout` (billing.ts) | checkout | see failure table | session URL; builds the session through `checkoutSessionParams` |
+| `checkoutSessionParams` (billing-core.ts) | pure builder of the `checkout.sessions.create` arguments (mode, customer, price from env, 31-minute expiry, URLs, metadata, trial days; **since this change** `automatic_tax` and `customer_update`) | userId, plan, customer id, origin, trial flag, now | `Stripe.Checkout.SessionCreateParams`; unit-tested |
 | `cancelStripeCheckout` (billing.ts) | cancel | pending attempt | expire session, release attempt, clear cache |
 | `startPortal` (billing.ts) | portal | customer row | `billingPortal.sessions.create({customer, return_url})`, **no configuration id** (account default portal) |
 | `recordWebhookEvent` + webhook route | idempotency + cache | raw body, `stripe-signature`, `STRIPE_WEBHOOK_SECRET` | 200 `{received:true}`; clears cache only if the event's customer is in `billing_customers` and the event id is new |
@@ -103,13 +104,13 @@ d. A price id not equal to env monthly/annual is read-only (see `fetchEntitlemen
 e. `trialEligible` looks at the account of the key: a new customer in B is eligible for a second free trial.
 f. `billing_purchase_attempts` rows with a `stripe_session_id` of account A that are unexpired at the key switch (up to 31 minutes after creation): `cancelStripeCheckout` calls `sessions.retrieve` with that id on account B and fails, and `startCheckout` answers "Web purchase in progress" until the row expires. It heals itself at expiry. Measured 2026-11-19 22:13 JST: 0 Stripe rows. Plan: switch when the count is 0 (checked at the window), otherwise wait or accept at most 31 minutes for those users.
 
-## 7. TARGET (changes made together with the code; not in effect yet)
+## 7. Consolidation changes (in this diff; in effect after the deploy of this image)
 
 | Item | Target |
 |---|---|
-| `startCheckout` params | add `automatic_tax: {enabled: true}` and `customer_update: {address: "auto"}` to `checkout.sessions.create`; no other call creates Checkout sessions, and `getOrCreateCustomer` stays the only customer creator |
+| `startCheckout` params | `checkoutSessionParams` adds `automatic_tax: {enabled: true}` and `customer_update: {address: "auto"}` to `checkout.sessions.create`; no other call creates Checkout sessions, and `getOrCreateCustomer` stays the only customer creator |
 | Failure row | **Unconfirmed, expected from Stripe's behavior, not from a run:** if Stripe Tax is not enabled on account B (no head office address) or a price has no `tax_behavior`, `sessions.create` is expected to fail for every user; `startCheckout` then releases the attempt and the route returns the Stripe error text. The Stripe docs I could read describe `automatic_tax[enabled]=true` and a default-tax variant that silently disables tax; they do not state the explicit-parameter failure. Arcana confirms with one Checkout session creation on account B once Tax is active (task t3a). Until then the switch must not start |
-| hosted-metrics | filter fetched subscriptions to those whose first item price is the monthly or annual id before `aggregateSubscriptions`, so all five counters describe 結 only. An unknown price is reported as a count `excluded_other_price` (a number only, no ids) so a 結 subscription with a wrong price stays visible; `live_by_plan.unknown` is then always 0 and is removed |
+| hosted-metrics | (implemented) `aggregateSubscriptions` filters fetched subscriptions to those whose first item price is the monthly or annual id before `aggregateSubscriptions`, so all five counters describe 結 only. An unknown price is reported as a count `excluded_other_price` (a number only, no ids) so a 結 subscription with a wrong price stays visible; the `unknown` bucket is removed from `live_by_plan` (monthly / annual only); the other four counters count 結 subscriptions only |
 
 ## 8. Open questions (Owner / Arcana / Poli)
 

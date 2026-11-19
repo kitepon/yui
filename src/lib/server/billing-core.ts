@@ -44,6 +44,36 @@ export function planForPriceId(priceId: string | null): BillingPlan | null {
   return null;
 }
 
+/** Checkout Session の引数。automatic_tax は税込価格（tax_behavior=inclusive）と Stripe Tax の有効化が前提。 */
+export function checkoutSessionParams(input: {
+  userId: string;
+  plan: BillingPlan;
+  customer: string;
+  origin: string;
+  trial: boolean;
+  nowMs: number;
+}): Stripe.Checkout.SessionCreateParams {
+  const metadata = { userId: input.userId, plan: input.plan, service: "yuihome" };
+  return {
+    mode: "subscription",
+    customer: input.customer,
+    client_reference_id: input.userId,
+    line_items: [{ price: priceIdForPlan(input.plan), quantity: 1 }],
+    locale: "ja",
+    expires_at: Math.floor(input.nowMs / 1000) + 31 * 60,
+    success_url: `${input.origin}/settings?checkout=completed`,
+    cancel_url: `${input.origin}/settings?checkout=canceled`,
+    automatic_tax: { enabled: true },
+    // 既存の顧客に住所が無くても自動税計算が通るよう、Checkout で集めた住所を顧客へ保存する
+    customer_update: { address: "auto" },
+    metadata,
+    subscription_data: {
+      metadata,
+      ...(input.trial ? { trial_period_days: BILLING.trialDays } : {}),
+    },
+  };
+}
+
 export function unfinishedStripeSubscription(sub: Stripe.Subscription) {
   return sub.status !== "canceled" && sub.status !== "incomplete_expired";
 }

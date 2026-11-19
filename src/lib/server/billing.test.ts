@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type Stripe from "stripe";
 import {
   billingPlanDetails,
+  checkoutSessionParams,
   entitlementFromSubscription,
   exemptEmails,
   exemptEntitlement,
@@ -17,6 +18,24 @@ test("plan names", () => {
   assert.throws(() => parseBillingPlan("weekly"));
   assert.equal(billingPlanDetails("monthly").price, "100円（税込）");
   assert.equal(billingPlanDetails("annual").price, "1,000円（税込）");
+});
+
+test("Checkout は税込の自動税計算と顧客住所の保存を付ける", () => {
+  process.env.STRIPE_MONTHLY_PRICE_ID = "price_month";
+  process.env.STRIPE_ANNUAL_PRICE_ID = "price_year";
+  const params = checkoutSessionParams({
+    userId: "u1", plan: "annual", customer: "cus_x", origin: "https://yui.example", trial: false, nowMs: 0,
+  });
+  assert.deepEqual(params.automatic_tax, { enabled: true });
+  assert.deepEqual(params.customer_update, { address: "auto" });
+  assert.deepEqual(params.line_items, [{ price: "price_year", quantity: 1 }]);
+  assert.equal(params.subscription_data?.trial_period_days, undefined);
+  assert.equal(params.expires_at, 31 * 60);
+  const trial = checkoutSessionParams({
+    userId: "u1", plan: "monthly", customer: "cus_x", origin: "https://yui.example", trial: true, nowMs: 0,
+  });
+  assert.equal(trial.subscription_data?.trial_period_days, 30);
+  assert.equal(trial.metadata?.service, "yuihome");
 });
 
 test("unknown price is not entitled", () => {

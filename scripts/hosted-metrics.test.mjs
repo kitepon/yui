@@ -20,10 +20,33 @@ test("subscriptionを状態・live plan別に集計し外部IDを返さない", 
 
   assert.deepEqual(result, {
     total_records: 3,
+    excluded_other_price: 0,
     live: 2,
     by_status: { trialing: 1, active: 1, canceled: 1 },
-    live_by_plan: { monthly: 1, annual: 1, unknown: 0 },
+    live_by_plan: { monthly: 1, annual: 1 },
     live_cancel_at_period_end: 1,
+  });
+  assert.doesNotMatch(JSON.stringify(result), /sub-secret/);
+});
+
+test("他製品の価格の契約は全カウンターから除き、除いた件数だけ返す", () => {
+  const result = aggregateSubscriptions(
+    [
+      { id: "sub-secret-1", status: "active", items: { data: [{ price: { id: "price-monthly" } }] } },
+      { id: "sub-secret-2", status: "active", items: { data: [{ price: { id: "price-other" } }] } },
+      { id: "sub-secret-3", status: "canceled", items: { data: [] } },
+    ],
+    "price-monthly",
+    "price-annual",
+  );
+
+  assert.deepEqual(result, {
+    total_records: 1,
+    excluded_other_price: 2,
+    live: 1,
+    by_status: { active: 1 },
+    live_by_plan: { monthly: 1, annual: 0 },
+    live_cancel_at_period_end: 0,
   });
   assert.doesNotMatch(JSON.stringify(result), /sub-secret/);
 });

@@ -11,11 +11,17 @@ function requiredEnv(name) {
   return value;
 }
 
-export function aggregateSubscriptions(subscriptions, monthlyPriceId, annualPriceId) {
+export function aggregateSubscriptions(allSubscriptions, monthlyPriceId, annualPriceId) {
   const byStatus = {};
-  const liveByPlan = { monthly: 0, annual: 0, unknown: 0 };
+  const liveByPlan = { monthly: 0, annual: 0 };
   let live = 0;
   let cancelAtPeriodEnd = 0;
+
+  // 共有の Stripe 口座には他製品の契約も入る。結の2つの価格だけを数え、除いた件数は数だけ返す。
+  const subscriptions = allSubscriptions.filter((subscription) => {
+    const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
+    return priceId === monthlyPriceId || priceId === annualPriceId;
+  });
 
   for (const subscription of subscriptions) {
     byStatus[subscription.status] = (byStatus[subscription.status] ?? 0) + 1;
@@ -25,12 +31,12 @@ export function aggregateSubscriptions(subscriptions, monthlyPriceId, annualPric
     if (subscription.cancel_at_period_end || subscription.cancel_at) cancelAtPeriodEnd += 1;
     const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
     if (priceId === monthlyPriceId) liveByPlan.monthly += 1;
-    else if (priceId === annualPriceId) liveByPlan.annual += 1;
-    else liveByPlan.unknown += 1;
+    else liveByPlan.annual += 1;
   }
 
   return {
     total_records: subscriptions.length,
+    excluded_other_price: allSubscriptions.length - subscriptions.length,
     live,
     by_status: byStatus,
     live_by_plan: liveByPlan,

@@ -8,13 +8,12 @@ import { appleBillingConfigured, appleSubscriptionRows, refreshAppleSubscription
 import { activePurchaseAttempt, attachStripeSession, releasePurchaseAttempt, reservePurchaseAttempt } from "./billing-purchase.ts";
 import {
   billingConfigured,
+  checkoutSessionParams,
   emptyEntitlement,
   entitlementFromSubscription,
   exemptEmails,
   exemptEntitlement,
-  priceIdForPlan,
   unfinishedStripeSubscription,
-  BILLING,
   type BillingPlan,
   type Entitlement,
 } from "./billing-core.ts";
@@ -185,21 +184,9 @@ export async function startCheckout(input: {
     }
     const eligible = await trialEligible(customer);
     session = await getStripe().checkout.sessions.create(
-      {
-        mode: "subscription",
-        customer,
-        client_reference_id: input.userId,
-        line_items: [{ price: priceIdForPlan(input.plan), quantity: 1 }],
-        locale: "ja",
-        expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
-        success_url: `${publicOrigin()}/settings?checkout=completed`,
-        cancel_url: `${publicOrigin()}/settings?checkout=canceled`,
-        metadata: { userId: input.userId, plan: input.plan, service: "yuihome" },
-        subscription_data: {
-          metadata: { userId: input.userId, plan: input.plan, service: "yuihome" },
-          ...(eligible ? { trial_period_days: BILLING.trialDays } : {}),
-        },
-      },
+      checkoutSessionParams({
+        userId: input.userId, plan: input.plan, customer, origin: publicOrigin(), trial: eligible, nowMs: Date.now(),
+      }),
       { idempotencyKey: `yuihome-checkout-${attemptId}` },
     );
     if (!session.url || !attachStripeSession(input.userId, attemptId, session.id, session.expires_at * 1000)) {
