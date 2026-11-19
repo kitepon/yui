@@ -235,6 +235,15 @@ export const auth = betterAuth({
   // flicker-prevention guidance (gate on `isPending`; SSR the session).
   session: { cookieCache: { enabled: true, maxAge: 300 } },
 
+  // 接続元IPとブラウザ情報は保存しない（privacy f07）。IP追跡自体は切らない：レート制限がIPで数える。
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => ({ data: { ...session, ipAddress: null, userAgent: null } }),
+      },
+    },
+  },
+
   user: {
     deleteUser: {
       enabled: true,

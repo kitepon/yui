@@ -5,8 +5,8 @@ import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
-  activePurchaseAttempt, attachStripeSession, releaseApplePurchaseAttempt,
-  releasePurchaseAttempt, reservePurchaseAttempt,
+  activePurchaseAttempt, attachStripeSession, completePurchaseAttempt, purgeEndedPurchaseAttempts,
+  releaseApplePurchaseAttempt, releasePurchaseAttempt, reservePurchaseAttempt,
 } from "./billing-purchase.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -45,5 +45,20 @@ test("古いApple取引と別の購入識別子は予約を解除しない", () 
   assert.equal(activePurchaseAttempt("u1", at + 1, db)?.attempt_id, attempt);
   releaseApplePurchaseAttempt("u1", at + 1, db);
   assert.equal(activePurchaseAttempt("u1", at + 1, db), undefined);
+  db.close();
+});
+
+test("終わった手続きだけ消える：期限切れと完了。期限なしのAppleは残る", () => {
+  const db = database();
+  db.exec("INSERT INTO \"user\" (id) VALUES ('u2'), ('u3')");
+  assert.ok(reservePurchaseAttempt("u1", "stripe", 1_000, db));
+  const s2 = reservePurchaseAttempt("u2", "stripe", 1_000, db);
+  assert.ok(s2 && attachStripeSession("u2", s2, "cs_done", 900_000, db));
+  assert.ok(reservePurchaseAttempt("u3", "apple", 1_000, db));
+  const count = () => (db.prepare("SELECT COUNT(*) AS n FROM billing_purchase_attempts").get() as { n: number }).n;
+  purgeEndedPurchaseAttempts(200_000, db); // u1 の準備中（期限 121_000）だけ消える
+  assert.equal(count(), 2);
+  completePurchaseAttempt("cs_done", db);
+  assert.equal(count(), 1);
   db.close();
 });

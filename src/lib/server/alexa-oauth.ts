@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { alexaTokenHash } from "./alexa-token-hash";
 import { getSqlite } from "./sqlite";
 
 export function alexaOAuthConfigured() {
@@ -27,7 +28,7 @@ export function issueAlexaCode(userId: string, redirectUri: string) {
     .prepare(
       `INSERT INTO alexa_auth_codes (code, user_id, redirect_uri, expires_at) VALUES (?, ?, ?, ?)`,
     )
-    .run(code, userId, redirectUri, isoLater(10 * 60 * 1000));
+    .run(alexaTokenHash(code), userId, redirectUri, isoLater(10 * 60 * 1000));
   return code;
 }
 
@@ -35,9 +36,9 @@ export function consumeAlexaCode(code: string, redirectUri: string) {
   const db = getSqlite();
   const row = db
     .prepare(`SELECT user_id AS userId, redirect_uri AS redirectUri, expires_at AS expiresAt FROM alexa_auth_codes WHERE code = ?`)
-    .get(code) as { userId: string; redirectUri: string; expiresAt: string } | undefined;
+    .get(alexaTokenHash(code)) as { userId: string; redirectUri: string; expiresAt: string } | undefined;
   if (!row) return null;
-  db.prepare(`DELETE FROM alexa_auth_codes WHERE code = ?`).run(code);
+  db.prepare(`DELETE FROM alexa_auth_codes WHERE code = ?`).run(alexaTokenHash(code));
   if (row.redirectUri !== redirectUri) return null;
   if (row.expiresAt < new Date().toISOString()) return null;
   return row.userId;
@@ -48,7 +49,7 @@ export function issueAlexaTokens(userId: string) {
   const refresh = token();
   getSqlite()
     .prepare(`INSERT INTO alexa_tokens (access_token, refresh_token, user_id, expires_at) VALUES (?, ?, ?, ?)`)
-    .run(access, refresh, userId, isoLater(60 * 60 * 1000));
+    .run(alexaTokenHash(access), alexaTokenHash(refresh), userId, isoLater(60 * 60 * 1000));
   return {
     access_token: access,
     refresh_token: refresh,
@@ -60,7 +61,7 @@ export function issueAlexaTokens(userId: string) {
 export function userIdForAlexaAccess(accessToken: string) {
   const row = getSqlite()
     .prepare(`SELECT user_id AS userId, expires_at AS expiresAt FROM alexa_tokens WHERE access_token = ?`)
-    .get(accessToken) as { userId: string; expiresAt: string } | undefined;
+    .get(alexaTokenHash(accessToken)) as { userId: string; expiresAt: string } | undefined;
   if (!row) return null;
   if (row.expiresAt < new Date().toISOString()) return null;
   return row.userId;
@@ -68,11 +69,12 @@ export function userIdForAlexaAccess(accessToken: string) {
 
 export function refreshAlexaTokens(refreshToken: string) {
   const db = getSqlite();
+  const hashed = alexaTokenHash(refreshToken);
   const row = db
     .prepare(`SELECT user_id AS userId FROM alexa_tokens WHERE refresh_token = ?`)
-    .get(refreshToken) as { userId: string } | undefined;
+    .get(hashed) as { userId: string } | undefined;
   if (!row) return null;
-  db.prepare(`DELETE FROM alexa_tokens WHERE refresh_token = ?`).run(refreshToken);
+  db.prepare(`DELETE FROM alexa_tokens WHERE refresh_token = ?`).run(hashed);
   return issueAlexaTokens(row.userId);
 }
 
