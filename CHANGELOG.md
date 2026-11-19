@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-20
+
+本番 image `yuihome:20261120-93dbbd2`（Webアプリ）と `yuihome-switchbot-ble:20261120-93dbbd2`。Stripeの請求先を新しい口座へ切り替えた。
+
+- 本番の `STRIPE_SECRET_KEY`・`STRIPE_WEBHOOK_SECRET`・月額/年額の価格IDを新口座のものへ差し替えた。切替後に、鍵が有効であること、口座が一致すること、2つの価格が引けることを確認した。
+- 旧口座の顧客を指す `billing_customers` の1行を消した（Stripeの購入手続きは0件で、決済中の利用者はいなかった）。旧契約は期末解約済み。
+- 公開ページ（/、/login、/legal、/terms、/privacy）の応答と、3つの容器の稼働を確認した。
+
 ## 2026-11-14
 
 - Deployment uses the host's `dotagents-op-run` when installed, discarding the inherited service-account token before resolving references. Ordinary self-hosts keep the existing `op run` path. This launcher-only change does not rebuild or restart application containers.
