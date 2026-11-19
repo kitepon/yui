@@ -38,7 +38,7 @@ Billing function and data-flow contract: [billing](./billing-function-dataflow.m
   iPhoneアプリの契約はApp Storeの自動更新サブスクリプションで購入・管理し、月額・年額の初回1か月無料とStoreKitが返す実際の価格・条件を表示する。
   サーバーはStripeとAppleの有効契約を同じ家の利用権へ統合し、Appleの署名付き取引とサーバー通知を検証する。
   購入開始は結アカウントごとの単一予約と両決済元の最新状態確認で制御し、他方の購入手続き中も新規購入を許さない。Apple契約の成立を検知したら、未完了のStripe Checkoutを失効させる。
-  Web料金は`src/lib/billing-plan.ts`、契約条件は`/terms`、`/legal`と一致させる。課金免除は`YUI_BILLING_EXEMPT`（カンマ区切りemail）だけで、
+  Web料金は`src/lib/billing-plan.ts`、契約条件は kitepon.dev の共通ページ（利用規約、特定商取引法に基づく表記の#yui）と一致させる。`/terms`・`/privacy`は付属規約で、`/legal`は共通ページの#yuiへリダイレクトする。課金免除は`YUI_BILLING_EXEMPT`（カンマ区切りemail）だけで、
   用途はAlexa審査用アカウントなどの特例に限る。
 - self-hosted版はMITで無料、機能制限を設けない。`STRIPE_SECRET_KEY`を設定しなければ課金機能と
   課金ゲートは起動せず、登録した人はそのまま家を操作できる。

@@ -1,37 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPage } from "@/components/legal-page";
-import { BILLING } from "@/lib/billing-plan";
 
 export const Route = createFileRoute("/terms")({ component: Terms });
 
 function Terms() {
-  const monthly = BILLING.monthlyYen.toLocaleString("ja-JP");
-  const annual = BILLING.annualYen.toLocaleString("ja-JP");
   return (
-    <LegalPage title="利用規約">
+    <LegalPage title="結 付属規約">
       <section>
         <h2 className="font-medium text-fg">サービスの内容</h2>
         <p>結は、利用者が登録した家電クラウド（SwitchBot、Nature Remo、Smart Life 等）と、同じ宅内ネットワークにある対応機器を、結のサーバー経由で操作するサービスです。</p>
       </section>
       <section>
-        <h2 className="font-medium text-fg">料金</h2>
-        <p>Webからの契約は1つの家あたり月額{monthly}円または年額{annual}円（税込）です。Stripe Checkoutで支払い方法を登録すると{BILLING.trialDays}日間無料で使え、終了後は選んだプランへ自動移行して課金します。iPhoneアプリからの契約はApp Storeで購入し、価格と無料体験の条件は購入画面に表示します。</p>
-      </section>
-      <section>
-        <h2 className="font-medium text-fg">契約と解約</h2>
-        <p>Web契約の無料体験はCheckout完了時点で始まります。体験中に解約すれば課金はありません。Stripeの契約はWebの契約管理、Appleの契約はiPhoneのサブスクリプション設定から解約できます。有料期間の解約は期間末で終わります。未利用期間の日割りはしません。二重請求や運営の責任による利用不能は個別に対応します。</p>
+        <h2 className="font-medium text-fg">料金・契約・解約・返金</h2>
+        <p>
+          料金、支払い、無料体験、解約、返金は、kitepon.dev の
+          <a className="underline" href="https://kitepon.dev/terms/">利用規約</a>と
+          <a className="underline" href="https://kitepon.dev/specified-commercial-transactions/#yui">特定商取引法に基づく表記（結）</a>
+          のとおりです。iPhoneアプリからの契約はApp Storeの規約と購入画面に従います。
+        </p>
       </section>
       <section>
         <h2 className="font-medium text-fg">利用停止</h2>
         <p>有効な契約がない場合、家電の操作はできません。閲覧と契約の開始・再開だけできます。</p>
       </section>
       <section>
-        <h2 className="font-medium text-fg">無保証</h2>
-        <p>結は現状有姿で提供します。家電の動作、常時の稼働、データの保全を保証しません。家電クラウドや機器の仕様変更、通信の障害、サーバーの停止によって操作できないことがあります。冷暖房や施錠など、動かないと困る用途では、必ず純正のリモコンやアプリを併用してください。</p>
+        <h2 className="font-medium text-fg">安全のための注意</h2>
+        <p>家電クラウドや機器の仕様変更、通信の障害、サーバーの停止によって操作できないことがあります。次の用途には結を頼らないでください。</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>人がいない時の暖房・冷房など、動かないと困る家電の運転</li>
+          <li>医療や健康の管理に関わる機器</li>
+          <li>防犯や施錠</li>
+        </ul>
+        <p>純正のリモコンとアプリは、必ず手元に残してください。</p>
       </section>
       <section>
         <h2 className="font-medium text-fg">提供の終了</h2>
-        <p>個人が運営するサービスであり、内容の変更や提供の終了があり得ます。終了する場合は可能な限り事前に告知し、前払いを受けている期間があれば個別に対応します。結はオープンソースなので、終了後も自分のサーバーで動かし続けられます。</p>
+        <p>サービスの変更と終了は、kitepon.dev の利用規約（第11条）のとおりです。結はオープンソースなので、終了後も自分のサーバーで動かし続けられます。</p>
       </section>
       <section>
         <h2 className="font-medium text-fg">問い合わせ</h2>
