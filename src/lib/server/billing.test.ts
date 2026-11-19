@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type Stripe from "stripe";
+import { firstCharge } from "../billing-plan.ts";
 import {
   billingPlanDetails,
   checkoutSessionParams,
@@ -28,6 +29,8 @@ test("Checkout は税込の自動税計算と顧客住所の保存を付ける",
   });
   assert.deepEqual(params.automatic_tax, { enabled: true });
   assert.deepEqual(params.customer_update, { address: "auto" });
+  assert.equal(params.consent_collection?.terms_of_service, "required");
+  assert.match(params.custom_text?.terms_of_service_acceptance?.message ?? "", /yui\.example\/terms\)に同意します。未成年の場合は、保護者の同意を得ています。$/);
   assert.deepEqual(params.line_items, [{ price: "price_year", quantity: 1 }]);
   assert.equal(params.subscription_data?.trial_period_days, undefined);
   assert.equal(params.expires_at, 31 * 60);
@@ -36,6 +39,12 @@ test("Checkout は税込の自動税計算と顧客住所の保存を付ける",
   });
   assert.equal(trial.subscription_data?.trial_period_days, 30);
   assert.equal(trial.metadata?.service, "yuihome");
+});
+
+test("初回請求は体験の対象なら体験の終わり、対象でなければ今日", () => {
+  const now = Date.UTC(2026, 10, 30);
+  assert.deepEqual(firstCharge("monthly", true, now), { yen: 100, at: now + 30 * 86_400_000 });
+  assert.deepEqual(firstCharge("annual", false, now), { yen: 1000, at: now });
 });
 
 test("unknown price is not entitled", () => {

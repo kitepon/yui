@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { saveCredentials, serverSync } from "@/lib/home/control-client";
-import { BILLING } from "@/lib/billing-plan";
+import { BILLING, firstCharge } from "@/lib/billing-plan";
 import { useHome } from "@/lib/home/store";
 import type { HomeSnapshot } from "@/lib/home/snapshot";
 import { recentDeviceLan, type Brand, type Device } from "@/lib/home/types";
@@ -47,7 +47,9 @@ export function SettingsPage() {
     purchasePendingProvider: "stripe" | "apple" | null;
     entitlement: { writable: boolean; provider: "stripe" | "apple" | null; message: string; status: string };
     stripeEntitlement: { writable: boolean; provider: "stripe" | "apple" | null };
+    trialEligible: boolean | null;
   } | null>(null);
+  const [confirmPlan, setConfirmPlan] = useState<"monthly" | "annual" | null>(null);
 
   useEffect(() => {
     const checkout = new URLSearchParams(window.location.search).get("checkout");
@@ -225,10 +227,19 @@ export function SettingsPage() {
               </div>
             ) : (
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button disabled={Boolean(busy)} onClick={() => void startPlan("monthly")}>月額ではじめる</Button>
-                <Button variant="outline" disabled={Boolean(busy)} onClick={() => void startPlan("annual")}>年額ではじめる</Button>
+                <Button disabled={Boolean(busy)} onClick={() => setConfirmPlan("monthly")}>月額ではじめる</Button>
+                <Button variant="outline" disabled={Boolean(busy)} onClick={() => setConfirmPlan("annual")}>年額ではじめる</Button>
               </div>
             )}
+            {confirmPlan && !billing.entitlement.writable && !billing.purchasePendingProvider ? (
+              <CheckoutConfirm
+                plan={confirmPlan}
+                trialEligible={billing.trialEligible}
+                busy={Boolean(busy)}
+                onApply={() => void startPlan(confirmPlan)}
+                onBack={() => setConfirmPlan(null)}
+              />
+            ) : null}
             <p className="mt-3 text-xs text-faint">
               <a className="underline" href="/terms">
                 利用規約
@@ -238,7 +249,7 @@ export function SettingsPage() {
                 プライバシー
               </a>
               {" · "}
-              <a className="underline" href="/legal">
+              <a className="underline" href="https://kitepon.dev/specified-commercial-transactions/#yui">
                 特商法
               </a>
             </p>
@@ -553,6 +564,53 @@ function SmartLifeLanStatus({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** 特商法12条の6の申込み確認。Stripeの支払い画面へ進む直前に、条件をこの利用者向けに出す。 */
+function CheckoutConfirm(props: {
+  plan: "monthly" | "annual";
+  trialEligible: boolean | null;
+  busy: boolean;
+  onApply: () => void;
+  onBack: () => void;
+}) {
+  const { plan, trialEligible } = props;
+  const price = (plan === "monthly" ? BILLING.monthlyYen : BILLING.annualYen).toLocaleString("ja-JP");
+  const charge = trialEligible === null ? null : firstCharge(plan, trialEligible, Date.now());
+  const chargeDate = charge
+    ? new Date(charge.at).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric" })
+    : null;
+  return (
+    <div className="mt-3 space-y-2 rounded-md border border-border p-3 text-sm text-muted">
+      <p className="font-medium text-fg">申込みの確認</p>
+      <ul className="list-disc space-y-1 pl-5">
+        <li>
+          プラン: {plan === "monthly" ? "月額" : "年額"}プラン、{price}円（税込）。解約するまで{plan === "monthly" ? "毎月" : "毎年"}自動で更新します。
+        </li>
+        <li>支払方法: クレジットカード、Apple Pay、Google Pay（Stripe）。</li>
+        <li>
+          {charge && chargeDate
+            ? trialEligible
+              ? `初回の請求: ${chargeDate}に${price}円（税込）。それまでの${BILLING.trialDays}日間は無料で、期間が終わる前に解約すれば料金はかかりません。`
+              : `初回の請求: 無料体験の対象ではないため、申込みの完了時（${chargeDate}）に${price}円（税込）を請求します。`
+            : "初回の請求日を確認できませんでした。しばらくしてからもう一度開いてください。"}
+        </li>
+        <li>利用開始: 支払い手続きの完了を確認した後、すぐ使えます。</li>
+        <li>解約: この画面の「支払い方法の変更・解約」から、いつでも。支払い済みの期間の終わりに終了します。</li>
+        <li>
+          返金: 利用者の都合による返金はしません。二重請求などは
+          <a className="underline" href="https://kitepon.dev/terms/">利用規約</a>のとおり返金します。
+        </li>
+      </ul>
+      <p className="text-xs text-faint">
+        <a className="underline" href="https://kitepon.dev/specified-commercial-transactions/#yui">特定商取引法に基づく表記</a>
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button disabled={props.busy || !charge} onClick={props.onApply}>申し込む（Stripeの支払い画面へ進む）</Button>
+        <Button variant="outline" disabled={props.busy} onClick={props.onBack}>戻る</Button>
+      </div>
     </div>
   );
 }

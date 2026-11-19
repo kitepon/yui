@@ -63,6 +63,13 @@ export function checkoutSessionParams(input: {
     expires_at: Math.floor(input.nowMs / 1000) + 31 * 60,
     success_url: `${input.origin}/settings?checkout=completed`,
     cancel_url: `${input.origin}/settings?checkout=canceled`,
+    // 特商法12条の6の申込み確認と同意。利用規約の URL は Stripe の設定にも要る（アルカナ側）。
+    consent_collection: { terms_of_service: "required" },
+    custom_text: {
+      terms_of_service_acceptance: {
+        message: `[利用規約](https://kitepon.dev/terms/)と[結の付属規約](${input.origin}/terms)に同意します。未成年の場合は、保護者の同意を得ています。`,
+      },
+    },
     automatic_tax: { enabled: true },
     // 既存の顧客に住所が無くても自動税計算が通るよう、Checkout で集めた住所を顧客へ保存する
     customer_update: { address: "auto" },

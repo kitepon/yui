@@ -15,7 +15,8 @@ export const Route = createFileRoute("/api/stripe/webhook")({
           const object = event.data.object as { customer?: string | { id: string } | null };
           const customerId = typeof object.customer === "string" ? object.customer : object.customer?.id;
           const userId = customerId ? userIdForCustomerId(customerId) : null;
-          if (recordWebhookEvent(event.id, event.type) && userId) forgetEntitlement(userId);
+          // 共有口座には他製品のイベントも届く。自分の保存済み顧客のイベントだけ記録し、他は何も書かず 2xx で返す。
+          if (userId && recordWebhookEvent(event.id, event.type)) forgetEntitlement(userId);
           return Response.json({ received: true });
         } catch (err) {
           return new Response(err instanceof Error ? err.message : "invalid", { status: 400 });

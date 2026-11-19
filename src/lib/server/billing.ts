@@ -153,6 +153,16 @@ export async function trialEligible(customerId: string) {
   return list.data.length === 0;
 }
 
+/** 申込み確認パネル用。顧客がまだ無ければ体験の対象。Stripeを呼べない時は null（パネルは申込みを止める）。 */
+export async function loadTrialEligible(userId: string) {
+  try {
+    const customer = loadCustomerId(userId);
+    return customer ? await trialEligible(customer) : true;
+  } catch {
+    return null;
+  }
+}
+
 export async function startCheckout(input: {
   userId: string;
   email: string;

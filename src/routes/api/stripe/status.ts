@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { billingConfigured, forgetEntitlement, loadEntitlement, loadStripeEntitlement, requireUser } from "@/lib/server/billing";
+import { billingConfigured, forgetEntitlement, loadEntitlement, loadStripeEntitlement, loadTrialEligible, requireUser } from "@/lib/server/billing";
 import { BILLING } from "@/lib/billing-plan";
 import { appleBillingConfigured } from "@/lib/server/apple-billing";
 import { activePurchaseAttempt } from "@/lib/server/billing-purchase";
@@ -19,6 +19,7 @@ export const Route = createFileRoute("/api/stripe/status")({
           plans: BILLING,
           entitlement: await loadEntitlement(user.id),
           stripeEntitlement: await loadStripeEntitlement(user.id),
+          trialEligible: await loadTrialEligible(user.id),
         });
       },
     },
