@@ -115,7 +115,7 @@ This section is the canonical contract for `deploy/up.sh` and its caller,
 
 | Function | Input / owner | Output / connection |
 |---|---|---|
-| Deploy caller | Operator or `scripts/deploy-prod.sh`; deploy directory and Compose arguments | `up.sh`; regular image deployments may request `--force-recreate` |
+| Deploy caller | Operator or `scripts/deploy-prod.sh`; deploy directory, Compose arguments, optional `YUI_ACCEPT_CHANGED` (variable names only) | `up.sh`; regular image deployments may request `--force-recreate`; the acknowledgement is forwarded unchanged |
 | Prepare configuration | `up.sh`; names in `op.env` | Names-only `compose.op.yaml`; no resolved values on disk |
 | Resolve configuration | Executable `${HOME:-}/.local/bin/dotagents-op-run`, otherwise `op run`; `op.env` | Re-enter `up.sh` with resolved environment and unchanged arguments; helper failure never falls back |
 | Host credential selection | `dotagents-op-run`, when installed | Remove inherited `OP_SERVICE_ACCOUNT_TOKEN` before the runner; use its existing host credential store; resolved values retain whitespace |

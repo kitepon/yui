@@ -28,6 +28,9 @@ PUBLIC_HOSTNAME=${DEPLOY_PUBLIC_HOSTNAME:-}
 # サーバーの CPU に合わせる（ミニ PC は amd64、Raspberry Pi は arm64）。
 PLATFORM=${DEPLOY_PLATFORM:-linux/amd64}
 BUILD_ON_HOST=${DEPLOY_BUILD_ON_HOST:-}
+# 鍵を入れ替える配備だけ、入れ替える変数名を up.sh へ渡す（up.sh の YUI_ACCEPT_CHANGED と同じ）。
+ACCEPT=${YUI_ACCEPT_CHANGED:-}
+case $ACCEPT in *[!A-Z0-9_,\ ]*) echo "YUI_ACCEPT_CHANGED には変数名だけを書く" >&2; exit 1;; esac
 
 cd "$ROOT"
 
@@ -112,7 +115,7 @@ fi
 echo "[deploy] up"
 if [ "$CONF" = op.env ]; then
   # The login shell supplies runtime paths; up.sh selects host or ordinary op credentials.
-  ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && \"\$SHELL\" -lc './up.sh --force-recreate'"
+  ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && YUI_ACCEPT_CHANGED='$ACCEPT' \"\$SHELL\" -lc './up.sh --force-recreate'"
 else
   ssh "$HOST" "cd $REMOTE_DIR/deploy && s=\$(date +%S) && sleep \$(( 61 - \${s#0} )) && docker compose up -d --force-recreate"
 fi
