@@ -147,19 +147,18 @@ export async function pushBackup() {
   const dump = dumpHomeDb();
   const packed = packDump(dump);
   const body = new TextEncoder().encode(packed);
-  const day = new Date().toISOString().slice(0, 10);
-  const keys = [LATEST_KEY, `yuihome/${day}.enc`];
-  for (const key of keys) {
-    const res = await fetch(backupUrl(key), {
-      method: "PUT",
-      headers: { ...backupHeaders(), "content-type": "application/octet-stream" },
-      body,
-    });
-    if (!res.ok) {
-      throw new Error(`バックアップ送信に失敗 ${key} ${res.status} ${await res.text()}`);
-    }
+  // 利用者情報を含むので世代は1つだけ。同じキーの上書きで、古い世代は残らない。
+  const res = await fetch(backupUrl(LATEST_KEY), {
+    method: "PUT",
+    headers: { ...backupHeaders(), "content-type": "application/octet-stream" },
+    body,
+  });
+  if (!res.ok) {
+    throw new Error(`バックアップ送信に失敗 ${LATEST_KEY} ${res.status} ${await res.text()}`);
   }
-  return { keys, takenAt: dump.takenAt, users: dump.user.length, homes: dump.homes.length };
+  const stored = await pullLatestDump();
+  if (stored.takenAt !== dump.takenAt) throw new Error("置いたバックアップが読み戻せない");
+  return { keys: [LATEST_KEY], takenAt: dump.takenAt, users: dump.user.length, homes: dump.homes.length };
 }
 
 export async function pullLatestDump(): Promise<HomeDump> {

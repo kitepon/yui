@@ -71,7 +71,7 @@ Billing function and data-flow contract: [billing](./billing-function-dataflow.m
 
 - 家の SQLite が正本。Cloudflare は家データ（ユーザー行と家。トークンは既に暗号化済み）の予備だけ。
 - Google と Stripe は吸わない。Appleのアカウント識別子・検証済み契約状態・暗号化したログイン解除用トークンと削除記録はSQLiteの予備に含める。復旧後のStripe契約はStripeをその場で見る。削除済みアカウントは古い予備から復活させない。
-- 家が 1 時間ごとに暗号化スナップショットを R2 へ押す。復旧は明示の `restore` だけ。壊れているとみなして自動では戻さない。
+- 家が 1 時間ごとに暗号化スナップショットを R2 の `yuihome/latest.enc` へ上書きで押し、すぐ読み戻して復号できる事を確かめる。利用者情報を含むので、世代は最新の1つだけ（日付つきの控えは作らない。オーナー裁定 2026-11-20 privacy/d04）。復旧は明示の `restore` だけ。壊れているとみなして自動では戻さない。
 
 ## Cloudflare 移転で変えてよいもの
 

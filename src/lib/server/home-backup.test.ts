@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { applyHomeDump, dumpHomeDb, packDump, unpackDump } from "./home-backup.ts";
+import { applyHomeDump, dumpHomeDb, packDump, pushBackup, unpackDump } from "./home-backup.ts";
 import { encryptJson, secretsKeyFromEnv } from "./home-secrets.ts";
 
 const keyHex = "ab".repeat(32);
@@ -123,4 +123,30 @@ test("unknown dump version is refused", () => {
   assert.throws(() =>
     applyHomeDump({ version: 99, takenAt: "", user: [], account: [], homes: [] } as never, db),
   );
+});
+
+test("pushBackup keeps one generation: only latest.enc is written and read back", async () => {
+  (globalThis as { __yuiSqlite__?: unknown }).__yuiSqlite__ = seed();
+  process.env.YUI_BACKUP_URL = "https://backup.example/";
+  process.env.YUI_BACKUP_SECRET = "s";
+  const store = new Map<string, string>();
+  const puts: string[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    const key = new URL(url).pathname.slice(1);
+    if (init?.method === "PUT") {
+      puts.push(key);
+      store.set(key, new TextDecoder().decode(init.body as Uint8Array));
+      return new Response("ok");
+    }
+    return store.has(key) ? new Response(store.get(key)) : new Response("missing", { status: 404 });
+  }) as typeof fetch;
+  try {
+    const info = await pushBackup();
+    assert.deepEqual(puts, ["yuihome/latest.enc"]);
+    assert.deepEqual(info.keys, ["yuihome/latest.enc"]);
+  } finally {
+    globalThis.fetch = realFetch;
+    (globalThis as { __yuiSqlite__?: unknown }).__yuiSqlite__ = undefined;
+  }
 });
