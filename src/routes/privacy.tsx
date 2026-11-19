@@ -21,7 +21,7 @@ function Privacy() {
           <li>Apple（米国）：iPhoneアプリの課金、Appleでのログイン</li>
           <li>Google LLC（米国）：Googleでのログイン、Google Fonts（結のページを開くと、ブラウザがGoogle LLCへ直接接続します）</li>
           <li>Cloudflare, Inc.（米国）：配信、攻撃からの保護、暗号化したバックアップの保管</li>
-          <li>Amazon（Alexaと連携する場合）、SwitchBot・Nature Remo・Tuya（Smart Life）・ダイキン：登録した家電の操作のために、利用者が登録した鍵で結のサーバーから接続します。各社が自社のポリシーで情報を扱います。</li>
+          <li>Amazon（Alexaと連携する場合）、SwitchBot、Nature Remo、Tuya（Smart Life）、ダイキン：利用者がその会社と結んでいるサービスです。登録した家電を操作するため、利用者が登録した鍵で結のサーバーから接続します。情報は各社が自社のポリシーで扱い、扱われる国も各社のポリシーのとおりです。</li>
         </ul>
         <p>それぞれ必要な範囲だけ渡します。共通の外部サービスと国の説明は、kitepon.dev のプライバシーポリシーにもあります。</p>
       </section>
