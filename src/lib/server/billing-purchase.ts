@@ -18,12 +18,23 @@ export function activePurchaseAttempt(userId: string, now = Date.now(), db: Data
   ).get(userId, now) as PurchaseAttempt | undefined;
 }
 
+/** 期限が切れた手続きは残さない。期限なし（Apple）は進行中なので触れない。 */
+export function purgeEndedPurchaseAttempts(now = Date.now(), db: DatabaseSync = getSqlite()) {
+  db.prepare("DELETE FROM billing_purchase_attempts WHERE expires_at_ms IS NOT NULL AND expires_at_ms <= ?").run(now);
+}
+
+/** 購入が完了した手続きの行を消す。 */
+export function completePurchaseAttempt(sessionId: string, db: DatabaseSync = getSqlite()) {
+  db.prepare("DELETE FROM billing_purchase_attempts WHERE stripe_session_id = ?").run(sessionId);
+}
+
 export function reservePurchaseAttempt(
   userId: string,
   provider: "stripe" | "apple",
   now = Date.now(),
   db: DatabaseSync = getSqlite(),
 ) {
+  purgeEndedPurchaseAttempts(now, db);
   const attemptId = randomUUID();
   // Stripe の準備中だけ短い期限を設ける。セッション作成後はその失効時刻に更新する。
   const expiresAtMs = provider === "stripe" ? now + 2 * 60_000 : null;

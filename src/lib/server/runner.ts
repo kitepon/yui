@@ -15,6 +15,7 @@ import { listAutomationHomeIds, loadHomeRecord, saveDeviceGroupStates, saveDevic
 import { executeAction } from "./execute";
 import { startBackupRunner } from "./home-backup";
 import { billingConfigured, loadEntitlement } from "./billing";
+import { purgeEndedPurchaseAttempts } from "./billing-purchase";
 import { clockInTokyo } from "@/lib/home/clock";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
 import { newWaveId, pruneAnalysis, recordEvent, recordHomeSamples, recordStoppedEvent } from "./analysis";
@@ -382,6 +383,7 @@ export async function tickAllHomes() {
   if (ticking) return;
   ticking = true;
   try {
+    purgeEndedPurchaseAttempts();
     for (const id of listAutomationHomeIds()) {
       try {
         const rec = await loadHomeRecord(id);

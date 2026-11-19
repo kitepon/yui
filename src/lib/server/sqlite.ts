@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { hashLegacyAlexaRows } from "./alexa-token-hash.ts";
 
 const globalRef = globalThis as typeof globalThis & {
   __yuiSqlite__?: DatabaseSync;
@@ -21,6 +22,7 @@ export function getSqlite(): DatabaseSync {
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
   applySqliteMigrations(db);
+  hashLegacyAlexaRows(db);
   globalRef.__yuiSqlite__ = db;
   return db;
 }
