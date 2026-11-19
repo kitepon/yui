@@ -21,6 +21,7 @@ export function LegalPage({ title, children }: { title: string; children: ReactN
       <div className="mt-4">
         <AnnexHeader />
       </div>
+      <p className="mt-3 text-xs text-faint">制定日 2026年11月20日</p>
       <div className="prose-legal mt-6 space-y-5 text-sm leading-7 text-muted">{children}</div>
       <p className="mt-10 text-sm">
         <Link to="/" className="text-primary underline">
