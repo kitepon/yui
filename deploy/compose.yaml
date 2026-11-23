@@ -68,7 +68,12 @@ services:
     restart: unless-stopped
     network_mode: host
     command: ["node", "--experimental-strip-types", "src/lib/home/tuya-lan-forward.ts"]
-    user: "0"
+    # host network でも root と余分な capability は要らない（UDP 6666/6667 は 1024 超）。
+    user: "1001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - tuya-relay:/relay
     environment:
@@ -76,7 +81,26 @@ services:
       YUI_TUYA_LAN_RELAY_BIND: /relay/tuya.sock
       TZ: ${TZ:-Asia/Tokyo}
     depends_on:
-      - app
+      app:
+        condition: service_started
+      tuya-relay-init:
+        condition: service_completed_successfully
+
+  # 共有ソケットの置き場を yui の持ち物にする。古い volume は root の持ち物で作られている。
+  tuya-relay-init:
+    image: yuihome:local
+    container_name: yuihome-tuya-relay-init
+    restart: "no"
+    user: "0"
+    command: ["chown", "yui:yui", "/relay"]
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - tuya-relay:/relay
 
 volumes:
   yui-data:
