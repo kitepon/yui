@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-24
+
+本番 image は `yuihome:20261120-bb6e6a7` のまま（composeだけの変更）。Tuya LAN の受け役 `yuihome-tuya-lan` だけを作り直した。Webアプリと Bluetooth の容器は動かしていない。
+
+- 受け役を root から一般ユーザー（uid 1001）へ、`cap_drop: ALL`・`no-new-privileges` で動かすようにした（監査 SEC-089）。host network は LAN の名乗りを受けるため変えない。
+- 共有ソケットの置き場 `/relay` は、起動のたびに `tuya-relay-init`（CHOWN だけを持つ一回きりの容器）が yui の持ち物へ直す。古い volume は root の持ち物で作られていたため。
+- 切替後に、実行ユーザー・権限（CapEff 0）・UDP 6666/6667 の待受・ソケットの権限・Webアプリ容器からソケットへの接続・Webアプリ容器の起動時刻が変わっていないこと、公開ページの応答 200 を確認した。実家電は押していない。
+
 ## 2026-11-20
 
 本番 image `yuihome:20261120-93dbbd2`（Webアプリ）と `yuihome-switchbot-ble:20261120-93dbbd2`。Stripeの請求先を新しい口座へ切り替えた。
