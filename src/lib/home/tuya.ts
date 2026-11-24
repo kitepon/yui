@@ -752,6 +752,13 @@ export async function tuyaSync(
   throw lastError;
 }
 
+/** クラウドはオフラインの機器への命令も受け付ける。届かない操作を成功と返さない。 */
+export function assertTuyaOnline(info: unknown, name: string) {
+  if ((info as { online?: unknown } | null)?.online === false) {
+    throw new Error(`${name} は Tuya のクラウドでオフラインです。電源と Wi-Fi を確かめてください`);
+  }
+}
+
 /** Smart Life（Tuya）の操作。機器が実際に持つ DP だけを送る。 */
 export async function tuyaControl(
   accessId: string,
@@ -765,6 +772,15 @@ export async function tuyaControl(
     throw new Error("Smart Life のデータセンターが未確定です。接続タブで一度同期してください。");
   }
   const token = await getToken(dc.host, accessId, secret);
+  // 読めない時は止めない（unknown は offline ではない）。status の読取りが本当の失敗を返す。
+  const info = await tuyaGet<unknown>(
+    dc.host,
+    accessId,
+    secret,
+    `/v1.0/iot-03/devices/${device.nativeId}`,
+    token.access_token,
+  ).catch(() => null);
+  assertTuyaOnline(info, device.name);
   const status = asStatusList(
     await tuyaGet<unknown>(
       dc.host,

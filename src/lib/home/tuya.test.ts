@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mapTuyaDevices, readingsFromTuyaStatus, tuyaCommandsFromPatch, applyTuyaStatus, collectLocalKeys, dpMapFromSpecification } from "./tuya.ts";
+import { assertTuyaOnline, mapTuyaDevices, readingsFromTuyaStatus, tuyaCommandsFromPatch, applyTuyaStatus, collectLocalKeys, dpMapFromSpecification } from "./tuya.ts";
 import type { Device } from "./types.ts";
 
 test("Tuya の temp_current は十分の一度", () => {
@@ -279,4 +279,11 @@ test("specifications の status と functions から dp 番号 → コードを�
   assert.deepEqual(dps, { "1": "va_temperature", "9": "temp_unit_convert", "10": "maxtemp_set" });
   assert.deepEqual(dpMapFromSpecification(null), {});
   assert.deepEqual(dpMapFromSpecification({ functions: [{ code: "switch_1", dpId: 1 }] }), { "1": "switch_1" });
+});
+
+test("クラウドでオフラインの機器への操作は成功にしない。読めない時は止めない", () => {
+  assert.throws(() => assertTuyaOnline({ online: false }, "テレビ"), /オフライン/);
+  assert.doesNotThrow(() => assertTuyaOnline({ online: true }, "テレビ"));
+  assert.doesNotThrow(() => assertTuyaOnline(null, "テレビ"));
+  assert.doesNotThrow(() => assertTuyaOnline({}, "テレビ"));
 });
