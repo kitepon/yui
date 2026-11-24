@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24（夜）
+
+本番 image `yuihome:20261124-1db02e4`（Webアプリ・Tuya LAN の受け役と準備用の容器）と `yuihome-switchbot-ble:20261124-1db02e4`。全容器を作り直した（午後に派生 image で動かしていた受け役も、通常のビルドへ戻した）。
+
+- Tuya のクラウドで「オフライン」と出ている機器への操作は、成功と返さない。クラウドはオフラインの機器の命令も受け付けるため、結は `sent` と記録して Alexa にも成功と返していた。機器の `online` が false なら「届きません」の失敗にする。状態が読めない時は止めない（`tuyaControl` の契約は変えない）。
+- 切替後に、Webアプリ 200（公開・サーバー内）、受け役が一般ユーザー（uid 1001）・`cap_drop: ALL`・`no-new-privileges`・CapEff 0、王子様のアカウントの免除、受け役のソケットへの接続を確認した。
+
 ## 2026-11-24（午後）
 
 Tuya LAN の受け役 `yuihome-tuya-lan` と準備用の `yuihome-tuya-relay-init` だけを、`yuihome:20261124-4139e79` へ作り直した（Webアプリと Bluetooth の容器は `20261120-bb6e6a7` のまま動かしていない。この image は旧 image に `src/lib/home/lan-udp.ts` だけを足した派生）。
