@@ -358,7 +358,8 @@ export function exchangeLanTcp(host: string, port: number, frames: Buffer[], sig
         replies.push(reply);
         if (replies.length === frames.length) {
           complete = true;
-          socket.end();
+          // 3.1 の差込口は FIN を返さないことがある。close を待つと応答済みでも期限切れになる。
+          finish(() => resolve(replies));
         } else {
           socket.write(frames[replies.length]);
         }

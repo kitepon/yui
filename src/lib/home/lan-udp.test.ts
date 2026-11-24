@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { buildFrame } from "./tuya-lan.ts";
 import {
   assembleLanSnapshot,
+  exchangeLanTcp,
   lanSnapshotChanged,
   listenLanUdp,
   readCarrierLinks,
@@ -237,5 +238,25 @@ test("上流のアドレスが無いと受け役は起動しない", () => {
     assert.throws(() => startTuyaLanForwarder(), /YUI_TUYA_LAN_UPSTREAM/);
   } finally {
     if (prev !== undefined) process.env.YUI_TUYA_LAN_UPSTREAM = prev;
+  }
+});
+
+test("機器が応答後に FIN を返さなくても、応答が揃った時点で返す", async () => {
+  const { createServer } = await import("node:net");
+  const reply = buildFrame(1, 10, Buffer.concat([Buffer.alloc(4), Buffer.from("REPLYOK!!")]));
+  const sockets: Array<{ destroy: () => void }> = [];
+  const device = createServer({ allowHalfOpen: true }, (socket) => {
+    sockets.push(socket);
+    socket.on("data", () => socket.write(reply)); // 閉じない
+  });
+  const port = await new Promise<number>((resolve) => device.listen(0, "127.0.0.1", () => resolve((device.address() as { port: number }).port)));
+  try {
+    const started = Date.now();
+    const got = await exchangeLanTcp("127.0.0.1", port, [buildFrame(1, 10, Buffer.from("QUERY"))]);
+    assert.deepEqual(got, [reply]);
+    assert.ok(Date.now() - started < 2000, "5 秒の期限を待たない");
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    await new Promise<void>((resolve) => device.close(() => resolve()));
   }
 });
