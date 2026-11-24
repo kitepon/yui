@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-24（午後）
+
+Tuya LAN の受け役 `yuihome-tuya-lan` と準備用の `yuihome-tuya-relay-init` だけを、`yuihome:20261124-4139e79` へ作り直した（Webアプリと Bluetooth の容器は `20261120-bb6e6a7` のまま動かしていない。この image は旧 image に `src/lib/home/lan-udp.ts` だけを足した派生）。
+
+- Smart Life の LAN 読取・操作で、機器の応答が揃っていても、機器が通信を閉じるのを待って5秒の期限切れ（「5 秒以内に応答しません」）にしていた不具合を直した。3.1 の差込口は応答後も接続を閉じないことがあり、分ごとの読取の約半分と操作が失敗していた。応答が揃った時点で成功にする。`exchangeLanTcp` の契約（全応答を返す）は変えない。機器が閉じない場面の試験を足した（直す前は5秒で失敗、直した後は通る）。
+- 切替前の17分は11件、切替後の6分は0件（ログの「5 秒以内に応答しません」）。非 root・`cap_drop: ALL`・`no-new-privileges` は変えていない。
+- 同日の早い時間に、王子様のアカウントを `YUI_BILLING_EXEMPT` へ足し、Webアプリだけを作り直した（11月20日の Stripe 切替で契約行を消し、操作が止まっていたため）。
+
 ## 2026-11-24
 
 本番 image は `yuihome:20261120-bb6e6a7` のまま（composeだけの変更）。Tuya LAN の受け役 `yuihome-tuya-lan` だけを作り直した。Webアプリと Bluetooth の容器は動かしていない。
