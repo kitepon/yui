@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-26
+
+- `deploy/up.sh` takes the host's keys from the BellTeam authentication broker (`~/.local/bin/auth exec <full path of up.sh> -- <arguments>`) instead of `dotagents-op-run`, which no longer works there (the old 1Password items are archived). Ordinary self-hosts keep the `op run` path. Same change as the main-server copy Sakura installed; the launcher-only change does not rebuild or restart containers.
+
 ## 2026-11-24（夜）
 
 本番 image `yuihome:20261124-1db02e4`（Webアプリ・Tuya LAN の受け役と準備用の容器）と `yuihome-switchbot-ble:20261124-1db02e4`。全容器を作り直した（午後に派生 image で動かしていた受け役も、通常のビルドへ戻した）。

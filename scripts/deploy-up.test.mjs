@@ -27,11 +27,12 @@ exec "$@"
 const FAKE_HELPER = `#!/bin/sh
 [ -z "\${OP_SERVICE_ACCOUNT_TOKEN+x}" ] || exit 10
 printf '%s\\n' "$@" >"$FAKE_DIR/helper-argv"
-[ "$1" = --env-file ] && [ "$2" = op.env ] && [ "$3" = -- ] || exit 11
+[ "$1" = exec ] && [ "$3" = -- ] || exit 11
+script=$2
 shift 3
 if [ -n "\${FAKE_HELPER_FAIL:-}" ]; then exit 2; fi
 export BETTER_AUTH_SECRET="  host-key  " HOME_SECRETS_KEY=host-home-key YUI_BIND=127.0.0.9 COMPOSE_PROFILES=ble
-exec "$@"
+exec "$script" "$@"
 `;
 
 // 試験用の docker。inspect は用意した環境を返し、compose は引数と環境を書き残す。
@@ -65,7 +66,7 @@ function workspace({ opEnv = OP_ENV, container, helper = false } = {}) {
   if (container) writeFileSync(join(dir, "container.env"), container);
   if (helper) {
     mkdirSync(join(dir, ".local", "bin"), { recursive: true });
-    const file = join(dir, ".local", "bin", "dotagents-op-run");
+    const file = join(dir, ".local", "bin", "auth");
     writeFileSync(file, FAKE_HELPER);
     chmodSync(file, 0o755);
   }
@@ -92,7 +93,7 @@ test("host runner receives exact argv without the inherited token and forwards w
 
   assert.equal(run.status, 0, run.stderr);
   assert.deepEqual(readFileSync(join(dir, "helper-argv"), "utf8").trim().split("\n"), [
-    "--env-file", "op.env", "--", "./up.sh", "--force-recreate",
+    "exec", join(dir, "up.sh"), "--", "--force-recreate",
   ]);
   assert.match(run.dockerEnv, /^BETTER_AUTH_SECRET= {2}host-key {2}$/m);
   assert.doesNotMatch(run.dockerEnv, /OP_SERVICE_ACCOUNT_TOKEN|YUI_UP_STAGE/);

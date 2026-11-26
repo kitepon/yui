@@ -49,9 +49,10 @@ if [ "${YUI_UP_STAGE:-}" != resolved ]; then
   trap - EXIT
 
   # The host runner owns its credential bootstrap; discard the login-shell token.
-  helper="${HOME:-}/.local/bin/dotagents-op-run"
+  # Keys come from the BellTeam authentication broker (item named by this script's full path; 2026-11-26).
+  helper="${HOME:-}/.local/bin/auth"
   if [ -x "$helper" ]; then
-    YUI_UP_STAGE=resolved exec env -u OP_SERVICE_ACCOUNT_TOKEN "$helper" --env-file op.env -- "$self" "$@"
+    YUI_UP_STAGE=resolved exec env -u OP_SERVICE_ACCOUNT_TOKEN "$helper" exec "$PWD/$(basename -- "$0")" -- "$@"
   fi
 
   # Ordinary self-hosts retain their existing op authentication.

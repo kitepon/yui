@@ -117,8 +117,8 @@ This section is the canonical contract for `deploy/up.sh` and its caller,
 |---|---|---|
 | Deploy caller | Operator or `scripts/deploy-prod.sh`; deploy directory, Compose arguments, optional `YUI_ACCEPT_CHANGED` (variable names only) | `up.sh`; regular image deployments may request `--force-recreate`; the acknowledgement is forwarded unchanged |
 | Prepare configuration | `up.sh`; names in `op.env` | Names-only `compose.op.yaml`; no resolved values on disk |
-| Resolve configuration | Executable `${HOME:-}/.local/bin/dotagents-op-run`, otherwise `op run`; `op.env` | Re-enter `up.sh` with resolved environment and unchanged arguments; helper failure never falls back |
-| Host credential selection | `dotagents-op-run`, when installed | Remove inherited `OP_SERVICE_ACCOUNT_TOKEN` before the runner; use its existing host credential store; resolved values retain whitespace |
+| Resolve configuration | Executable `${HOME:-}/.local/bin/auth` (BellTeam authentication broker), otherwise `op run`; `op.env` names | Re-enter `up.sh` with resolved environment and unchanged arguments; helper failure never falls back |
+| Host credential selection | `auth exec <full path of up.sh> -- <arguments>`, when installed | Remove inherited `OP_SERVICE_ACCOUNT_TOKEN` before the broker; the broker's item is named by the script's full path and supplies the values; `op.env` is not passed (it still names the variables and marks the references checked below); resolved values retain whitespace |
 | Protect existing keys | Resolved `up.sh`; referenced values and running `yuihome` configuration | Compare values without printing them; a mismatch requires existing `YUI_ACCEPT_CHANGED` acknowledgement |
 | Start containers | Resolved `up.sh`; Compose files and arguments | Docker Compose with `.env` disabled and token/stage/acknowledgement variables removed |
 | Restart containers | Docker's saved configuration | Restart existing containers without resolving references |
@@ -155,10 +155,12 @@ with restricted permissions and a documented expiry for rollback.
 `.env` に秘密を平文で置かず、起こす時に 1Password CLI（`op`）で読む形にもできる。
 サーバーに `op` があり、login shell で `op whoami` が通ること。Docker Compose v5.3.1 と `op` 2.40.0 で確かめた。
 
-When `${HOME:-}/.local/bin/dotagents-op-run` is executable, `up.sh` uses that
-host-managed runner and removes the login shell's service-account token first.
-The runner must already have access to the referenced vault through its host
-credential store. Otherwise the existing `op run` authentication is used.
+When `${HOME:-}/.local/bin/auth` is executable, `up.sh` runs itself through
+`auth exec <full path of up.sh> -- <arguments>` and removes the login shell's
+service-account token first. The broker reads the item named by the script's full
+path, so the values are not taken from the `op://` references in `op.env`; the
+file still lists the variable names. Otherwise the existing `op run`
+authentication is used.
 
 1. 秘密を 1Password の項目へ入れる。
 2. `deploy/op.env`（権限 600）を置く。書き方は `.env` と同じで、秘密だけを参照に替える。ほかの設定は値のまま書く。
