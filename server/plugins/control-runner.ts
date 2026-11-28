@@ -11,8 +11,14 @@
  * Nitro v3 beta は server/plugins/ を自動では読まない。
  */
 import { definePlugin } from "nitro";
+import { initHomeSecrets } from "../../src/lib/server/home-secrets";
+import { pushBackup } from "../../src/lib/server/home-backup";
 import { startControlRunner } from "../../src/lib/server/runner";
 
-export default definePlugin(() => {
+// The home key is unwrapped by the authentication module before the first request and the first tick.
+export default definePlugin(async () => {
+  const result = await initHomeSecrets();
   startControlRunner();
+  // The backup object is encrypted under the home key: after a rotation the next hourly push would leave the old one unreadable for up to an hour.
+  if (result === "rotated") void pushBackup().catch((err) => console.error("[yui] backup after key rotation failed", err));
 });

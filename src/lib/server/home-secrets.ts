@@ -26,7 +26,59 @@ const EMPTY: SecretFields = {
 type StringKey = Exclude<keyof SecretFields, "tuyaLocal">;
 const KEYS = (Object.keys(EMPTY) as (keyof SecretFields)[]).filter((k): k is StringKey => k !== "tuyaLocal");
 
-export function secretsKeyFromEnv(raw = process.env.HOME_SECRETS_KEY): Buffer {
+// The home key may come from the authentication module (see initHomeSecrets); until then, or without a module, from the environment.
+let unwrapped: string | undefined;
+
+type Module = {
+  unwrap: (sock: string, wrapped: string, aad: string) => Promise<string>;
+  wrap: (sock: string, keyText: string, aad: string) => Promise<string>;
+};
+
+/**
+ * At server start, before the first request and tick:
+ * - YUI_AUTH_SOCK absent: the environment key, as before (self-hosted).
+ * - the database holds a wrapped key: the module unwraps it; it lives in memory only.
+ * - YUI_ROTATE_HOME_KEY=1 (one start, run by hand at the release): a fresh key replaces the old one (HOME_SECRETS_KEY) everywhere, and only the new one is wrapped.
+ * If the module cannot answer and HOME_SECRETS_KEY is still in the environment (the transition), that value is used and a warning is logged.
+ */
+export async function initHomeSecrets(env = process.env, mod?: Module, db?: import("node:sqlite").DatabaseSync) {
+  const sock = env.YUI_AUTH_SOCK?.trim();
+  if (!sock) return "env";
+  try {
+    const m = mod ?? (await loadModule());
+    const database = db ?? (await import("./sqlite.ts")).getSqlite();
+    const { rotateHomeKey, storedHomeKey } = await import("./home-key.ts");
+    const stored = storedHomeKey(database);
+    if (env.YUI_ROTATE_HOME_KEY === "1" && !stored) {
+      const oldKey = secretsKeyFromEnv(env.HOME_SECRETS_KEY);
+      const { HOME_KEY_AAD_V2 } = await import("./home-key.ts");
+      const res = await rotateHomeKey(database, oldKey, (hex) => m.wrap(sock, hex, HOME_KEY_AAD_V2));
+      unwrapped = res.key.toString("hex");
+      console.warn(`[yui] home key rotated: ${res.homes} homes, ${res.tokens} tokens re-encrypted`);
+      return "rotated";
+    }
+    if (!stored) throw new Error("no wrapped home key is stored");
+    const text = await m.unwrap(sock, stored.wrapped, stored.aad);
+    secretsKeyFromEnv(text); // a value that is not a key is refused before it is kept
+    unwrapped = text;
+    return "module";
+  } catch (err) {
+    if (!env.HOME_SECRETS_KEY?.trim()) throw err;
+    console.warn("[yui] the authentication module could not give the home key; using HOME_SECRETS_KEY from the environment");
+    return "env";
+  }
+}
+
+async function loadModule(): Promise<Module> {
+  const m = await import("./auth-module.ts");
+  return { unwrap: m.unwrapHomeKey, wrap: m.wrapHomeKey };
+}
+
+export function resetHomeSecretsForTests() {
+  unwrapped = undefined;
+}
+
+export function secretsKeyFromEnv(raw = unwrapped ?? process.env.HOME_SECRETS_KEY): Buffer {
   const value = raw?.trim();
   if (!value) {
     throw new Error("HOME_SECRETS_KEY が無い。32バイトの鍵を hex または base64 で渡す");

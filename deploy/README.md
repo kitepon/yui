@@ -27,6 +27,7 @@ DockerfileとCIは22.23.4を使う。[2026年10月のNode.js保安更新](https:
 | `APPLE_APP_ID` / `APPLE_IAP_KEY_ID` / `APPLE_IAP_ISSUER_ID` / `APPLE_IAP_PRIVATE_KEY_BASE64` | 公式iPhone版で必須 | App Storeの契約検証と状態照会 |
 | `ALEXA_CLIENT_ID` / `ALEXA_CLIENT_SECRET` | 任意 | Echo から使う場合（[docs/alexa.md](../docs/alexa.md)） |
 | `YUI_BACKUP_URL` / `YUI_BACKUP_SECRET` | 任意 | 家データを外部へ定期退避する場合 |
+| `YUI_AUTH_SOCK` / `YUI_AUTH_CALLER_DIR` | 任意 | BellTeam の認証仲介が家の鍵を解く場合だけ。ソケットの場所と、そのフォルダ（[docs/home-key-contract.md](../docs/home-key-contract.md)） |
 | `BETTER_AUTH_URL` | 必須 | 外から見た公開 URL（例 `https://yui.example.com`） |
 | `YUI_LAN_OWNER` | LAN 直結を使うなら必須 | この結の持ち主のメール。**この人だけ**が LAN 直結を使える |
 | `YUI_DAIKIN_ADDRS` | 任意 | ダイキン直結の宛先。`部屋=IP` をカンマ区切り |

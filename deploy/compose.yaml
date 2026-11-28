@@ -25,9 +25,13 @@ services:
       HOST: 0.0.0.0
       # 家の LAN への TCP は、host network の受け役が Unix ソケットで中継する。
       YUI_TUYA_LAN_RELAY: /relay/tuya.sock
+      # The BellTeam authentication module unwraps the home key (hosted build only; self-hosters leave YUI_AUTH_SOCK unset).
+      YUI_AUTH_SOCK: ${YUI_AUTH_SOCK:-}
     volumes:
       - yui-data:/data
       - tuya-relay:/relay
+      # The folder of the module's caller socket for this app (host: .../auth-mediation/callers/yuihome). Unset: an empty folder.
+      - ${YUI_AUTH_CALLER_DIR:-/var/empty}:/auth:ro
     ports:
       # 直接インターネットへ晒さない。リバースプロキシ（Caddy 等）の後ろに置く。
       # 別のアドレスで受けるなら .env の YUI_BIND に書く。
