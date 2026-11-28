@@ -50,8 +50,8 @@ class NodeSqliteConnection implements DatabaseConnection {
     const params = (compiled.parameters ?? []) as never[];
     if (!sql) return { rows: [] };
     const stmt = this.db.prepare(compiled.sql);
-    const head = sql.slice(0, 6).toUpperCase();
-    if (head === "SELECT" || head === "PRAGMA" || head === "WITH " || /\bRETURNING\b/i.test(sql)) {
+    // A statement that yields columns returns rows (SELECT, PRAGMA, WITH, RETURNING, and Kysely's introspection queries).
+    if (stmt.columns().length > 0) {
       return { rows: stmt.all(...params) as R[] };
     }
     const info = stmt.run(...params) as { changes?: number; lastInsertRowid?: number | bigint };

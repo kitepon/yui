@@ -192,7 +192,8 @@ test("決まりが無い時（今の動き）：広い権限のトークンを�
   assert.notEqual(row.accessToken, "ya29.dummy-access");
   assert.equal(String(row.idToken).split(".").length, 3);
   assert.match(String(row.scope), /gmail\.send/);
-  const token = await call(auth, jar, "/get-access-token", { providerId: "google" });
+  // better-auth 1.7 selects the account by its row id.
+  const token = await call(auth, jar, "/get-access-token", { accountId: row.id });
   assert.equal(token.status, 200);
   assert.equal(((await token.json()) as { accessToken: string }).accessToken, "ya29.dummy-access");
 });
@@ -312,7 +313,8 @@ test("Bearer で入っている時（iPhone のアプリの形）も、取り出
   const open = makeAuth(false);
   const openJar = new Jar();
   await googleSignIn(open.auth, openJar, { sub: "g-11", email: "dummy11@example.com" });
-  const leaked = await withBearer(open.auth, openJar.sessionToken(), "/get-access-token", { providerId: "google" });
+  const [openRow] = googleRows(open.db);
+  const leaked = await withBearer(open.auth, openJar.sessionToken(), "/get-access-token", { accountId: openRow.id });
   assert.equal(leaked.status, 200);
   assert.equal(((await leaked.json()) as { accessToken: string }).accessToken, "ya29.dummy-access");
 

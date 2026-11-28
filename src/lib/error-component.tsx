@@ -9,7 +9,7 @@ export function AppErrorComponent({ error }: ErrorComponentProps) {
       </span>
       <h1 className="font-display text-lg font-semibold">うまくいきませんでした</h1>
       <p className="max-w-md text-sm break-words text-muted">
-        {error.message || "予期しないエラーです。再読み込みしてみてください。"}
+        {(error instanceof Error && error.message) || "予期しないエラーです。再読み込みしてみてください。"}
       </p>
     </main>
   );
