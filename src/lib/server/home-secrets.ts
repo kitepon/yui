@@ -27,7 +27,9 @@ type StringKey = Exclude<keyof SecretFields, "tuyaLocal">;
 const KEYS = (Object.keys(EMPTY) as (keyof SecretFields)[]).filter((k): k is StringKey => k !== "tuyaLocal");
 
 // The home key may come from the authentication module (see initHomeSecrets); until then, or without a module, from the environment.
-let unwrapped: string | undefined;
+// Kept on globalThis: the build copies this file into more than one server chunk, and every copy must see the unwrapped key.
+const HOME_KEY = Symbol.for("yuihome.unwrappedHomeKey");
+const holder = globalThis as { [HOME_KEY]?: string };
 
 type Module = {
   unwrap: (sock: string, wrapped: string, aad: string) => Promise<string>;
@@ -53,14 +55,14 @@ export async function initHomeSecrets(env = process.env, mod?: Module, db?: impo
       const oldKey = secretsKeyFromEnv(env.HOME_SECRETS_KEY);
       const { HOME_KEY_AAD_V2 } = await import("./home-key.ts");
       const res = await rotateHomeKey(database, oldKey, (hex) => m.wrap(sock, hex, HOME_KEY_AAD_V2));
-      unwrapped = res.key.toString("hex");
+      holder[HOME_KEY] = res.key.toString("hex");
       console.warn(`[yui] home key rotated: ${res.homes} homes, ${res.tokens} tokens re-encrypted`);
       return "rotated";
     }
     if (!stored) throw new Error("no wrapped home key is stored");
     const text = await m.unwrap(sock, stored.wrapped, stored.aad);
     secretsKeyFromEnv(text); // a value that is not a key is refused before it is kept
-    unwrapped = text;
+    holder[HOME_KEY] = text;
     return "module";
   } catch (err) {
     if (!env.HOME_SECRETS_KEY?.trim()) throw err;
@@ -75,10 +77,10 @@ async function loadModule(): Promise<Module> {
 }
 
 export function resetHomeSecretsForTests() {
-  unwrapped = undefined;
+  delete holder[HOME_KEY];
 }
 
-export function secretsKeyFromEnv(raw = unwrapped ?? process.env.HOME_SECRETS_KEY): Buffer {
+export function secretsKeyFromEnv(raw = holder[HOME_KEY] ?? process.env.HOME_SECRETS_KEY): Buffer {
   const value = raw?.trim();
   if (!value) {
     throw new Error("HOME_SECRETS_KEY が無い。32バイトの鍵を hex または base64 で渡す");

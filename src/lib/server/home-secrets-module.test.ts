@@ -73,6 +73,17 @@ test("a start after the rotation unwraps the stored key and does not need the ol
   resetHomeSecretsForTests();
 });
 
+test("a second copy of this file (the build makes one per server chunk) sees the unwrapped key", async () => {
+  resetHomeSecretsForTests();
+  const d = db();
+  seed(d, OLD);
+  await initHomeSecrets({ ...ENV, YUI_ROTATE_HOME_KEY: "1" } as never, fakeModule(), d);
+  const copy = (await import("./home-secrets.ts?copy")) as typeof import("./home-secrets.ts");
+  assert.equal(copy.secretsKeyFromEnv().toString("hex"), secretsKeyFromEnv().toString("hex"));
+  assert.notEqual(copy.secretsKeyFromEnv().toString("hex"), OLD);
+  resetHomeSecretsForTests();
+});
+
 test("when the module fails nothing changes: the old key stays in use and the data is untouched", async () => {
   resetHomeSecretsForTests();
   const d = db();
