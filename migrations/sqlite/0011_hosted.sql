@@ -11,7 +11,7 @@ CREATE TABLE homes_new (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   paid_until INTEGER,
-  orphaned_at INTEGER
+  last_used_at INTEGER
 );
 INSERT INTO homes_new (id, owner_user_id, pair_pin, credentials_enc, body_json, has_enabled_automation, created_at, updated_at)
   SELECT id, owner_user_id, pair_pin, credentials_enc, body_json, has_enabled_automation, created_at, updated_at FROM homes;

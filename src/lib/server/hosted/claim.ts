@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { deleteHomeOf } from "./entry-events.ts";
 
 export class ClaimError extends Error {
   readonly status: 401 | 404 | 409;
@@ -18,7 +18,7 @@ export function claimLegacyHome(db: DatabaseSync, entry: string, legacyUserId: s
   try {
     if (db.prepare("SELECT 1 FROM homes WHERE owner_user_id = ?").get(entry)) throw new ClaimError(409, "entry already has a home");
     if (!db.prepare("SELECT 1 FROM homes WHERE owner_user_id = ?").get(legacyUserId)) throw new ClaimError(404, "no legacy home");
-    db.prepare("UPDATE homes SET owner_user_id = ?, orphaned_at = NULL WHERE owner_user_id = ?").run(entry, legacyUserId);
+    db.prepare("UPDATE homes SET owner_user_id = ? WHERE owner_user_id = ?").run(entry, legacyUserId);
     db.prepare("UPDATE alexa_tokens SET user_id = ? WHERE user_id = ?").run(entry, legacyUserId);
     db.prepare("UPDATE alexa_auth_codes SET user_id = ? WHERE user_id = ?").run(entry, legacyUserId);
     db.prepare("INSERT OR IGNORE INTO deleted_users (user_id, deleted_at) VALUES (?, ?)").run(legacyUserId, new Date(now).toISOString());
@@ -30,23 +30,31 @@ export function claimLegacyHome(db: DatabaseSync, entry: string, legacyUserId: s
   }
 }
 
-/** The end of the claim window: no legacy subject, e-mail or token may remain. Homes stay, unclaimed, for the second period. */
+/** Tables of the old login and billing that hold nothing on hosted once the window has ended. */
+const EMPTIED_AT_WINDOW_END = [
+  "billing_customers", "billing_purchase_attempts", "apple_subscriptions", "apple_billing_accounts",
+  "apple_deleted_transactions", "apple_notification_events", "stripe_webhook_events", "verification",
+];
+
+/**
+ * The end of the claim window, run by code on the fixed end date: every unclaimed legacy home is deleted with the legacy rows,
+ * the emptied tables are emptied, and the freed pages are overwritten (VACUUM). No legacy subject, e-mail, token or home remains.
+ */
 export function endClaimWindow(db: DatabaseSync, now = Date.now()) {
   db.exec("BEGIN IMMEDIATE");
+  let users = 0;
   try {
     const ids = db.prepare('SELECT id FROM "user"').all() as { id: string }[];
-    db.prepare("UPDATE homes SET orphaned_at = ? WHERE orphaned_at IS NULL AND owner_user_id IN (SELECT id FROM \"user\")").run(now);
-    db.prepare("DELETE FROM alexa_tokens WHERE user_id IN (SELECT id FROM \"user\")").run();
-    db.prepare("DELETE FROM alexa_auth_codes WHERE user_id IN (SELECT id FROM \"user\")").run();
-    const del = db.prepare("INSERT OR IGNORE INTO deleted_users (user_id, deleted_at) VALUES (?, ?)");
-    for (const { id } of ids) del.run(id, new Date(now).toISOString());
-    // Deleting the user would delete its home through the self-hosted trigger, so each home is first given a random owner key that names no one.
-    for (const { id } of ids) db.prepare("UPDATE homes SET owner_user_id = ? WHERE owner_user_id = ?").run(`orphan:${randomUUID()}`, id);
+    users = ids.length;
+    for (const { id } of ids) deleteHomeOf(db, id, now);
     db.prepare('DELETE FROM "user"').run();
+    for (const t of EMPTIED_AT_WINDOW_END) db.prepare(`DELETE FROM ${t}`).run();
     db.exec("COMMIT");
-    return ids.length;
   } catch (err) {
     db.exec("ROLLBACK");
     throw err;
   }
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  db.exec("VACUUM");
+  return users;
 }

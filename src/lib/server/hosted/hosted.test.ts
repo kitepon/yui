@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { handleEntryEvent, purgeOrphans, deleteAccountData, ORPHAN_KEEP_MS } from "./entry-events.ts";
+import { handleEntryEvent, deleteAccountData, purgeTombstones, TOMBSTONE_KEEP_MS } from "./entry-events.ts";
 import { SqliteKeyholeStore } from "./keyhole-store.ts";
 import { claimLegacyHome, ClaimError, endClaimWindow } from "./claim.ts";
 import { consumeLinkCode, makeLinkCode, resetLinkCodeFailuresForTests } from "./link-code.ts";
-import { GRACE_MS, homePaid, MAX_AHEAD_MS, PaidDateError, statePaidUntil } from "./paid.ts";
+import { GRACE_MS, homePaid, MAX_AHEAD_MS, PaidDateError, purgeUnusedHomes, statePaidUntil, touchHome } from "./paid.ts";
 import { addHome, addUser, testDb } from "./test-db.ts";
 
 const D = 24 * 3600_000;
@@ -46,7 +46,7 @@ test("SqliteKeyholeStore: write is all-or-none, deletes first, useOnce is once",
   assert.equal(s.useOnce("n1", 9000), true, "an expired record is dropped");
 });
 
-test("joined moves the home, the Alexa rows and the link codes; an existing home on the target orphans the other", () => {
+test("joined moves the home, the Alexa rows and the link codes; when the target has a home the other is deleted", () => {
   const db = testDb();
   addHome(db, "from");
   db.prepare("INSERT INTO alexa_tokens VALUES ('a', 'r', 'from', 'x')").run();
@@ -60,18 +60,22 @@ test("joined moves the home, the Alexa rows and the link codes; an existing home
   addHome(db, "b");
   db.prepare("INSERT INTO alexa_tokens VALUES ('a2', 'r2', 'a', 'x')").run();
   handleEntryEvent(db, { type: "joined", from: "a", into: "b" }, 7000);
-  assert.equal((db.prepare("SELECT orphaned_at o FROM homes WHERE owner_user_id = 'a'").get() as { o: number }).o, 7000);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM homes WHERE owner_user_id = 'a'"), 0);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM homes WHERE owner_user_id = 'b'"), 1);
   assert.equal(count(db, "SELECT COUNT(*) n FROM alexa_tokens WHERE user_id = 'a'"), 0);
 });
 
-test("emptied always orphans; purge deletes only after the second period", () => {
+test("emptied deletes the home and its history at once and leaves only a tombstone of the random id", () => {
   const db = testDb();
   addHome(db, "e");
   db.prepare("INSERT INTO home_samples VALUES ('h-e', 't', 'd', 'm', 1)").run();
-  handleEntryEvent(db, { type: "emptied", entry: "e" }, 1000);
-  assert.equal(purgeOrphans(db, 1000 + ORPHAN_KEEP_MS - 1), 0);
-  assert.equal(purgeOrphans(db, 1000 + ORPHAN_KEEP_MS), 1);
+  const now = Date.now();
+  handleEntryEvent(db, { type: "emptied", entry: "e" }, now);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM homes"), 0);
   assert.equal(count(db, "SELECT COUNT(*) n FROM home_samples"), 0);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM deleted_users WHERE user_id = 'e'"), 1);
+  assert.equal(purgeTombstones(db, now + TOMBSTONE_KEEP_MS - 1000), 0);
+  assert.equal(purgeTombstones(db, now + TOMBSTONE_KEEP_MS + 1000), 1);
 });
 
 test("account deletion deletes the data at once, so the later emptied event finds nothing", () => {
@@ -85,21 +89,34 @@ test("account deletion deletes the data at once, so the later emptied event find
   assert.equal(deleteAccountData(db, "e"), false);
 });
 
-test("paid date: max kept, cap, grace, orphan is never paid", () => {
+test("paid date: max kept, cap, grace; a stale phone cannot lower it", () => {
   const db = testDb();
   addHome(db, "e");
   const now = 10 * D;
   assert.equal(homePaid(db, "e", now).paid, false);
   assert.equal(statePaidUntil(db, "e", now + 5 * D, now), now + 5 * D);
-  assert.equal(statePaidUntil(db, "e", now + 2 * D, now), now + 5 * D, "a stale phone cannot lower it");
+  assert.equal(statePaidUntil(db, "e", now + 2 * D, now), now + 5 * D);
   assert.throws(() => statePaidUntil(db, "e", now + MAX_AHEAD_MS + 1, now), PaidDateError);
   assert.throws(() => statePaidUntil(db, "e", "soon", now), PaidDateError);
   assert.throws(() => statePaidUntil(db, "e", 1.5, now), PaidDateError);
   assert.equal(homePaid(db, "e", now + 5 * D + GRACE_MS - 1).paid, true);
   assert.equal(homePaid(db, "e", now + 5 * D + GRACE_MS).paid, false);
   assert.equal(statePaidUntil(db, "nobody", now + D, now), null);
-  handleEntryEvent(db, { type: "emptied", entry: "e" }, now);
-  assert.equal(homePaid(db, "e", now).paid, false);
+});
+
+test("an unused home is deleted after 180 days; a paid date ahead or a recent touch keeps it", () => {
+  const db = testDb();
+  const t0 = Date.parse("2026-12-01T00:00:00Z");
+  for (const o of ["idle", "paid", "touched", "fresh"]) addHome(db, o);
+  db.prepare("UPDATE homes SET created_at = '2026-01-01T00:00:00Z'").run();
+  db.prepare("UPDATE homes SET created_at = '2026-11-30T00:00:00Z' WHERE owner_user_id = 'fresh'").run();
+  statePaidUntil(db, "paid", t0 + 30 * D, t0 - 200 * D);
+  touchHome(db, "touched", t0 - 10 * D);
+  assert.equal(purgeUnusedHomes(db, t0), 1);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM homes WHERE owner_user_id = 'idle'"), 0);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM homes"), 3);
+  touchHome(db, "touched", t0 - 10 * D + 3600_000);
+  assert.equal((db.prepare("SELECT last_used_at l FROM homes WHERE owner_user_id = 'touched'").get() as { l: number }).l, t0 - 10 * D, "written at most once a day");
 });
 
 test("link code: one use, expires, case-insensitive, rate limited per entry, wrong tries counted", () => {
@@ -133,16 +150,19 @@ test("claim moves the home and the Alexa rows and removes the legacy user; a sec
   assert.throws(() => claimLegacyHome(db, "e2", "l2"), (e: unknown) => e instanceof ClaimError && e.status === 404);
 });
 
-test("end of the window: no legacy user, no legacy-keyed token; the home stays orphaned", () => {
+test("end of the window: unclaimed homes, legacy users, tokens and the emptied tables are all gone", () => {
   const db = testDb();
   addUser(db, "u1");
   addHome(db, "u1");
   db.prepare("INSERT INTO alexa_tokens VALUES ('a', 'r', 'u1', 'x')").run();
+  db.prepare("INSERT INTO verification (id, identifier, value, expiresAt) VALUES ('v', 'a@x.test', 'x', 'z')").run();
+  db.prepare("INSERT INTO stripe_webhook_events (id, type, received_at) VALUES ('e1', 't', 'z')").run();
   addHome(db, "entry");
   assert.equal(endClaimWindow(db, 4000), 1);
   assert.equal(count(db, 'SELECT COUNT(*) n FROM "user"'), 0);
   assert.equal(count(db, "SELECT COUNT(*) n FROM alexa_tokens"), 0);
-  assert.equal(count(db, "SELECT COUNT(*) n FROM homes"), 2);
-  assert.equal(count(db, "SELECT COUNT(*) n FROM homes WHERE orphaned_at = 4000"), 1);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM verification"), 0);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM stripe_webhook_events"), 0);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM homes"), 1);
   assert.equal(count(db, "SELECT COUNT(*) n FROM homes WHERE owner_user_id = 'u1'"), 0);
 });
