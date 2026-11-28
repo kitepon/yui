@@ -1,7 +1,7 @@
 # Hosted login and billing: function and data-flow contract (target)
 
 Scope: hosted 結 (Yui) on the shared login/billing library (0.26.0, contract 1.63), option B (Owner 2026-11-28). Self-hosted is unchanged and library-free.
-Who builds each app, what done means and the release steps: [hosted-apps.md](hosted-apps.md).
+Who builds each app, what done means and the release steps: [hosted-apps.md](hosted-apps.md). Each app's own diagram: Android [android/docs/android-function-dataflow.md](../android/docs/android-function-dataflow.md) (Crow); Apple: E.H. adds `ios/docs/` with the first ios PR.
 Status: TARGET. Not built. `docs/billing-function-dataflow.md` describes the Stripe code that this replaces; it is retired in the change that removes that code. Plan and reasons: the adoption plan in the Yui lead's docs (docs/yui-login-billing-adoption-plan-20261128.md, "plan" below). Reviewed by Mint (login/billing part).
 Source of truth for structure; the code follows it.
 

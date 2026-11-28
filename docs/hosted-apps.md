@@ -45,6 +45,8 @@ Done (what t32 proves without store signing): a PR from the ios branch into `hos
 
 ## Android app (Crow)
 
+Own diagram: `android/docs/android-function-dataflow.md`. No Android job in the public CI: the library package is private, so Crow builds and tests on his seat (`android/scripts/fetch-library.sh`).
+
 Scope v1: Google sign-in through the library, device key and signed requests, Play purchase and restore with reportPaidUntil (launch, foreground, after purchase, daily WorkManager), home control (rooms, devices, control, scene play, sync, automation on/off), vendor credential entry, admitting another device (QR scan and join link), claim of a legacy home (Google ID token from Credential Manager for the Web client, or e-mail + password), Alexa link code, export, account deletion, sign out, manage-subscription link. Later: scene and automation editors, groups, room management, analysis. Play = null in LocalConfig (no licence key). No own BillingClient; the library acknowledges purchases. Device key not backed up (allowBackup=false); the app says a new phone needs sign-in again or admission.
 
 Done (what t33 proves without store signing): a PR from `android-app` into `hosted-library-adoption` that builds a debug and an unsigned release AAB against Kitepon.LoginBilling.Android 0.28.0, passes the app's tests, and runs on an emulator with Play services against the staging server (t37): Google sign-in, start, home control, state the paid date, link code, export, the deletion order. Outside t33: a real device, a test purchase with a licence tester, signing and the Play upload (release steps below).
