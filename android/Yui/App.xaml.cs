@@ -1,16 +1,17 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Yui.Pages;
+using Yui.Services;
 
 namespace Yui;
 
 public partial class App : Application
 {
-	public App()
-	{
-		InitializeComponent();
-	}
+	public App() => InitializeComponent();
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
-		return new Window(new AppShell());
+		var window = new Window(new BootPage());
+		// The paid date is restated at launch (BootPage) and at every return to the foreground.
+		window.Resumed += (_, _) => _ = PaidDate.ReportAsync();
+		return window;
 	}
 }
