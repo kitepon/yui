@@ -45,11 +45,12 @@ export function RedirectToSignIn({ to = SIGN_IN_PATH }: { to?: string }) {
 }
 
 /** 操作盤の各ページ。未ログインは /login へ。 */
-export function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({ children, intro }: { children: ReactNode; intro?: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
   if (isPending) {
     return (
       <div className="space-y-3 px-5 pt-10">
+        {intro}
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-lg bg-surface" />
         ))}

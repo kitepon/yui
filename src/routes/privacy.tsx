@@ -26,6 +26,12 @@ function Privacy() {
         <p>それぞれ必要な範囲だけ渡します。共通の外部サービスと国の説明は、kitepon.dev のプライバシーポリシーにもあります。</p>
       </section>
       <section>
+        <h2 className="font-medium text-fg">Googleでのログイン</h2>
+        <p>
+          Yui は、Googleでログインする手段を用意しています。ログインの時にGoogleから、本人確認のためのアカウントの識別子、メールアドレス、名前を受け取り、結のアカウントとして保存します。Googleのアクセス権（トークン）は保存せず、GmailやGoogleドライブなど、Googleのほかのデータには触れません。ログインしない選択（メールとパスワード、Appleでのログイン）もあります。
+        </p>
+      </section>
+      <section>
         <h2 className="font-medium text-fg">Cookie</h2>
         <p>ログインを保つためのセッションの Cookie だけを使います。広告や追跡には使いません。</p>
       </section>

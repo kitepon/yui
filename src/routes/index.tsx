@@ -15,9 +15,13 @@ import { useTokyoClock } from "@/lib/home/period";
 import { headerPhoto, headerPosition, headerTitle, roomPhoto } from "@/lib/home/photos";
 import { cn } from "@/lib/cn";
 
+// 読み込み中に描く説明。JavaScript を動かさない検索・審査の巡回にも、サービス名と目的が読める。
+const PURPOSE =
+  "Yui（結）は、Nature Remo・SwitchBot・Smart Life・ダイキンなど家の機器を一つの画面にまとめて操作するホームアプリです。";
+
 export const Route = createFileRoute("/")({
   component: () => (
-    <RequireAuth>
+    <RequireAuth intro={<p className="text-sm leading-6 text-muted">{PURPOSE}</p>}>
       <HomePage />
     </RequireAuth>
   ),
