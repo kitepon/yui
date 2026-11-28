@@ -124,8 +124,8 @@ public class YuiApiTests
         var h = new Handler((HttpStatusCode.OK, """{"paidUntil":5}"""), (HttpStatusCode.OK, """{"ok":true}"""), (HttpStatusCode.OK, """{"ok":true}"""));
         var api = Api(h, new Signer());
         await api.StatePaidUntilAsync(1795000000000);
-        await api.ClaimGoogleAsync("tok");
+        await api.ClaimGoogleAsync("tok", "n1");
         await api.ClaimPasswordAsync("a@b", "pw");
-        Assert.Equal(["""{"paidUntil":1795000000000}""", """{"method":"google","idToken":"tok"}""", """{"method":"password","email":"a@b","password":"pw"}"""], h.Bodies);
+        Assert.Equal(["""{"paidUntil":1795000000000}""", """{"method":"google","idToken":"tok","nonce":"n1"}""", """{"method":"password","email":"a@b","password":"pw"}"""], h.Bodies);
     }
 }

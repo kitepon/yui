@@ -11,7 +11,11 @@ public sealed class ClaimPage : ContentPage
 		var email = new Entry { Placeholder = "メールアドレス", Keyboard = Keyboard.Email };
 		var password = new Entry { Placeholder = "パスワード", IsPassword = true };
 		var google = new Button { Text = "Googleで確かめる" };
-		google.Clicked += async (_, _) => await Claim(async () => await Account.Current.Api.ClaimGoogleAsync(await GoogleToken.GetAsync(Ui.Activity)));
+		google.Clicked += async (_, _) => await Claim(async () =>
+		{
+			var (token, nonce) = await GoogleToken.GetAsync(Ui.Activity);
+			await Account.Current.Api.ClaimGoogleAsync(token, nonce);
+		});
 		var mail = new Button { Text = "メールとパスワードで確かめる" };
 		mail.Clicked += async (_, _) => await Claim(() => Account.Current.Api.ClaimPasswordAsync(email.Text?.Trim() ?? "", password.Text ?? ""));
 		var close = new Button { Text = "閉じる" };

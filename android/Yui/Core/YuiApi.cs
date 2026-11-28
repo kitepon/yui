@@ -24,7 +24,8 @@ public sealed class YuiApi(HttpClient http, IRequestSigner signer, Uri origin)
     /// <summary>States the paid date in epoch milliseconds; the server keeps the later of the stored and the stated.</summary>
     public async Task StatePaidUntilAsync(long paidUntilMs) => await Send<JsonElement>(HttpMethod.Post, "/api/home/paid-until", new { paidUntil = paidUntilMs });
 
-    public async Task ClaimGoogleAsync(string idToken) => await Send<JsonElement>(HttpMethod.Post, "/api/claim", new { method = "google", idToken });
+    /// <summary>The nonce is the one the Credential Manager request carried, so the server can match it to the token.</summary>
+    public async Task ClaimGoogleAsync(string idToken, string nonce) => await Send<JsonElement>(HttpMethod.Post, "/api/claim", new { method = "google", idToken, nonce });
     public async Task ClaimPasswordAsync(string email, string password) => await Send<JsonElement>(HttpMethod.Post, "/api/claim", new { method = "password", email, password });
 
     /// <summary>keys/me: the entry of this device's key, or null when the key is in no entry (or no key is kept).</summary>
