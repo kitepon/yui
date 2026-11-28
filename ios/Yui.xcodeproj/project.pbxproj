@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		074260160F4AECD5333081C3 /* YuiDeviceGroupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D99FCD2F8D1A2B4711F82EF /* YuiDeviceGroupTests.swift */; };
+		11EA96A65904DFD4625E05AC /* alexa-skill.json in Resources */ = {isa = PBXBuildFile; fileRef = 90A8754CF1D90D3FD37CCDE8 /* alexa-skill.json */; };
 		1C236349722F21A2045AEFBC /* DeviceGroupEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F005E18EE5D2063412BD4A /* DeviceGroupEditorView.swift */; };
 		1CB53EE8A78B450D420DECD5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE1BB3E8356695DF7DA421B3 /* Assets.xcassets */; };
 		1FE9117EE811F3608F420D73 /* DeviceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E1A18ED7FFD2F2A66A753A /* DeviceDetailView.swift */; };
@@ -25,11 +26,11 @@
 		669613B98EED345CD697D8A6 /* YuiAutomationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0C80DC82BDD920300F53AE1 /* YuiAutomationTests.swift */; };
 		6C8BE160DA527E08122C17E7 /* RoomManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */; };
 		6D8BF62B0E3EB69FEDDB28BA /* DeviceGroupDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4F4C05F57011E0481FC3CC /* DeviceGroupDraft.swift */; };
+		72A8FEA3A734DA1BFA6F1A71 /* LoginBilling in Frameworks */ = {isa = PBXBuildFile; productRef = 677B4C2F88DF0D7CFE28863F /* LoginBilling */; };
 		79A4C429BCAA9FDE73802780 /* GoogleSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1E29781AEB4EDAD8083AB47A /* GoogleSans.ttf */; };
 		7E0C02564F319AC474B5B2B3 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7272E0DA36B90E4C7172ECE5 /* AnalysisView.swift */; };
 		7E9976234C5CA1C97D6306B7 /* YuiRestartTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CE6A4BF044EB5AEBB79676 /* YuiRestartTests.swift */; };
 		7FA75EE5D2FA507250356A00 /* YuiBillingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */; };
-		8C831F3E9C44475BD32772D3 /* alexa-skill.json in Resources */ = {isa = PBXBuildFile; fileRef = 8F3EB45990EEF5E684C40A9A /* alexa-skill.json */; };
 		8F83260E6F560EBCF40957E7 /* YuiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50400412CEFFD51B5BC7D8EE /* YuiApp.swift */; };
 		9101F37DCFBE713DE6C39E39 /* VisualPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */; };
 		99BD7746C2277352FD6AEF31 /* ScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077672F56CC8346B91EC670D /* ScenesView.swift */; };
@@ -86,7 +87,7 @@
 		879A9FA71DEDFD5036C04FFC /* DeviceActionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActionEditor.swift; sourceTree = "<group>"; };
 		89AD71F2AF73612B977F2CC1 /* VisualPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualPreview.swift; sourceTree = "<group>"; };
 		8CFDC6F03F5A0680BAEFA5E6 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
-		8F3EB45990EEF5E684C40A9A /* alexa-skill.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "alexa-skill.json"; sourceTree = "<group>"; };
+		90A8754CF1D90D3FD37CCDE8 /* alexa-skill.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "alexa-skill.json"; sourceTree = "<group>"; };
 		920858F0D3DE8419DB11F936 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		9C52CE3E9FE17438C3F61048 /* YuiBillingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YuiBillingTests.swift; sourceTree = "<group>"; };
 		A2C2059C29FA3F0308B879BB /* RoomManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManagementView.swift; sourceTree = "<group>"; };
@@ -106,21 +107,41 @@
 		F553E8EC520849F169D89C6A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		2CA8588C04A88DDD37AF0EBE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				72A8FEA3A734DA1BFA6F1A71 /* LoginBilling in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		05222CC4BEF23FA868B91A86 /* yui */ = {
+			isa = PBXGroup;
+			children = (
+				C24D535F2A89DDDAA163CDAC /* src */,
+			);
+			name = yui;
+			path = ..;
+			sourceTree = "<group>";
+		};
 		0A83C40E4DDF0507822E3118 = {
 			isa = PBXGroup;
 			children = (
 				87C27E0D4ADDD6089559429D /* Yui */,
-				9CD7A1A1B069CF96350606A3 /* YuiHome */,
+				05222CC4BEF23FA868B91A86 /* yui */,
 				FCDC5C9A32D1788BB1C57FC8 /* YuiTests */,
 				96E378055F38DE8BF191AB0C /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		2B5F023577126A6EC3D91E73 /* lib */ = {
+		44E185DF72CAE7DF8731691C /* lib */ = {
 			isa = PBXGroup;
 			children = (
-				8F3EB45990EEF5E684C40A9A /* alexa-skill.json */,
+				90A8754CF1D90D3FD37CCDE8 /* alexa-skill.json */,
 			);
 			path = lib;
 			sourceTree = "<group>";
@@ -175,15 +196,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		9CD7A1A1B069CF96350606A3 /* YuiHome */ = {
-			isa = PBXGroup;
-			children = (
-				B8BCBAB0767027FE30EAEDD3 /* src */,
-			);
-			name = YuiHome;
-			path = ..;
-			sourceTree = "<group>";
-		};
 		A0878CC870977CD89BC4CDE6 /* Fonts */ = {
 			isa = PBXGroup;
 			children = (
@@ -193,10 +205,10 @@
 			path = Fonts;
 			sourceTree = "<group>";
 		};
-		B8BCBAB0767027FE30EAEDD3 /* src */ = {
+		C24D535F2A89DDDAA163CDAC /* src */ = {
 			isa = PBXGroup;
 			children = (
-				2B5F023577126A6EC3D91E73 /* lib */,
+				44E185DF72CAE7DF8731691C /* lib */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -242,6 +254,7 @@
 			buildPhases = (
 				533246D3DC516EF63D974B24 /* Sources */,
 				5F2CBCC00136E910FC4328CA /* Resources */,
+				2CA8588C04A88DDD37AF0EBE /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -249,6 +262,7 @@
 			);
 			name = Yui;
 			packageProductDependencies = (
+				677B4C2F88DF0D7CFE28863F /* LoginBilling */,
 			);
 			productName = Yui;
 			productReference = 59A0440A5DB25F5D714E46B8 /* Yui.app */;
@@ -281,6 +295,9 @@
 			);
 			mainGroup = 0A83C40E4DDF0507822E3118;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				22518BE80EF0D22A614CDD47 /* XCRemoteSwiftPackageReference "login-billing" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 96E378055F38DE8BF191AB0C /* Products */;
 			projectDirPath = "";
@@ -300,7 +317,7 @@
 				1CB53EE8A78B450D420DECD5 /* Assets.xcassets in Resources */,
 				79A4C429BCAA9FDE73802780 /* GoogleSans.ttf in Resources */,
 				F481F69E10540D0D968F25E6 /* OFL.txt in Resources */,
-				8C831F3E9C44475BD32772D3 /* alexa-skill.json in Resources */,
+				11EA96A65904DFD4625E05AC /* alexa-skill.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -438,6 +455,7 @@
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				"ENABLE_APP_SANDBOX[sdk=macosx*]" = YES;
+				"ENABLE_INCOMING_NETWORK_CONNECTIONS[sdk=macosx*]" = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				"ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]" = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -512,6 +530,7 @@
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				DEVELOPMENT_TEAM = TPWX489GV4;
 				"ENABLE_APP_SANDBOX[sdk=macosx*]" = YES;
+				"ENABLE_INCOMING_NETWORK_CONNECTIONS[sdk=macosx*]" = YES;
 				"ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]" = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -645,6 +664,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		22518BE80EF0D22A614CDD47 /* XCRemoteSwiftPackageReference "login-billing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kitepon/login-billing.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.28.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		677B4C2F88DF0D7CFE28863F /* LoginBilling */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 22518BE80EF0D22A614CDD47 /* XCRemoteSwiftPackageReference "login-billing" */;
+			productName = LoginBilling;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A9B603DD12FD10DD419E02B2 /* Project object */;
 }

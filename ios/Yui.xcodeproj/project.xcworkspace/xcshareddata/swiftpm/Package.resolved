@@ -1,0 +1,15 @@
+{
+  "originHash" : "dad5e007b16d3a06f6a85e02ebb1e0afe860d61fff41112ba2e87c01e643b917",
+  "pins" : [
+    {
+      "identity" : "login-billing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kitepon/login-billing.git",
+      "state" : {
+        "revision" : "2b7a731468e61041c30ea252ecf55bbda7de3cc9",
+        "version" : "0.28.0"
+      }
+    }
+  ],
+  "version" : 3
+}

@@ -22,15 +22,22 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     ENABLE_APP_SANDBOX[sdk=macosx*]: YES
     ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]: YES
+    ENABLE_INCOMING_NETWORK_CONNECTIONS[sdk=macosx*]: YES
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     MARKETING_VERSION: "1.0.2"
     CURRENT_PROJECT_VERSION: "19"
     CURRENT_PROJECT_VERSION[sdk=macosx*]: "20"
+packages:
+  LoginBilling:
+    url: https://github.com/kitepon/login-billing.git
+    exactVersion: 0.28.0
 targets:
   Yui:
     type: application
     platform: iOS
+    dependencies:
+      - package: LoginBilling
     info:
       path: Yui/Info.plist
       properties:
@@ -46,7 +53,11 @@ targets:
           - CFBundleURLName: dev.kitepon.yuihome.auth
             CFBundleURLSchemes:
               - yuihome
+          - CFBundleURLName: dev.kitepon.yuihome.google
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.916284233737-09v748ukr3f48v56fgfqj8et7kgqt15d
         ITSAppUsesNonExemptEncryption: false
+        NSLocalNetworkUsageDescription: 同じネットワークにある別の端末と、参加の確認をするために使います。
         UIAppFonts:
           - GoogleSans.ttf
     sources:
@@ -58,6 +69,8 @@ targets:
       properties:
         com.apple.developer.applesignin:
           - Default
+        com.apple.developer.associated-domains:
+          - applinks:login-billing.kitepon.dev
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.kitepon.yuihome
