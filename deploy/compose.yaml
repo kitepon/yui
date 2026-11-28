@@ -27,6 +27,8 @@ services:
       YUI_TUYA_LAN_RELAY: /relay/tuya.sock
       # The BellTeam authentication module unwraps the home key (hosted build only; self-hosters leave YUI_AUTH_SOCK unset).
       YUI_AUTH_SOCK: ${YUI_AUTH_SOCK:-}
+      # One start at the release only: replace the home key (docs/home-key-contract.md). Ignored once the key row exists.
+      YUI_ROTATE_HOME_KEY: ${YUI_ROTATE_HOME_KEY:-}
     volumes:
       - yui-data:/data
       - tuya-relay:/relay
