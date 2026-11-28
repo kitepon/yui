@@ -46,7 +46,7 @@ final class YuiAutomationTests: XCTestCase {
         defer { URLProtocol.unregisterClass(AutomationEditProtocol.self) }
         AutomationEditProtocol.status = 200
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         var draft = AutomationTriggerDraft(try trigger(width: 0.2))
         for width in ["0.2", "0"] {
             draft.hysteresis = width

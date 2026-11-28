@@ -1,11 +1,9 @@
 import SwiftUI
 
+/// Sign in with Apple, then (when the server knows no key of this device) start a new entry or join one.
 struct LoginView: View {
     @EnvironmentObject private var session: SessionStore
-    @State private var creatingAccount = false
-    @State private var email = ""
-    @State private var password = ""
-    @State private var name = ""
+    @State private var joining = false
 
     var body: some View {
         ScrollView {
@@ -19,85 +17,26 @@ struct LoginView: View {
                     .tracking(3.5)
                     .foregroundStyle(YuiTheme.accent)
                     .padding(.top, 6)
-                Text(creatingAccount ? "家と、つながろう。" : "家に、ただいま。")
+                Text(session.phase == .choosing ? "この端末を、家につなぎます。" : "家に、ただいま。")
                     .font(.system(size: 32, weight: .semibold, design: .rounded))
                     .foregroundStyle(YuiTheme.fg)
                     .padding(.top, 12)
-                Text(creatingAccount ? "アカウントを作って、結を始めましょう。" : "いつもの家が、ここにあります。")
-                    .font(.system(size: 14))
-                    .foregroundStyle(YuiTheme.muted)
-                    .padding(.top, 7)
-                Text("すでに家がある場合は、以前と同じ方法でログインしてください")
-                    .font(.system(size: 11))
-                    .foregroundStyle(YuiTheme.muted)
-                    .padding(.top, 8)
 
-                AppleSignInButton {
-                    Task { await session.signInWithApple() }
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 57)
-                .disabled(session.busy)
-                .padding(.top, 29)
-
-                Button {
-                    Task { await session.signInWithGoogle() }
-                } label: {
-                    HStack(spacing: 12) {
-                        Image("GoogleLogo")
-                            .renderingMode(.original)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 26, height: 26)
-                        Text("Googleでログイン")
-                            .font(.custom("GoogleSans-Regular", size: 20).weight(.medium))
+                if session.phase == .choosing {
+                    choosing
+                } else {
+                    Text("Appleでログインして始めます。以前の結のアカウントがある方も、まずここから入って引き継ぎます。")
+                        .font(.system(size: 14))
+                        .foregroundStyle(YuiTheme.muted)
+                        .padding(.top, 7)
+                    AppleSignInButton {
+                        Task { await session.signInWithApple() }
                     }
-                    .foregroundStyle(Color(red: 31 / 255, green: 31 / 255, blue: 31 / 255))
-                    .padding(.horizontal, 16)
                     .frame(maxWidth: .infinity)
                     .frame(height: 57)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 17))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 17)
-                            .strokeBorder(Color(red: 116 / 255, green: 119 / 255, blue: 117 / 255), lineWidth: 1)
-                    }
+                    .disabled(session.busy)
+                    .padding(.top, 29)
                 }
-                .disabled(session.busy)
-                .padding(.top, 12)
-
-                HStack(spacing: 12) {
-                    Rectangle().frame(height: 1)
-                    Text("またはメールで")
-                        .font(.system(size: 11))
-                        .fixedSize()
-                    Rectangle().frame(height: 1)
-                }
-                .foregroundStyle(YuiTheme.muted.opacity(0.65))
-                .padding(.top, 24)
-
-                VStack(spacing: 12) {
-                    if creatingAccount {
-                        entry("名前", systemImage: "person", text: $name)
-                            .textContentType(.name)
-                    }
-                    entry("メールアドレス", systemImage: "envelope", text: $email)
-                        .textContentType(.username)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    HStack(spacing: 13) {
-                        Image(systemName: "lock")
-                            .frame(width: 20)
-                            .foregroundStyle(YuiTheme.muted)
-                        SecureField("パスワード", text: $password)
-                            .textContentType(creatingAccount ? .newPassword : .password)
-                            .foregroundStyle(YuiTheme.fg)
-                    }
-                    .padding(.horizontal, 18)
-                    .frame(height: 56)
-                    .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 17))
-                }
-                .padding(.top, 24)
 
                 if let error = session.error {
                     Text(error)
@@ -105,41 +44,6 @@ struct LoginView: View {
                         .foregroundStyle(YuiTheme.warning)
                         .padding(.top, 12)
                 }
-
-                Button {
-                    Task {
-                        if creatingAccount {
-                            await session.signUp(email: email, password: password, name: name.isEmpty ? email : name)
-                        } else {
-                            await session.signIn(email: email, password: password)
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Spacer()
-                        Text(creatingAccount ? "アカウントを作る" : "ログイン")
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                    }
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(YuiTheme.bg)
-                    .padding(.horizontal, 20)
-                    .frame(height: 57)
-                    .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 17))
-                }
-                .disabled(session.busy || email.isEmpty || password.count < 8)
-                .opacity(session.busy || email.isEmpty || password.count < 8 ? 0.62 : 1)
-                .padding(.top, 20)
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) { creatingAccount.toggle() }
-                } label: {
-                    Text(creatingAccount ? "すでにアカウントがある方はログイン" : "初めての方はアカウントを作成")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(YuiTheme.muted)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                }
-                .padding(.top, 8)
             }
             .padding(.horizontal, 26)
             .padding(.bottom, 28)
@@ -147,6 +51,39 @@ struct LoginView: View {
             .frame(maxWidth: .infinity)
         }
         .background(YuiTheme.bg.ignoresSafeArea())
+        .sheet(isPresented: $joining) {
+            JoinWantView().environmentObject(session)
+        }
+    }
+
+    private var choosing: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("はじめての方は「ここから始める」を選びます。すでに別の端末で結を使っている方は、その端末から参加します。")
+                .font(.system(size: 14))
+                .foregroundStyle(YuiTheme.muted)
+            choice("ここから始める", systemImage: "house") { Task { await session.startHere() } }
+            choice("別の端末の家に参加する", systemImage: "qrcode") { joining = true }
+            Button("別のAppleアカウントでログインする") { session.signOut() }
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(YuiTheme.muted)
+                .frame(maxWidth: .infinity, minHeight: 50)
+        }
+        .padding(.top, 7)
+        .disabled(session.busy)
+    }
+
+    private func choice(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Spacer()
+                Label(title, systemImage: systemImage)
+                Spacer()
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(YuiTheme.bg)
+            .frame(height: 57)
+            .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 17))
+        }
     }
 
     private var artwork: some View {
@@ -173,16 +110,4 @@ struct LoginView: View {
         .accessibilityHidden(true)
     }
 
-    private func entry(_ title: String, systemImage: String, text: Binding<String>) -> some View {
-        HStack(spacing: 13) {
-            Image(systemName: systemImage)
-                .frame(width: 20)
-                .foregroundStyle(YuiTheme.muted)
-            TextField(title, text: text)
-                .foregroundStyle(YuiTheme.fg)
-        }
-        .padding(.horizontal, 18)
-        .frame(height: 56)
-        .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 17))
-    }
 }

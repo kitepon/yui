@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var notice: String?
     @State private var showRooms = false
     @State private var confirmDelete = false
+    @State private var showAnswer = false
 
     private var newCredentials: [String: String] {
         [
@@ -42,6 +43,7 @@ struct SettingsView: View {
                 }
 
                 accountCard
+                devicesCard
                 alexaCard
                 billingCard
                 serverCard
@@ -130,6 +132,21 @@ struct SettingsView: View {
                         .foregroundStyle(YuiTheme.mint)
                 }
 
+                Button { Task { await session.exportData() } } label: {
+                    Label("家のデータを書き出す", systemImage: "square.and.arrow.up")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(YuiTheme.accent)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .accessibilityIdentifier("export-data")
+                if let file = session.exportFile {
+                    ShareLink(item: file) {
+                        Label("書き出したファイルを保存・共有", systemImage: "doc")
+                            .font(.system(size: 13)).foregroundStyle(YuiTheme.mint)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                }
+
                 Button(role: .destructive) { session.signOut() } label: {
                     Label("ログアウト", systemImage: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 14, weight: .medium))
@@ -162,14 +179,13 @@ struct SettingsView: View {
                 Task { await session.deleteAccount() }
             }
         } message: {
-            Text("家の設定と記録が消え、Web契約は終了します。App Storeの契約はAppleのサブスクリプション管理で別途解約してください。削除後もAppleから請求される場合があります。")
+            Text("この家の設定と記録がすぐに消え、この家につながっている端末はすべて外れます。家に残る端末がこの1台だけの場合、消えた家は元に戻せません。App Storeの契約はAppleのサブスクリプション管理で別途解約してください。削除後もAppleから請求される場合があります。")
+        }
+        .sheet(isPresented: $showAnswer) {
+            JoinAnswerView()
         }
         .task {
             tuyaRegion = session.home?.tuyaRegion ?? "auto"
-            #if DEBUG
-            if session.token == "visual-preview" { return }
-            #endif
-            await session.loadAccount()
         }
         .onChange(of: session.home?.tuyaRegion) { _, region in
             if let region { tuyaRegion = region }
@@ -192,10 +208,20 @@ struct SettingsView: View {
                     .foregroundStyle(YuiTheme.bg)
             }
             .accessibilityIdentifier("alexa-enable-skill")
-            Text("1. Amazonのページでスキルを有効にします。\n2. この結と同じアカウントでログインします。\n3. Alexaでデバイスを検出します。")
+            Text("1. Amazonのページでスキルを有効にします。\n2. 下のリンクコードを作り、Amazonの画面に入力します。\n3. Alexaでデバイスを検出します。")
                 .font(.system(size: 12))
                 .foregroundStyle(YuiTheme.muted)
                 .lineSpacing(4)
+            Button("リンクコードを作る") { Task { await session.makeLinkCode() } }
+                .font(.system(size: 14, weight: .semibold)).foregroundStyle(YuiTheme.accent)
+            if let code = session.linkCode, let expires = session.linkCodeExpiresAt, expires > Date() {
+                Text(code.code)
+                    .font(.system(size: 28, weight: .bold, design: .monospaced)).foregroundStyle(YuiTheme.fg)
+                    .textSelection(.enabled)
+                    .accessibilityIdentifier("alexa-link-code")
+                Text("\(expires.formatted(date: .omitted, time: .shortened))まで有効。1回だけ使えます")
+                    .font(.system(size: 11)).foregroundStyle(YuiTheme.muted)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
@@ -206,7 +232,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 7) {
             Text("アカウント")
                 .font(.system(size: 11, weight: .bold)).foregroundStyle(YuiTheme.muted)
-            Text(session.user?.email ?? "ログイン中")
+            Text("Appleでログイン中")
                 .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
             Text("接続コード  \(session.home?.pairPin ?? "—")")
                 .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
@@ -219,77 +245,68 @@ struct SettingsView: View {
         .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 22))
     }
 
-    private var billingCard: some View {
+    private var devicesCard: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Text("端末")
+                .font(.system(size: 11, weight: .bold)).foregroundStyle(YuiTheme.muted)
+            #if targetEnvironment(macCatalyst)
+            Text("このMacは、iPhoneかiPadから追加してもらいます。別の端末の追加は、iPhoneかiPadで行ってください。")
+                .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+            #else
+            Text("別の端末（iPad、Mac、ブラウザ）を、この家に追加します。")
+                .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+            Button { showAnswer = true } label: {
+                Label("別の端末を追加", systemImage: "qrcode.viewfinder")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(YuiTheme.accent, in: RoundedRectangle(cornerRadius: 13))
+                    .foregroundStyle(YuiTheme.bg)
+            }
+            #endif
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    private var billingCard: some View {
+        let now = Date()
+        let end = session.paidUntil
+        let active = end.map { $0 > now } ?? false
+        let grace = end.map { $0 <= now && $0.addingTimeInterval(7 * 86_400) > now } ?? false
+        return VStack(alignment: .leading, spacing: 10) {
             Text("この結について")
                 .font(.system(size: 11, weight: .bold)).foregroundStyle(YuiTheme.muted)
-            if let billing = session.billingStatus {
-                if billing.entitlement.writable {
-                    Text(billing.entitlement.provider == "apple" ? "App Storeで契約中" : "契約中")
-                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
-                    Text(billing.entitlement.message ?? "家を操作できます")
+            if active || grace {
+                Text(active ? "App Storeで契約中" : "契約の更新を確認しています")
+                    .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+                Text(active ? "家を操作できます" : "更新が確認できるまでの猶予期間です。猶予が終わると、家は見るだけになります")
+                    .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                Link("Appleのサブスクリプションを管理", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)
+                    .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
+            } else {
+                Text("App Storeで利用を始める")
+                    .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
+                Text("一つの家の機器操作、場面、オートメーション、分析を利用できます。")
+                    .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                if session.products.count == Hosted.productIds.count {
+                    let monthly = session.products[0], annual = session.products[1]
+                    Text(session.introEligible
+                         ? "初回1か月無料。その後は月額 \(monthly.displayPrice) または年額 \(annual.displayPrice) で自動更新します。"
+                         : "月額 \(monthly.displayPrice) または年額 \(annual.displayPrice) で自動更新します。")
                         .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
-                    if billing.entitlement.provider == "apple" {
-                        Link("Appleのサブスクリプションを管理", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)
-                            .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
-                        if billing.stripeEntitlement?.provider == "stripe" && billing.stripeEntitlement?.writable == true {
-                            Text("Webの契約も有効です。Webのアカウント設定で確認してください")
-                                .font(.system(size: 12)).foregroundStyle(YuiTheme.warning)
-                        }
-                    } else if billing.entitlement.provider == "stripe" {
-                        Text("お支払い方法と解約はWebのアカウント設定で管理できます")
-                            .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    HStack {
+                        billingButton("月額 \(monthly.displayPrice)", productId: monthly.id)
+                        billingButton("年額 \(annual.displayPrice)", productId: annual.id)
                     }
-                } else if billing.purchasePendingProvider != nil {
-                    Text(billing.purchasePendingProvider == "apple" ? "App Storeの購入手続き中" : "Webの購入手続き中")
-                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
-                    Text("契約が確定したら状態を更新してください。別の購入は開始できません")
-                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
-                    if billing.purchasePendingProvider == "apple" {
-                        if let plan = session.applePurchaseResumePlan {
-                            billingButton("中断した購入を続ける", plan: plan)
-                        }
-                        Link("承認待ちが解決しない場合は問い合わせ", destination: URL(string: "mailto:quolu@kitepon.dev")!)
-                            .font(.system(size: 12)).foregroundStyle(YuiTheme.accent)
-                    }
-                } else if billing.appleConfigured == true {
-                    Text("App Storeで利用を始める")
-                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
-                    Text("一つの家の機器操作、場面、オートメーション、分析を利用できます。")
-                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
-                    if let monthly = session.appleProduct(plan: "monthly"),
-                       let annual = session.appleProduct(plan: "annual") {
-                        Text(session.appleIntroEligible
-                             ? "初回1か月無料。その後は月額 \(monthly.displayPrice) または年額 \(annual.displayPrice) で自動更新します。"
-                             : "月額 \(monthly.displayPrice) または年額 \(annual.displayPrice) で自動更新します。")
-                            .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
-                        HStack {
-                            billingButton("月額 \(monthly.displayPrice)", plan: "monthly")
-                            billingButton("年額 \(annual.displayPrice)", plan: "annual")
-                        }
-                    }
-                } else if billing.configured {
-                    Text("App Storeでの購入は準備中です")
-                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
-                    Text("すでにWebで契約している場合は、そのままこのアプリで利用できます")
-                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
                 } else {
-                    Text("無料で使えます")
-                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(YuiTheme.fg)
-                    Text("この結には課金も広告もありません")
-                        .font(.system(size: 12)).foregroundStyle(YuiTheme.muted)
+                    ProgressView("商品を確認しています").tint(YuiTheme.accent)
                 }
-            } else if session.accountError == nil {
-                ProgressView("契約を確認しています").tint(YuiTheme.accent)
             }
-            Button(billingRestoreTitle) {
-                Task {
-                    if session.billingStatus?.appleConfigured == true {
-                        await session.restoreApplePurchases()
-                    } else {
-                        await session.loadAccount(refreshBilling: true)
-                    }
-                }
+            Text(planLine)
+                .font(.system(size: 11)).foregroundStyle(YuiTheme.muted)
+            Button("購入を復元・契約状態を更新") {
+                Task { await session.restorePurchases() }
             }
                 .font(.system(size: 11)).foregroundStyle(YuiTheme.accent)
                 .disabled(session.appleBusy)
@@ -304,13 +321,16 @@ struct SettingsView: View {
         .background(YuiTheme.surface, in: RoundedRectangle(cornerRadius: 22))
     }
 
-    private var billingRestoreTitle: String {
-        session.billingStatus?.appleConfigured == true ? "購入を復元・契約状態を更新" : "契約状態を更新"
+    private var planLine: String {
+        guard let checked = session.planCheckedAt else { return "契約はまだ確認していません" }
+        let when = checked.formatted(date: .abbreviated, time: .shortened)
+        guard let end = session.paidUntil else { return "最後に確認: \(when)。この端末に契約はありません" }
+        return "最後に確認: \(when)。この端末の契約は\(end.formatted(date: .abbreviated, time: .omitted))までです"
     }
 
-    private func billingButton(_ title: String, plan: String) -> some View {
+    private func billingButton(_ title: String, productId: String) -> some View {
         Button {
-            Task { await session.purchaseApple(plan: plan) }
+            Task { await session.purchase(productId: productId) }
         } label: {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))

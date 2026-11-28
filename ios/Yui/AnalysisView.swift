@@ -84,7 +84,7 @@ struct AnalysisView: View {
         .refreshable { await reload() }
         .task(id: rangeDays) {
             #if DEBUG
-            if session.token == "visual-preview" {
+            if session.isVisualPreview {
                 if let analysis = session.analysis { prepare(analysis) }
                 return
             }

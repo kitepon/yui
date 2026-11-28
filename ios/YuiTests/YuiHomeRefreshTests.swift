@@ -21,7 +21,7 @@ final class YuiHomeRefreshTests: XCTestCase {
 
     func test遅れた読取は完了したOFFを上書きしない() async throws {
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         session.home = try HomeRefreshProtocol.snapshot(on: true)
         HomeRefreshProtocol.delay = true
         let refresh = Task { await session.refreshHomeIfIdle() }
@@ -36,7 +36,7 @@ final class YuiHomeRefreshTests: XCTestCase {
 
     func test自動更新を取消した後は読取結果を適用しない() async throws {
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         session.home = try HomeRefreshProtocol.snapshot(on: false)
         HomeRefreshProtocol.delay = true
         let refresh = Task { await session.refreshHomeIfIdle() }
@@ -51,7 +51,7 @@ final class YuiHomeRefreshTests: XCTestCase {
 
     func test自動更新は操作ボタンを止めず取消で終了する() async throws {
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         session.home = try HomeRefreshProtocol.snapshot(on: false)
         let refresh = Task { await session.refreshWhileActive() }
         await fulfillment(of: [HomeRefreshProtocol.started], timeout: 2)
@@ -80,7 +80,7 @@ final class YuiConnectionSyncTests: XCTestCase {
 
     func test全サービスが同期中から完了へ変わる() async throws {
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         for brand in ["nature", "switchbot", "smartlife", "daikin", "odelec"] {
             ConnectionSyncProtocol.started = expectation(description: "同期POSTを受信")
             let task = Task { await session.sync(brand) }
@@ -96,7 +96,7 @@ final class YuiConnectionSyncTests: XCTestCase {
 
     func test失敗は完了と表示せずそのサービスに残す() async throws {
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         ConnectionSyncProtocol.statusCode = 400
         ConnectionSyncProtocol.started = expectation(description: "同期POSTを受信")
         let task = Task { await session.sync("switchbot") }
