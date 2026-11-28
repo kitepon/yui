@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-28（夜）
+
+本番 image `yuihome:20261128-cf7e3e7`（Webアプリ・Tuya LAN の受け役・準備用の容器）と `yuihome-switchbot-ble:20261128-cf7e3e7`。全容器を作り直した。
+
+- 依存の脆弱性を直した。TanStack Start のサーバー関数の反射型XSS（重大）と、better-auth の他人としてログインされるおそれ（重大・高）、vite・zod・seroval。`npm audit` は 0 件。
+- better-auth 1.7 へ上げると、起動時のスキーマ確認が結の SQLite の接続口で表を読めず、ログインが全部止まっていた。行を返す文の見分け方を直した。
+- 切替後に、容器3つの稼働（再起動 0）、公開ページ 200、未ログインの家の API 401、Google のログイン開始（scope は email profile openid のまま）、間違ったパスワード 401、よその origin 403 を確認した。実際のアカウントでのログインは試していない。
+
 ## 2026-11-28
 
 本番 image `yuihome:20261128-4b281e6`（Webアプリ・Tuya LAN の受け役・準備用の容器）と `yuihome-switchbot-ble:20261128-4b281e6`。全容器を作り直した。
