@@ -9,7 +9,7 @@ public static class Ui
 	public static string Describe(Exception e) => e switch
 	{
 		YuiApiException y => y.Message,
-		LoginBillingException l => (LocalWords.Ja(l.Code) ?? "処理できませんでした") + "（" + l.Code + "）",
+		LoginBillingException l => (LocalWords.Ja(l.Code) ?? "処理できませんでした") + "（" + l.Code + (l.Reason is { } r ? " " + r : "") + "）",
 		HttpRequestException => "結のサーバーに接続できません。通信を確かめてください",
 		_ => e.Message,
 	};
