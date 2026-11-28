@@ -28,6 +28,18 @@ struct RootView: View {
             }
         }
         .task { await session.resume() }
+        .onOpenURL { session.openedLink = $0.absoluteString }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { PaidUntil.scheduleRefresh() }
+        }
+        #if !targetEnvironment(macCatalyst)
+        .sheet(isPresented: Binding(
+            get: { session.isLoggedIn && session.openedLink != nil },
+            set: { if !$0 { session.openedLink = nil } }
+        )) {
+            JoinAnswerView(link: session.openedLink)
+        }
+        #endif
         .task(id: HomeRefreshTask(ready: session.isLoggedIn, active: scenePhase == .active)) {
             guard scenePhase == .active && session.isLoggedIn else { return }
             // Launch and foreground: restate the date this device holds, then keep the home fresh.

@@ -57,6 +57,10 @@ targets:
             CFBundleURLSchemes:
               - com.googleusercontent.apps.916284233737-09v748ukr3f48v56fgfqj8et7kgqt15d
         ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - dev.kitepon.yuihome.paid-until
         NSLocalNetworkUsageDescription: 同じネットワークにある別の端末と、参加の確認をするために使います。
         UIAppFonts:
           - GoogleSans.ttf

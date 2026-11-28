@@ -41,6 +41,8 @@ final class SessionStore: ObservableObject {
     @Published var linkCode: LinkCode?
     @Published var linkCodeExpiresAt: Date?
     @Published var exportFile: URL?
+    /// A join link opened in this app (Associated Domains); the join screens take it.
+    @Published var openedLink: String?
     private var updatesTask: Task<Void, Never>?
     private var homeRevision = 0
 
@@ -174,12 +176,7 @@ final class SessionStore: ObservableObject {
     func reportPaidUntil() async {
         guard isLoggedIn else { return }
         let now = Date()
-        let date: Date
-        if let free = await Hosted.shared.form.paidUntil(), free.store == "free" {
-            date = PaidUntil.exempt(now: now)
-        } else if let latest = await PaidUntil.ownEnd(productIds: Hosted.productIds) {
-            date = latest
-        } else {
+        guard let date = await PaidUntil.dateToState(now: now) else {
             remember(paidUntil: paidUntil, at: now)
             return
         }

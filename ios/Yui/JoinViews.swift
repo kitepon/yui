@@ -57,20 +57,33 @@ struct JoinWantView: View {
         }
         .background(YuiTheme.bg.ignoresSafeArea())
         .task { await wait() }
+        .onChange(of: session.openedLink) { _, link in
+            guard let link else { return }
+            session.openedLink = nil
+            Task { await take(link) }
+        }
         .onDisappear { request?.close() }
+    }
+
+    /// The answering device may send the person back by a return link opened in this app; it gives the same outcome.
+    private func take(_ link: String) async {
+        do { await finish(try await Hosted.shared.form.take(link)) } catch { message = SessionStore.words(error) }
+    }
+
+    private func finish(_ outcome: LocalOutcome) async {
+        if let add = outcome.add {
+            dismiss()
+            await session.joined(add)
+        } else {
+            message = SessionStore.words(LoginBillingError(code: outcome.refused ?? "refused"))
+        }
     }
 
     private func wait() async {
         do {
             let made = try await Hosted.shared.form.makeRequest(provider: "apple")
             request = made
-            let outcome = try await made.awaitOutcome()
-            if let add = outcome.add {
-                dismiss()
-                await session.joined(add)
-            } else {
-                message = SessionStore.words(LoginBillingError(code: outcome.refused ?? "refused"))
-            }
+            await finish(try await made.awaitOutcome())
         } catch {
             if case let failure as LoginBillingError = error, failure.code == "signin_cancelled" || failure.code == "request_gone" { return }
             message = SessionStore.words(error)
@@ -98,6 +111,7 @@ final class JoinAsker: ObservableObject {
 /// The answering device (iPhone, iPad): reads a QR or a pasted join link and, after the person confirms, admits the other device.
 /// A Mac has no camera scanner and never answers (library rule), so it does not offer this screen.
 struct JoinAnswerView: View {
+    var link: String?
     @Environment(\.dismiss) private var dismiss
     @StateObject private var asker = JoinAsker()
     @State private var text = ""
@@ -138,6 +152,11 @@ struct JoinAnswerView: View {
             .frame(maxWidth: .infinity)
         }
         .background(YuiTheme.bg.ignoresSafeArea())
+        .task {
+            guard let link else { return }
+            text = link
+            await answer(link)
+        }
         .alert("この端末を同じ家に追加しますか？", isPresented: Binding(get: { asker.asking }, set: { _ in })) {
             Button("追加する") { asker.answer(true) }
             Button("やめる", role: .cancel) { asker.answer(false) }

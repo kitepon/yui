@@ -20,5 +20,11 @@ struct YuiApp: App {
                 .preferredColorScheme(.dark)
             #endif
         }
+        #if !targetEnvironment(macCatalyst)
+        .backgroundTask(.appRefresh(PaidUntil.refreshId)) {
+            await PaidUntil.stateInBackground()
+            PaidUntil.scheduleRefresh()
+        }
+        #endif
     }
 }
