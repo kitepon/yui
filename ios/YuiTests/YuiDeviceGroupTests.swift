@@ -33,7 +33,7 @@ final class YuiDeviceGroupTests: XCTestCase {
 
     func test作成編集削除は個別の保存口を使いサーバーの応答を反映する() async throws {
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         var draft = DeviceGroupDraft(group: nil)
         draft.name = " 換気扇 "
         draft.deviceIds = ["fan-on", "fan-off"]
@@ -71,7 +71,7 @@ final class YuiDeviceGroupTests: XCTestCase {
 
     func test保存と削除の失敗を表示し家と待機中の操作を消さない() async throws {
         let session = SessionStore()
-        session.token = "local-test-token"
+        session.phase = .ready
         session.home = try snapshot()
         let group = try XCTUnwrap(session.home?.deviceGroups?.first)
         DeviceGroupProtocol.statusCode = 400

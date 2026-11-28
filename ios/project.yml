@@ -104,5 +104,4 @@ schemes:
       testPlans:
         - path: YuiBilling.xctestplan
           defaultPlan: true
-        - path: YuiRestart.xctestplan
       parallelizeBuild: false

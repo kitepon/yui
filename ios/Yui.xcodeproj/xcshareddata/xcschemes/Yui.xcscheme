@@ -34,9 +34,6 @@
             default = "YES"
             reference = "container:YuiBilling.xctestplan">
          </TestPlanReference>
-         <TestPlanReference
-            reference = "container:YuiRestart.xctestplan">
-         </TestPlanReference>
       </TestPlans>
       <MacroExpansion>
          <BuildableReference

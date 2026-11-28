@@ -6,10 +6,10 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if session.isLoggedIn {
-                MainTabs()
-            } else {
-                LoginView()
+            switch session.phase {
+            case .ready: MainTabs()
+            case .claiming: ClaimView()
+            case .choosing, .signedOut: LoginView()
             }
         }
         .environmentObject(session)
@@ -27,23 +27,18 @@ struct RootView: View {
                 Text(message).font(.footnote).padding(12).frame(maxWidth: .infinity).background(YuiTheme.surface)
             }
         }
-        .task(id: HomeRefreshTask(token: session.token, active: scenePhase == .active)) {
-            if scenePhase == .active && session.isLoggedIn { await session.refreshWhileActive() }
+        .task { await session.resume() }
+        .task(id: HomeRefreshTask(ready: session.isLoggedIn, active: scenePhase == .active)) {
+            guard scenePhase == .active && session.isLoggedIn else { return }
+            // Launch and foreground: restate the date this device holds, then keep the home fresh.
+            await session.reportPaidUntil()
+            await session.loadProducts()
+            await session.refreshWhileActive()
         }
-        #if DEBUG
-        .task {
-            // 実際の認証とKeychain保存を、配布物へ認証情報を含めずに確認する。
-            if ProcessInfo.processInfo.arguments.contains("-yui-test-login"),
-               let email = ProcessInfo.processInfo.environment["YUI_TEST_EMAIL"],
-               let password = ProcessInfo.processInfo.environment["YUI_TEST_PASSWORD"] {
-                await session.signIn(email: email, password: password)
-            }
-        }
-        #endif
     }
 }
 
 private struct HomeRefreshTask: Equatable {
-    let token: String?
+    let ready: Bool
     let active: Bool
 }

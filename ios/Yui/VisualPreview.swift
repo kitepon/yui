@@ -23,17 +23,11 @@ extension SessionStore {
           "tuyaLan":{"listening":true,"seen":1}
         }
         """
-        store.token = "visual-preview"
+        store.phase = .ready
+        store.isVisualPreview = true
         store.home = try! JSONDecoder().decode(HomeSnapshot.self, from: Data(json.utf8))
-        store.user = AuthUser(id: "preview-user", email: "preview@example.com", name: "プレビュー")
-        store.billingStatus = BillingStatus(
-            configured: true,
-            appleConfigured: true,
-            purchasePendingProvider: nil,
-            entitlement: BillingEntitlement(writable: true, provider: "apple", message: "Appleで契約中", status: "active"),
-            stripeEntitlement: nil,
-            plans: BillingPlans(monthlyYen: 100, annualYen: 1000, trialDays: 30)
-        )
+        store.paidUntil = Date().addingTimeInterval(20 * 86_400)
+        store.planCheckedAt = Date()
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-yui-preview-automation") {
             let automations = """
