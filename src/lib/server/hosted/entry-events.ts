@@ -23,18 +23,21 @@ export function deleteHomeOf(db: DatabaseSync, owner: string, now = Date.now()) 
  * and holding it would be holding it "just in case" (Miranda, 2026-11-28). The app says so before the last device leaves.
  */
 export function handleEntryEvent(db: DatabaseSync, event: EntryEvent, now = Date.now()) {
-  if (event.type === "added" || event.type === "removed") return;
+  if (event.type !== "joined" && event.type !== "emptied") return;
   db.exec("BEGIN IMMEDIATE");
   try {
     if (event.type === "emptied") {
       deleteHomeOf(db, event.entry, now);
-    } else if (db.prepare("SELECT 1 FROM homes WHERE owner_user_id = ?").get(event.into)) {
-      deleteHomeOf(db, event.from, now);
     } else {
-      db.prepare("UPDATE homes SET owner_user_id = ? WHERE owner_user_id = ?").run(event.into, event.from);
-      db.prepare("UPDATE alexa_tokens SET user_id = ? WHERE user_id = ?").run(event.into, event.from);
-      db.prepare("UPDATE alexa_auth_codes SET user_id = ? WHERE user_id = ?").run(event.into, event.from);
-      db.prepare("UPDATE link_codes SET entry_id = ? WHERE entry_id = ?").run(event.into, event.from);
+      const { from, into } = event as { from: string; into: string };
+      if (db.prepare("SELECT 1 FROM homes WHERE owner_user_id = ?").get(into)) {
+        deleteHomeOf(db, from, now);
+      } else {
+        db.prepare("UPDATE homes SET owner_user_id = ? WHERE owner_user_id = ?").run(into, from);
+        db.prepare("UPDATE alexa_tokens SET user_id = ? WHERE user_id = ?").run(into, from);
+        db.prepare("UPDATE alexa_auth_codes SET user_id = ? WHERE user_id = ?").run(into, from);
+        db.prepare("UPDATE link_codes SET entry_id = ? WHERE entry_id = ?").run(into, from);
+      }
     }
     db.exec("COMMIT");
   } catch (err) {

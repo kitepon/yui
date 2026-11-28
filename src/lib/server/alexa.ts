@@ -1,4 +1,4 @@
-import { billingConfigured, loadEntitlement } from "./billing";
+import { gateEntitlement } from "./hosted/entitlement";
 import {
   acceptGrantResponse,
   alexaError,
@@ -33,13 +33,11 @@ export async function handleAlexaEvent(event: AlexaEvent) {
   if (!token) return alexaError(event.directive, "INVALID_AUTHORIZATION_CREDENTIAL", "トークンが無い");
   const userId = userIdForAlexaAccess(token);
   if (!userId) return alexaError(event.directive, "INVALID_AUTHORIZATION_CREDENTIAL", "結に繋がっていない");
-  if (billingConfigured()) {
-    const entitlement = await loadEntitlement(userId);
-    if (!entitlement.writable) {
-      // SUBSCRIPTION_REQUIRED は「サブスクリプションが必要なため無効」の公式type。
-      // DISABLED_BY_USER はカメラのスナップショット機能専用で、ここでは誤用になる。
-      return alexaError(event.directive, "SUBSCRIPTION_REQUIRED", "結の契約が必要です");
-    }
+  const entitlement = await gateEntitlement(userId);
+  if (entitlement && !entitlement.writable) {
+    // SUBSCRIPTION_REQUIRED は「サブスクリプションが必要なため無効」の公式type。
+    // DISABLED_BY_USER はカメラのスナップショット機能専用で、ここでは誤用になる。
+    return alexaError(event.directive, "SUBSCRIPTION_REQUIRED", "結の契約が必要です");
   }
   const intent = parseAlexaIntent(event.directive);
   if ("error" in intent) return alexaError(event.directive, "INVALID_DIRECTIVE", intent.error);

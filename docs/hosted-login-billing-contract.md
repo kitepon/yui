@@ -53,7 +53,7 @@ Removed with this change: Stripe (checkout, portal, webhook, customers, attempts
 | Data | Owner | Notes |
 |---|---|---|
 | keyholes (entry id, public key and role per key) | library, stored by `SqliteKeyholeStore` | no account, e-mail or store id |
-| `homes` (+ `paid_until`, `orphaned_at`), `alexa_tokens`, `link_codes`, history | Yui | keyed by owner key (entry id on hosted, user id on self-hosted) |
+| `homes` (+ `paid_until`, `last_used_at`), `alexa_tokens`, `link_codes`, history | Yui | keyed by owner key (entry id on hosted, user id on self-hosted) |
 | legacy Better Auth rows and the emptied billing tables | Yui, hosted only until the window ends plus the claim | none remains after the window (Mint: no legacy subject, e-mail or token); the freed pages are overwritten by `VACUUM`, and `secure_delete` is on for every connection |
 | tombstone (`deleted_users`: random id + date) | Yui | kept 2 days only, for a backup restore |
 | backup object (R2) | Yui | `home-backup.ts` stops dumping the emptied tables; the first object written after the window end is the evidence |

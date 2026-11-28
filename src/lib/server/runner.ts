@@ -14,7 +14,11 @@ import { homeBelongsToLanOwner } from "./lan-owner";
 import { listAutomationHomeIds, loadHomeRecord, saveDeviceGroupStates, saveDeviceReadings, saveHomeRecord } from "./home-db";
 import { executeAction } from "./execute";
 import { startBackupRunner } from "./home-backup";
-import { billingConfigured, loadEntitlement } from "./billing";
+import { gateEntitlement } from "./hosted/entitlement";
+import { hostedEnabled } from "./hosted/config";
+import { purgeTombstones } from "./hosted/entry-events";
+import { purgeUnusedHomes } from "./hosted/paid";
+import { getSqlite } from "./sqlite";
 import { purgeEndedPurchaseAttempts } from "./billing-purchase";
 import { clockInTokyo } from "@/lib/home/clock";
 import { SENSOR_TICK_SECONDS } from "@/lib/home/control-tick";
@@ -384,14 +388,16 @@ export async function tickAllHomes() {
   ticking = true;
   try {
     purgeEndedPurchaseAttempts();
+    if (hostedEnabled()) {
+      purgeUnusedHomes(getSqlite());
+      purgeTombstones(getSqlite());
+    }
     for (const id of listAutomationHomeIds()) {
       try {
         const rec = await loadHomeRecord(id);
         if (!rec) continue;
-        if (billingConfigured()) {
-          const entitlement = await loadEntitlement(rec.ownerUserId);
-          if (!entitlement.writable) continue;
-        }
+        const entitlement = await gateEntitlement(rec.ownerUserId);
+        if (entitlement && !entitlement.writable) continue;
         await tickHome(id);
       } catch (err) {
         console.error("[yui] tick home failed", id, err);

@@ -15,7 +15,10 @@ import { clientHome, loadHome, replaceHome, saveDeviceReadings, saveHome } from 
 import { executeDevice, executeScene } from "@/lib/server/execute";
 import { fireDeviceOnServer, fireSceneOnServer, startControlRunner } from "@/lib/server/runner";
 import { newWaveId } from "@/lib/server/analysis";
-import { billingConfigured, loadEntitlement, paywall } from "@/lib/server/billing";
+import { paywall } from "@/lib/server/billing";
+import { gateEntitlement } from "@/lib/server/hosted/entitlement";
+import { hostedEnabled } from "@/lib/server/hosted/config";
+import { resolveHostedOwner } from "@/lib/server/hosted/library";
 
 // 本番の着火点は server/plugins/control-runner.ts だけ。このモジュールは server と ssr の
 // 両方の bundle に入るため、ここで無条件に呼ぶと 1 プロセスに runner が 2 つ立つ
@@ -32,6 +35,10 @@ async function readJson(request: Request) {
 }
 
 async function requireOwner(request: Request) {
+  if (hostedEnabled()) {
+    const owner = await resolveHostedOwner(request);
+    return owner && { id: owner.id, lanOwner: false };
+  }
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id) return null;
   return { id: session.user.id, lanOwner: isLanOwner(session.user.email) };
@@ -52,17 +59,15 @@ export const Route = createFileRoute("/api/home")({
         if (!who) return deny();
         const userId = who.id;
         const { snap } = await loadHome(userId);
-        const billing = billingConfigured() ? await loadEntitlement(userId) : null;
+        const billing = await gateEntitlement(userId);
         return Response.json({ ...clientHome(snap, request.headers.get("host"), who.lanOwner), billing });
       },
       POST: async ({ request }) => {
         const who = await requireOwner(request);
         if (!who) return deny();
         const userId = who.id;
-        if (billingConfigured()) {
-          const entitlement = await loadEntitlement(userId);
-          if (!entitlement.writable) return paywall();
-        }
+        const entitlement = await gateEntitlement(userId);
+        if (entitlement && !entitlement.writable) return paywall();
         const { id: homeId, snap } = await loadHome(userId);
         const body = await readJson(request);
         const op = String(body.op ?? "");

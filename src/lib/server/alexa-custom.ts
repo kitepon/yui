@@ -1,4 +1,4 @@
-import { billingConfigured, loadEntitlement } from "./billing";
+import { gateEntitlement } from "./hosted/entitlement";
 import { interpretVoice } from "./alexa-interpret";
 import { userIdForAlexaAccess } from "./alexa-oauth";
 import { executeDevice, executeScene } from "./execute";
@@ -48,10 +48,8 @@ export async function handleAlexaCustom(req: AlexaCustomRequest) {
   if (!token) return speech("Alexaアプリで結を有効化して、ログインしてください");
   const userId = userIdForAlexaAccess(token);
   if (!userId) return speech("結に繋がっていません。スキルを結び直してください");
-  if (billingConfigured()) {
-    const entitlement = await loadEntitlement(userId);
-    if (!entitlement.writable) return speech("結の契約が必要です");
-  }
+  const entitlement = await gateEntitlement(userId);
+  if (entitlement && !entitlement.writable) return speech("結の契約が必要です");
 
   const query = slotText(req);
   const { id: homeId, snap } = await loadHome(userId);

@@ -19,7 +19,9 @@ import { Route as ScenesRouteImport } from './routes/scenes'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiAccountDataRouteImport } from './routes/api/account-data'
 import { Route as ApiAnalysisRouteImport } from './routes/api/analysis'
+import { Route as ApiClaimRouteImport } from './routes/api/claim'
 import { Route as ApiHomeRouteImport } from './routes/api/home'
 import { Route as ApiIosAuthRouteImport } from './routes/api/ios-auth'
 import { Route as HelpRemoRouteImport } from './routes/help/remo'
@@ -33,6 +35,8 @@ import { Route as ApiApplePurchaseRouteImport } from './routes/api/apple/purchas
 import { Route as ApiAppleRefreshRouteImport } from './routes/api/apple/refresh'
 import { Route as ApiAppleTransactionRouteImport } from './routes/api/apple/transaction'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiHomePaidUntilRouteImport } from './routes/api/home/paid-until'
+import { Route as ApiKeysSplatRouteImport } from './routes/api/keys/$'
 import { Route as ApiOpsBackupRouteImport } from './routes/api/ops/backup'
 import { Route as ApiStripeCheckoutRouteImport } from './routes/api/stripe/checkout'
 import { Route as ApiStripePortalRouteImport } from './routes/api/stripe/portal'
@@ -89,9 +93,19 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAccountDataRoute = ApiAccountDataRouteImport.update({
+  id: '/api/account-data',
+  path: '/api/account-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAnalysisRoute = ApiAnalysisRouteImport.update({
   id: '/api/analysis',
   path: '/api/analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiClaimRoute = ApiClaimRouteImport.update({
+  id: '/api/claim',
+  path: '/api/claim',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHomeRoute = ApiHomeRouteImport.update({
@@ -159,6 +173,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHomePaidUntilRoute = ApiHomePaidUntilRouteImport.update({
+  id: '/paid-until',
+  path: '/paid-until',
+  getParentRoute: () => ApiHomeRoute,
+} as any)
+const ApiKeysSplatRoute = ApiKeysSplatRouteImport.update({
+  id: '/api/keys/$',
+  path: '/api/keys/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOpsBackupRoute = ApiOpsBackupRouteImport.update({
   id: '/api/ops/backup',
   path: '/api/ops/backup',
@@ -196,8 +220,10 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/api/account-data': typeof ApiAccountDataRoute
   '/api/analysis': typeof ApiAnalysisRoute
-  '/api/home': typeof ApiHomeRoute
+  '/api/claim': typeof ApiClaimRoute
+  '/api/home': typeof ApiHomeRouteWithChildren
   '/api/ios-auth': typeof ApiIosAuthRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
@@ -210,6 +236,8 @@ export interface FileRoutesByFullPath {
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
   '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/home/paid-until': typeof ApiHomePaidUntilRoute
+  '/api/keys/$': typeof ApiKeysSplatRoute
   '/api/ops/backup': typeof ApiOpsBackupRoute
   '/api/stripe/checkout': typeof ApiStripeCheckoutRoute
   '/api/stripe/portal': typeof ApiStripePortalRoute
@@ -227,8 +255,10 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/api/account-data': typeof ApiAccountDataRoute
   '/api/analysis': typeof ApiAnalysisRoute
-  '/api/home': typeof ApiHomeRoute
+  '/api/claim': typeof ApiClaimRoute
+  '/api/home': typeof ApiHomeRouteWithChildren
   '/api/ios-auth': typeof ApiIosAuthRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
@@ -241,6 +271,8 @@ export interface FileRoutesByTo {
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
   '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/home/paid-until': typeof ApiHomePaidUntilRoute
+  '/api/keys/$': typeof ApiKeysSplatRoute
   '/api/ops/backup': typeof ApiOpsBackupRoute
   '/api/stripe/checkout': typeof ApiStripeCheckoutRoute
   '/api/stripe/portal': typeof ApiStripePortalRoute
@@ -259,8 +291,10 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/api/account-data': typeof ApiAccountDataRoute
   '/api/analysis': typeof ApiAnalysisRoute
-  '/api/home': typeof ApiHomeRoute
+  '/api/claim': typeof ApiClaimRoute
+  '/api/home': typeof ApiHomeRouteWithChildren
   '/api/ios-auth': typeof ApiIosAuthRoute
   '/help/remo': typeof HelpRemoRoute
   '/help/switchbot': typeof HelpSwitchbotRoute
@@ -273,6 +307,8 @@ export interface FileRoutesById {
   '/api/apple/refresh': typeof ApiAppleRefreshRoute
   '/api/apple/transaction': typeof ApiAppleTransactionRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/home/paid-until': typeof ApiHomePaidUntilRoute
+  '/api/keys/$': typeof ApiKeysSplatRoute
   '/api/ops/backup': typeof ApiOpsBackupRoute
   '/api/stripe/checkout': typeof ApiStripeCheckoutRoute
   '/api/stripe/portal': typeof ApiStripePortalRoute
@@ -292,7 +328,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/terms'
+    | '/api/account-data'
     | '/api/analysis'
+    | '/api/claim'
     | '/api/home'
     | '/api/ios-auth'
     | '/help/remo'
@@ -306,6 +344,8 @@ export interface FileRouteTypes {
     | '/api/apple/refresh'
     | '/api/apple/transaction'
     | '/api/auth/$'
+    | '/api/home/paid-until'
+    | '/api/keys/$'
     | '/api/ops/backup'
     | '/api/stripe/checkout'
     | '/api/stripe/portal'
@@ -323,7 +363,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/terms'
+    | '/api/account-data'
     | '/api/analysis'
+    | '/api/claim'
     | '/api/home'
     | '/api/ios-auth'
     | '/help/remo'
@@ -337,6 +379,8 @@ export interface FileRouteTypes {
     | '/api/apple/refresh'
     | '/api/apple/transaction'
     | '/api/auth/$'
+    | '/api/home/paid-until'
+    | '/api/keys/$'
     | '/api/ops/backup'
     | '/api/stripe/checkout'
     | '/api/stripe/portal'
@@ -354,7 +398,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/terms'
+    | '/api/account-data'
     | '/api/analysis'
+    | '/api/claim'
     | '/api/home'
     | '/api/ios-auth'
     | '/help/remo'
@@ -368,6 +414,8 @@ export interface FileRouteTypes {
     | '/api/apple/refresh'
     | '/api/apple/transaction'
     | '/api/auth/$'
+    | '/api/home/paid-until'
+    | '/api/keys/$'
     | '/api/ops/backup'
     | '/api/stripe/checkout'
     | '/api/stripe/portal'
@@ -386,8 +434,10 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
+  ApiAccountDataRoute: typeof ApiAccountDataRoute
   ApiAnalysisRoute: typeof ApiAnalysisRoute
-  ApiHomeRoute: typeof ApiHomeRoute
+  ApiClaimRoute: typeof ApiClaimRoute
+  ApiHomeRoute: typeof ApiHomeRouteWithChildren
   ApiIosAuthRoute: typeof ApiIosAuthRoute
   HelpRemoRoute: typeof HelpRemoRoute
   HelpSwitchbotRoute: typeof HelpSwitchbotRoute
@@ -400,6 +450,7 @@ export interface RootRouteChildren {
   ApiAppleRefreshRoute: typeof ApiAppleRefreshRoute
   ApiAppleTransactionRoute: typeof ApiAppleTransactionRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiKeysSplatRoute: typeof ApiKeysSplatRoute
   ApiOpsBackupRoute: typeof ApiOpsBackupRoute
   ApiStripeCheckoutRoute: typeof ApiStripeCheckoutRoute
   ApiStripePortalRoute: typeof ApiStripePortalRoute
@@ -479,11 +530,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/account-data': {
+      id: '/api/account-data'
+      path: '/api/account-data'
+      fullPath: '/api/account-data'
+      preLoaderRoute: typeof ApiAccountDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/analysis': {
       id: '/api/analysis'
       path: '/api/analysis'
       fullPath: '/api/analysis'
       preLoaderRoute: typeof ApiAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/claim': {
+      id: '/api/claim'
+      path: '/api/claim'
+      fullPath: '/api/claim'
+      preLoaderRoute: typeof ApiClaimRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/home': {
@@ -577,6 +642,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/home/paid-until': {
+      id: '/api/home/paid-until'
+      path: '/paid-until'
+      fullPath: '/api/home/paid-until'
+      preLoaderRoute: typeof ApiHomePaidUntilRouteImport
+      parentRoute: typeof ApiHomeRoute
+    }
+    '/api/keys/$': {
+      id: '/api/keys/$'
+      path: '/api/keys/$'
+      fullPath: '/api/keys/$'
+      preLoaderRoute: typeof ApiKeysSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ops/backup': {
       id: '/api/ops/backup'
       path: '/api/ops/backup'
@@ -615,6 +694,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApiHomeRouteChildren {
+  ApiHomePaidUntilRoute: typeof ApiHomePaidUntilRoute
+}
+
+const ApiHomeRouteChildren: ApiHomeRouteChildren = {
+  ApiHomePaidUntilRoute: ApiHomePaidUntilRoute,
+}
+
+const ApiHomeRouteWithChildren =
+  ApiHomeRoute._addFileChildren(ApiHomeRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalysisRoute: AnalysisRoute,
@@ -626,8 +716,10 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
+  ApiAccountDataRoute: ApiAccountDataRoute,
   ApiAnalysisRoute: ApiAnalysisRoute,
-  ApiHomeRoute: ApiHomeRoute,
+  ApiClaimRoute: ApiClaimRoute,
+  ApiHomeRoute: ApiHomeRouteWithChildren,
   ApiIosAuthRoute: ApiIosAuthRoute,
   HelpRemoRoute: HelpRemoRoute,
   HelpSwitchbotRoute: HelpSwitchbotRoute,
@@ -640,6 +732,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAppleRefreshRoute: ApiAppleRefreshRoute,
   ApiAppleTransactionRoute: ApiAppleTransactionRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiKeysSplatRoute: ApiKeysSplatRoute,
   ApiOpsBackupRoute: ApiOpsBackupRoute,
   ApiStripeCheckoutRoute: ApiStripeCheckoutRoute,
   ApiStripePortalRoute: ApiStripePortalRoute,

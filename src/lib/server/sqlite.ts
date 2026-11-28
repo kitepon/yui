@@ -21,6 +21,7 @@ export function getSqlite(): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
+  db.exec("PRAGMA secure_delete = ON"); // deleted rows are overwritten, not left in free pages (Miranda 2026-11-28)
   applySqliteMigrations(db);
   hashLegacyAlexaRows(db);
   globalRef.__yuiSqlite__ = db;

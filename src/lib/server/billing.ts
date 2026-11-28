@@ -2,6 +2,8 @@ import Stripe from "stripe";
 import { auth } from "../auth/server.ts";
 import { HOSTED_PRICE_COPY } from "../billing-plan.ts";
 import { getSqlite } from "./sqlite.ts";
+import { hostedEnabled } from "./hosted/config.ts";
+import { resolveHostedOwner } from "./hosted/library.ts";
 import { publicOrigin } from "./origin.ts";
 import { appleEntitlement } from "./apple-billing-core.ts";
 import { appleBillingConfigured, appleSubscriptionRows, refreshAppleSubscription } from "./apple-billing.ts";
@@ -42,6 +44,10 @@ export function getStripe() {
 }
 
 export async function requireUser(request: Request) {
+  if (hostedEnabled()) {
+    const owner = await resolveHostedOwner(request);
+    return owner && { id: owner.id, email: "", name: null };
+  }
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id) return null;
   return session.user;

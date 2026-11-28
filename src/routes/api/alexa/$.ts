@@ -4,6 +4,11 @@ import { handleAlexaEvent } from "@/lib/server/alexa";
 import type { AlexaEvent } from "@/lib/server/alexa-core";
 import { handleAlexaCustom } from "@/lib/server/alexa-custom";
 import { allowedAlexaRedirect } from "@/lib/server/alexa-core";
+import { hostedEnabled } from "@/lib/server/hosted/config";
+import { resolveHostedOwner } from "@/lib/server/hosted/library";
+import { consumeLinkCode, makeLinkCode } from "@/lib/server/hosted/link-code";
+import { linkCodePage } from "@/lib/server/hosted/link-page";
+import { getSqlite } from "@/lib/server/sqlite";
 import { publicOrigin } from "@/lib/server/origin";
 import { redirectResponse } from "@/lib/server/redirect-response";
 import {
@@ -43,6 +48,7 @@ async function authorize(request: Request) {
   if (responseType !== "code" || !verifyAlexaClient(clientId) || !allowedAlexaRedirect(redirectUri)) {
     return new Response("認可の要求が不正です", { status: 400 });
   }
+  if (hostedEnabled()) return linkCodePage(url.search);
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id) {
     const next = `/api/alexa/oauth/authorize${url.search}`;
@@ -51,6 +57,25 @@ async function authorize(request: Request) {
   const code = issueAlexaCode(session.user.id, redirectUri);
   const dest = new URL(redirectUri);
   dest.searchParams.set("code", code);
+  if (state) dest.searchParams.set("state", state);
+  return redirectResponse(dest);
+}
+
+/** Hosted: the person typed the code the app made for them (no cookie, no browser key). */
+async function authorizeWithCode(request: Request) {
+  if (!alexaOAuthConfigured()) return new Response("Alexa が未設定です", { status: 503 });
+  const form = new URLSearchParams(await request.text());
+  const query = new URLSearchParams(form.get("query") ?? "");
+  const clientId = query.get("client_id") ?? "";
+  const redirectUri = query.get("redirect_uri") ?? "";
+  const state = query.get("state") ?? "";
+  if (query.get("response_type") !== "code" || !verifyAlexaClient(clientId) || !allowedAlexaRedirect(redirectUri)) {
+    return new Response("認可の要求が不正です", { status: 400 });
+  }
+  const entry = consumeLinkCode(getSqlite(), (form.get("code") ?? "").trim());
+  if (!entry) return linkCodePage(`?${query.toString()}`, "コードが違うか、期限が切れています。アプリでコードを出し直してください。");
+  const dest = new URL(redirectUri);
+  dest.searchParams.set("code", issueAlexaCode(entry, redirectUri));
   if (state) dest.searchParams.set("state", state);
   return redirectResponse(dest);
 }
@@ -97,6 +122,13 @@ export const Route = createFileRoute("/api/alexa/$")({
       POST: async ({ request }) => {
         const path = alexaPath(request);
         if (path === "oauth/token") return token(request);
+        if (path === "oauth/authorize" && hostedEnabled()) return authorizeWithCode(request);
+        if (path === "link-code" && hostedEnabled()) {
+          const who = await resolveHostedOwner(request);
+          if (!who) return Response.json({ error: "unauthorized" }, { status: 401 });
+          const code = makeLinkCode(getSqlite(), who.id);
+          return code ? Response.json({ code, expiresInSeconds: 600 }) : Response.json({ error: "too many codes" }, { status: 429 });
+        }
         if (path === "smart-home") return skill(request);
         if (path === "custom") {
           if (!alexaOAuthConfigured()) return Response.json({ error: "Alexa が未設定です" }, { status: 503 });
