@@ -48,14 +48,20 @@ function applySqliteMigrations(db: DatabaseSync) {
   for (const [path, sql] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
     const name = path.split("/").pop() as string;
     if (done.has(name)) continue;
+    // A table rebuild needs foreign keys off, and that pragma does nothing inside a transaction.
+    const fkOff = sql.startsWith("-- yui:foreign-keys-off");
+    if (fkOff) db.exec("PRAGMA foreign_keys = OFF");
     db.exec("BEGIN");
     try {
       db.exec(sql);
+      if (fkOff && db.prepare("PRAGMA foreign_key_check").all().length) throw new Error(`migration ${name} broke a foreign key`);
       db.prepare("INSERT INTO _migrations (name) VALUES (?)").run(name);
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
       throw err;
+    } finally {
+      if (fkOff) db.exec("PRAGMA foreign_keys = ON");
     }
   }
 }
