@@ -1,0 +1,34 @@
+{
+  "title": "Yui Android app (.NET)",
+  "owner": "Crow",
+  "botId": "bot-6f2e478f",
+  "scope": "android/ (new): the .NET (C#) app, Google sign-in, Play Billing read on the device, the library's Android part, home control, claim, Alexa link code, deletion and export.",
+  "provides": [
+    "Yui Android app"
+  ],
+  "uses": [
+    {
+      "module": "server-web",
+      "port": "hosted API (/api/*: home, devices, rooms, scenes, automations)"
+    },
+    {
+      "module": "server-web",
+      "port": "hosted keyholes and paid-until (/api/keys, /api/home/paid-until, /api/claim)"
+    },
+    {
+      "module": "server-web",
+      "port": "Alexa link code"
+    },
+    {
+      "module": "server-web",
+      "port": "account data deletion and export"
+    },
+    {
+      "module": "login-billing",
+      "port": "login-billing Android (.NET) part"
+    }
+  ],
+  "source": [
+    "android/"
+  ]
+}

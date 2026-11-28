@@ -1,0 +1,14 @@
+{
+  "title": "Shared login/billing library (external product)",
+  "owner": "Mint",
+  "botId": "bot-137fd092",
+  "external": true,
+  "scope": "Another product. Yui loads it only in the hosted build; self-hosted Yui stays library-free.",
+  "provides": [
+    "login-billing server part (keyholes, signed requests)",
+    "login-billing Swift part",
+    "login-billing Android (.NET) part"
+  ],
+  "uses": [],
+  "source": []
+}

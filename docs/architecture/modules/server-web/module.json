@@ -1,0 +1,47 @@
+{
+  "title": "Yui server, Web UI and deploy (hosted and self-hosted)",
+  "owner": "Little Mermaid",
+  "botId": "bot-f39f4ec8",
+  "scope": "Server API, Web UI, Alexa endpoint, LAN/BLE helpers, storage and migrations, backup worker, deploy and release. Coordinator module: contract, acceptance and main integration.",
+  "provides": [
+    "hosted API (/api/*: home, devices, rooms, scenes, automations)",
+    "hosted keyholes and paid-until (/api/keys, /api/home/paid-until, /api/claim)",
+    "Alexa link code",
+    "account data deletion and export",
+    "self-hosted web UI"
+  ],
+  "uses": [
+    {
+      "module": "login-billing",
+      "port": "login-billing server part (keyholes, signed requests)"
+    }
+  ],
+  "source": [
+    "src/",
+    "server/",
+    "services/",
+    "migrations/",
+    "public/",
+    "scripts/",
+    "deploy/",
+    "backup-worker/",
+    "certs/",
+    "Dockerfile",
+    "startup.sh",
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    "tsconfig.json",
+    "eslint.config.mjs",
+    ".github/",
+    "docs/",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "AGENTS.project.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "rag/"
+  ]
+}
