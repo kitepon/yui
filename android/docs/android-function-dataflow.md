@@ -1,7 +1,7 @@
 # Yui Android app: function and data-flow diagram (target)
 
 Scope: the Android app of hosted 結 (Yui), package `dev.kitepon.yuihome`, .NET 10 MAUI (Android only), minSdk 26, targetSdk 36. Owner of this file: the Android app role. The overall diagram and the server side are `docs/hosted-login-billing-contract.md` (target); this file is the app's own part and must agree with it.
-Status: TARGET. Library: Kitepon.LoginBilling.Android 0.28.0 (private; android/scripts/fetch-library.sh). Items marked PENDING wait for an answer from Mint (through the Yui lead) and are settled in this file before code uses them.
+Status: TARGET. Library: Kitepon.LoginBilling.Android 0.28.0 (private; android/scripts/fetch-library.sh). The library answers (Mint, 0.28.0) are settled below.
 First version (v1): sign-in, home control, vendor credentials, paid date, admit another device, claim, Alexa link code, export, account deletion. Later (v2): scene and automation editors, device groups, room management, analysis. The app points only at `https://yuihome.kitepon.dev` and carries no secret in the build beyond what the library needs.
 
 ## 1. Connections
@@ -9,7 +9,7 @@ First version (v1): sign-in, home control, vendor credentials, paid date, admit 
 | Connection | Direction | Contract |
 |---|---|---|
 | Yui hosted API (`https://yuihome.kitepon.dev`) | out | signed requests (device key): `GET/POST /api/home` (ops: control, scene, sync, credentials, automation-toggle), `POST /api/home/paid-until`, `POST /api/claim`, `POST /api/alexa/link-code`, account-data delete and export routes (names per the contract, section 2) |
-| Shared login/billing library, Android part (0.28.0) | in-process | namespace `Kitepon.LoginBilling`: `LocalForm` (`SignInLocalAsync(activity,"google")`, `KeptSignIn`, `SignOutLocal`, `OwnPurchasesAsync`, `ProductDetailsAsync`, `PurchaseAsync` (acknowledges), `MakeRequestAsync`/`LocalRequest`, `IsLibraryQR`, `AnswerAsync`, `TakeAsync`) and `Keyholes(baseUrl=https://yuihome.kitepon.dev/api/, appId=dev.kitepon.yuihome)` (`StartAsync`, `SendAddAsync`, `SignOutOthersAsync`, `LeaveAsync`, `DeleteKey`, `Header(method,url,body)`, `UseServerTime`). Both use the storage name default so they share one device key. Failures: `LoginBillingException(Code, Status)`. The app has no Play Billing code of its own |
+| Shared login/billing library, Android part (0.28.0) | in-process | namespace `Kitepon.LoginBilling`: `LocalForm` (Play = null: this phone checks its own store only; `SignInLocalAsync(activity,"google")`, `KeptSignIn`, `SignOutLocal`, `OwnPurchasesAsync`, `ProductDetailsAsync`, `PurchaseAsync` (acknowledges), `MakeRequestAsync`/`LocalRequest`, `IsLibraryQR`, `AnswerAsync`, `TakeAsync`) and `Keyholes(baseUrl=https://yuihome.kitepon.dev/api/, appId=dev.kitepon.yuihome)` (`StartAsync`, `SendAddAsync`, `SignOutOthersAsync`, `LeaveAsync`, `DeleteKey`, `Header(method,url,body)`, `UseServerTime`). Both use the storage name default so they share one device key. Failures: `LoginBillingException(Code, Status)`. The app has no Play Billing code of its own |
 | Google Credential Manager | out | second Google ID token for the claim only: `serverClientId` = yui-hosted Web client, with a nonce; sent to `POST /api/claim` as `{method:"google", idToken}` and nowhere else |
 | Google Play Billing | via the library | product `dev.kitepon.yuihome.hosted`, base plans `monthly` (JPY 100), `annual` (JPY 1,000); the library acknowledges; the app never references BillingClient |
 | Android Keystore | in/out | device key; no backup (`allowBackup=false`) |
@@ -21,7 +21,7 @@ First version (v1): sign-in, home control, vendor credentials, paid date, admit 
 
 | Function | Job | Input | Output / connection |
 |---|---|---|---|
-| `SessionStore` | signed-in state | `KeptSignIn()` + `Keyholes.PublicKey()` | state for the shell; no key → sign-in |
+| `Account.StateAsync` | signed-in state | `KeptSignIn()`, `Keyholes.PublicKey()`, `POST keys/me` (`{}`, signed; 200 `{entry, role}`, 401 = key in no entry) | SignedOut → sign-in; NoEntry → "start here" or join; Ready → tabs. A failed check shows the reason and a retry |
 | `SignIn` | first device: Google sign-in, then the person chooses "start here" (`StartAsync`) or joins through another phone | user tap | `SignInLocalAsync` binds the device key to the account; the Google token never reaches Yui and the app never sees it |
 | `YuiApi` | the only place that sends a request to Yui: builds the URL and body, adds the `Login-Billing-Key` value from `Keyholes.Header`, maps status codes; on 401 `{"error":"time_off","now":ms}` it calls `UseServerTime(now)` and signs once more, never a second retry | op + fields | `HomeSnapshot` or typed error; 401 → signed out, 403/409/404/400 → typed message |
 | `HomeStore` | holds the last `HomeSnapshot`; every op returns a fresh one | `YuiApi` | screens (rooms, devices, scenes, automations list with toggle) |
@@ -34,7 +34,7 @@ First version (v1): sign-in, home control, vendor credentials, paid date, admit 
 | `MakeLinkCode` | Alexa linking code | user tap | `POST /api/alexa/link-code` → `{code, expiresInSeconds: 600}`; 429 → message |
 | `Export` | data export | user tap | `GET /api/account-data` → JSON saved through the system file picker; no vendor secrets |
 | `DeleteAccount` | delete an entry, in this order | user confirm | 1 `DELETE /api/account-data`; 2 `SignOutOthersAsync`; 3 `LeaveAsync`; 4 `DeleteKey` + `SignOutLocal`. Step 1 fails: stop, the person retries. A later step fails: the data is already gone, retry the rest |
-| `LeaveWarning` | says it before sign-out or deletion | PENDING (Mint): key count of the entry; the .NET part has no `keys/me` | text: the home is deleted at once when the last device leaves; a new phone starts a new entry or joins by QR on the same Wi-Fi; the old key stays until the 180-day removal. Unconditional wording until the count is known |
+| `LeaveWarning` | says it before sign-out and deletion | none: the library has no key count and Yui has no count route (Yui lead, 2026-11-28) | unconditional text: "if this is your only device, the home is deleted at once"; a new phone starts a new entry or joins through the old phone; the old home of a lost only phone is removed by the 180-day purge, and Yui offers no other recovery |
 
 ## 3. Data flows
 
@@ -52,7 +52,6 @@ First version (v1): sign-in, home control, vendor credentials, paid date, admit 
 |---|---|---|
 | device key | Android Keystore (library) | never exported, no backup |
 | `HomeSnapshot` | memory only | no disk copy in v1 |
-| Play licence key (`LocalPlayRules.PublicKey`) | PENDING (Mint, Cielo): whether the hosted use needs it; it is public, not a secret | not in the repo until known |
 | vendor credentials | typed into a form, sent, cleared | never stored on the device |
 | paid-date job state | WorkManager | no purchase token or store id stored by the app |
 | purchase tokens, store accounts | Google Play and the library | never sent to Yui |

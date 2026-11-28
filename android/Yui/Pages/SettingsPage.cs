@@ -45,6 +45,10 @@ public sealed class SettingsPage : ContentPage
 		body.Children.Add(codeLabel);
 		body.Children.Add(Button("リンクコードを出す", MakeCode));
 
+		body.Children.Add(Ui.Title("他の端末"));
+		body.Children.Add(Button("他の端末を追加（QR）", () => Navigation.PushModalAsync(new AdmitPage())));
+		body.Children.Add(Button("前の結のデータを引き継ぐ", () => Navigation.PushModalAsync(new ClaimPage())));
+
 		body.Children.Add(Ui.Title("データ"));
 		body.Children.Add(Button("データを書き出す", Export));
 

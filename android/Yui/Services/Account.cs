@@ -43,6 +43,9 @@ public sealed class Account : IRequestSigner
 	/// <summary>"Start here" on the first device: a new entry with this device as its parent.</summary>
 	public Task<KeyholeEntry> StartHereAsync() => keyholes.StartAsync();
 
+	/// <summary>The parent's add for this device's key, taken from a QR or a return link: sent to the entry's keys/accept, then this key is in the entry.</summary>
+	public Task<KeyholeEntry> SendAddAsync(KeyholeAdd add) => keyholes.SendAddAsync(add);
+
 	/// <summary>Sign out: the key leaves its entry (the last device leaving deletes the home at once), then the sign-in is dropped.</summary>
 	public async Task SignOutAsync()
 	{
